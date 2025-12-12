@@ -1,0 +1,52 @@
+import express from 'express'
+import cors from 'cors'
+import { createServer } from 'http'
+import { config } from './config.js'
+import torrentRoutes from './routes/torrents.js'
+import libraryRoutes from './routes/library.js'
+import { setupWebSocket } from './websocket/progressSocket.js'
+import { downloadManager } from './services/downloadManager.js'
+
+const app = express()
+const server = createServer(app)
+
+// Middleware
+app.use(cors({
+  origin: config.corsOrigin,
+  credentials: true
+}))
+app.use(express.json())
+
+// Routes
+app.use('/api/torrents', torrentRoutes)
+app.use('/api/library', libraryRoutes)
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', downloadPath: config.downloadPath })
+})
+
+// Setup WebSocket
+setupWebSocket(server)
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('\nShutting down...')
+  await downloadManager.destroy()
+  server.close()
+  process.exit(0)
+})
+
+process.on('SIGTERM', async () => {
+  console.log('\nShutting down...')
+  await downloadManager.destroy()
+  server.close()
+  process.exit(0)
+})
+
+// Start server
+server.listen(config.port, () => {
+  console.log(`Server running on http://localhost:${config.port}`)
+  console.log(`Download path: ${config.downloadPath}`)
+  console.log(`CORS origin: ${config.corsOrigin}`)
+})

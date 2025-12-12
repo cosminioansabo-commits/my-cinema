@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create:*)",
+      "Bash(npm install:*)",
+      "Bash(npx tailwindcss init:*)",
+      "Bash(npm run build:*)",
+      "WebFetch(domain:primevue.org)",
+      "WebSearch",
+      "Bash(tree:*)",
+      "Bash(export NVM_DIR=\"$HOME/.nvm\")",
+      "Bash([ -s \"$NVM_DIR/nvm.sh\" ])",
+      "Bash(. \"$NVM_DIR/nvm.sh\")",
+      "Bash(npx tsc:*)",
+      "Bash(npx vue-tsc:*)",
+      "Bash(pkill:*)",
+      "Bash(xargs kill:*)",
+      "Bash(lsof:*)",
+      "Bash(curl:*)",
+      "Bash(docker compose:*)",
+      "Bash(docker ps:*)",
+      "Bash(export NVM_DIR=$HOME/.nvm)",
+      "Bash([ -s $NVM_DIR/nvm.sh ])",
+      "Bash(. $NVM_DIR/nvm.sh)",
+      "Bash(source ~/.nvm/nvm.sh)",
+      "Bash(python3:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
