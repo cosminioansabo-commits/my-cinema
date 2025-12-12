@@ -49,17 +49,17 @@ Go to your repository → Settings → Actions → General:
 
 SSH into your NAS or use File Station:
 ```bash
-# Create data folders
+# Create data folders on HDD (volume1)
 mkdir -p /volume1/data/downloads
 mkdir -p /volume1/data/movies
 mkdir -p /volume1/data/tv
 
-# Create Docker config folders
-mkdir -p /volume1/docker/qbittorrent
-mkdir -p /volume1/docker/radarr
-mkdir -p /volume1/docker/sonarr
-mkdir -p /volume1/docker/prowlarr
-mkdir -p /volume1/docker/my-cinema
+# Create Docker config folders on SSD (volume2)
+mkdir -p /volume2/docker/qbittorrent
+mkdir -p /volume2/docker/radarr
+mkdir -p /volume2/docker/sonarr
+mkdir -p /volume2/docker/prowlarr
+mkdir -p /volume2/docker/my-cinema
 ```
 
 ### 2.2 Find Your User ID
@@ -72,13 +72,13 @@ id your-username
 
 ### 2.3 Copy Files to NAS
 
-Copy these files to `/volume1/docker/my-cinema/`:
+Copy these files to `/volume2/docker/my-cinema/`:
 - `docker-compose.nas.yml` (rename to `docker-compose.yml`)
 - `.env.nas.example` (rename to `.env` and fill in values)
 
 ### 2.4 Configure .env
 
-Edit `/volume1/docker/my-cinema/.env`:
+Edit `/volume2/docker/my-cinema/.env`:
 ```env
 GITHUB_USERNAME=your-github-username
 NAS_IP=subdomain.go.ro
@@ -119,7 +119,7 @@ Go to your repository → Actions tab and wait for the build to complete (first 
 ### 3.3 Start Services on NAS
 
 ```bash
-cd /volume1/docker/my-cinema
+cd /volume2/docker/my-cinema
 docker-compose up -d
 ```
 

@@ -6,8 +6,8 @@ version: "3.8"
 # Deploy this on your UGREEN NAS
 #
 # Before deploying:
-# 1. Create folders: /volume1/data/{downloads,movies,tv}
-# 2. Create folders: /volume1/docker/{qbittorrent,radarr,sonarr,prowlarr}
+# 1. Create folders: /volume1/data/{downloads,movies,tv}  (HDD for media)
+# 2. Create folders: /volume2/docker/{qbittorrent,radarr,sonarr,prowlarr,my-cinema}  (SSD for configs)
 # 3. Create .env file with your secrets (see .env.nas.example)
 # 4. Update PUID/PGID to match your NAS user (run: id username)
 # =============================================================================
@@ -66,7 +66,7 @@ services:
       - TZ=${TZ}
       - WEBUI_PORT=8080
     volumes:
-      - /volume1/docker/qbittorrent:/config
+      - /volume2/docker/qbittorrent:/config
       - /volume1/data:/data
     ports:
       - "8080:8080"
@@ -84,7 +84,7 @@ services:
       - PGID=${PGID}
       - TZ=${TZ}
     volumes:
-      - /volume1/docker/radarr:/config
+      - /volume2/docker/radarr:/config
       - /volume1/data:/data
     ports:
       - "7878:7878"
@@ -98,7 +98,7 @@ services:
       - PGID=${PGID}
       - TZ=${TZ}
     volumes:
-      - /volume1/docker/sonarr:/config
+      - /volume2/docker/sonarr:/config
       - /volume1/data:/data
     ports:
       - "8989:8989"
@@ -112,7 +112,7 @@ services:
       - PGID=${PGID}
       - TZ=${TZ}
     volumes:
-      - /volume1/docker/prowlarr:/config
+      - /volume2/docker/prowlarr:/config
     ports:
       - "9696:9696"
     restart: unless-stopped
