@@ -47,6 +47,7 @@ jobs:
           build-args: |
             VITE_TMDB_API_KEY=${{ secrets.VITE_TMDB_API_KEY }}
             VITE_TORRENT_API_URL=${{ secrets.VITE_TORRENT_API_URL }}
+            VITE_OMDB_API_KEY=${{ secrets.VITE_OMDB_API_KEY }}
 
   build-backend:
     runs-on: ubuntu-latest
