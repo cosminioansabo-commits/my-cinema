@@ -32,15 +32,9 @@ const router = createRouter({
       props: true,
     },
     {
-      path: '/my-lists',
-      name: 'my-lists',
+      path: '/my-library',
+      name: 'my-library',
       component: () => import('@/views/MyListsView.vue'),
-    },
-    {
-      path: '/list/:id',
-      name: 'list-detail',
-      component: () => import('@/views/ListDetailView.vue'),
-      props: true,
     },
     {
       path: '/downloads',

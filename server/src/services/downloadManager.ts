@@ -7,6 +7,42 @@ import { qbittorrentService } from './qbittorrentService.js'
 
 type ProgressCallback = (update: ProgressUpdate) => void
 
+// Base32 to hex conversion for info hashes
+function base32ToHex(base32: string): string {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
+  let bits = ''
+
+  for (const char of base32.toUpperCase()) {
+    const index = alphabet.indexOf(char)
+    if (index === -1) continue
+    bits += index.toString(2).padStart(5, '0')
+  }
+
+  let hex = ''
+  for (let i = 0; i + 4 <= bits.length; i += 4) {
+    hex += parseInt(bits.slice(i, i + 4), 2).toString(16)
+  }
+
+  return hex.toLowerCase()
+}
+
+// Extract info hash from magnet link (handles both hex and base32)
+function extractInfoHash(magnetLink: string): string | null {
+  // Try hex format first (40 characters)
+  const hexMatch = magnetLink.match(/urn:btih:([a-fA-F0-9]{40})/i)
+  if (hexMatch) {
+    return hexMatch[1].toLowerCase()
+  }
+
+  // Try base32 format (32 characters) - needs conversion to hex
+  const base32Match = magnetLink.match(/urn:btih:([A-Za-z2-7]{32})/i)
+  if (base32Match) {
+    return base32ToHex(base32Match[1])
+  }
+
+  return null
+}
+
 // Categories for Radarr/Sonarr integration
 const CATEGORIES = {
   movie: 'radarr',
@@ -102,7 +138,25 @@ class DownloadManager {
 
       for (const torrent of torrents) {
         const hash = torrent.hash.toLowerCase()
-        const downloadId = this.hashToId.get(hash)
+        let downloadId = this.hashToId.get(hash)
+
+        // If not found by hash, try to match downloads without hash by name
+        if (!downloadId) {
+          for (const [id, download] of this.downloads) {
+            if (!download.infoHash && download.status !== 'completed' && download.status !== 'error') {
+              // Match by torrent name (case-insensitive partial match)
+              if (torrent.name.toLowerCase().includes(download.name.toLowerCase().slice(0, 20)) ||
+                  download.name.toLowerCase().includes(torrent.name.toLowerCase().slice(0, 20))) {
+                download.infoHash = hash
+                this.hashToId.set(hash, id)
+                this.saveState()
+                downloadId = id
+                console.log(`Matched download "${download.name}" to torrent hash ${hash}`)
+                break
+              }
+            }
+          }
+        }
 
         if (!downloadId) continue
 
@@ -202,14 +256,14 @@ class DownloadManager {
         throw new Error('Failed to add torrent to qBittorrent')
       }
 
-      // Extract info hash from magnet link
-      const hashMatch = request.magnetLink.match(/urn:btih:([a-fA-F0-9]{40})/i) ||
-                        request.magnetLink.match(/urn:btih:([a-zA-Z0-9]{32})/i)
-
-      if (hashMatch) {
-        const infoHash = hashMatch[1].toLowerCase()
+      // Extract info hash from magnet link (handles both hex and base32 formats)
+      const infoHash = extractInfoHash(request.magnetLink)
+      if (infoHash) {
         download.infoHash = infoHash
         this.hashToId.set(infoHash, id)
+        console.log(`Extracted info hash: ${infoHash}`)
+      } else {
+        console.warn(`Could not extract info hash from magnet link`)
       }
 
       download.status = 'downloading'

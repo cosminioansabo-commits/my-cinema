@@ -74,9 +74,9 @@ const truncatedBio = computed(() => {
 
 const knownFor = computed(() => {
   if (!credits.value) return []
-  // Get top 10 most popular credits (cast + crew)
+  // Get top credits (cast + crew)
   const allCredits = [...credits.value.cast, ...credits.value.crew]
-  // Remove duplicates by id
+  // Remove duplicates by id and mediaType
   const unique = allCredits.filter((item, index, self) =>
     index === self.findIndex(t => t.id === item.id && t.mediaType === item.mediaType)
   )
@@ -89,8 +89,25 @@ const knownFor = computed(() => {
 
 const filmography = computed(() => {
   if (!credits.value) return []
-  // Get all cast credits sorted by date
-  return credits.value.cast.filter(c => c.posterPath).slice(0, 50)
+
+  // Combine cast and crew credits
+  const allCredits = [...credits.value.cast, ...credits.value.crew]
+
+  // Remove duplicates - keep the one with character/job info
+  const unique = allCredits.filter((item, index, self) => {
+    const firstIndex = self.findIndex(t => t.id === item.id && t.mediaType === item.mediaType)
+    return index === firstIndex
+  })
+
+  // Sort by release date (newest first) and filter those with posters
+  return unique
+    .filter(c => c.posterPath)
+    .sort((a, b) => {
+      const dateA = a.releaseDate ? new Date(a.releaseDate).getTime() : 0
+      const dateB = b.releaseDate ? new Date(b.releaseDate).getTime() : 0
+      return dateB - dateA
+    })
+    .slice(0, 50)
 })
 
 const goToMedia = (id: number, mediaType: string) => {
@@ -193,12 +210,6 @@ const profileUrl = computed(() => {
                 {{ showFullBio ? 'Show less' : 'Read more' }}
               </button>
             </div>
-
-            <!-- Also known as -->
-            <div v-if="person.alsoKnownAs?.length > 0" class="text-sm">
-              <span class="text-gray-500">Also known as: </span>
-              <span class="text-gray-400">{{ person.alsoKnownAs.slice(0, 3).join(', ') }}</span>
-            </div>
           </div>
         </div>
 
@@ -223,6 +234,9 @@ const profileUrl = computed(() => {
               <p class="font-medium text-xs sm:text-sm text-white truncate">{{ credit.title }}</p>
               <p v-if="credit.character" class="text-[10px] sm:text-xs text-gray-500 truncate mt-0.5">
                 as {{ credit.character }}
+              </p>
+              <p v-else-if="credit.job" class="text-[10px] sm:text-xs text-gray-500 truncate mt-0.5">
+                {{ credit.job }}
               </p>
               <p class="text-[10px] sm:text-xs text-gray-600 mt-0.5">
                 {{ credit.releaseDate?.slice(0, 4) || 'TBA' }}
@@ -252,6 +266,9 @@ const profileUrl = computed(() => {
               <p class="font-medium text-xs sm:text-sm text-white truncate">{{ credit.title }}</p>
               <p v-if="credit.character" class="text-[10px] sm:text-xs text-gray-500 truncate mt-0.5">
                 {{ credit.character }}
+              </p>
+              <p v-else-if="credit.job" class="text-[10px] sm:text-xs text-gray-500 truncate mt-0.5">
+                {{ credit.job }}
               </p>
               <p class="text-[10px] sm:text-xs text-gray-600 mt-0.5">
                 {{ credit.releaseDate?.slice(0, 4) || 'TBA' }}

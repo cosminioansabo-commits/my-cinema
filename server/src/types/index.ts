@@ -52,9 +52,10 @@ export interface TorrentProvider {
 }
 
 export interface ProgressUpdate {
-  type: 'progress' | 'status' | 'error' | 'complete'
-  downloadId: string
-  data: Partial<Download>
+  type: 'progress' | 'status' | 'error' | 'complete' | 'init'
+  downloadId?: string
+  downloads?: Download[]
+  data?: Partial<Download>
 }
 
 export interface WSMessage {

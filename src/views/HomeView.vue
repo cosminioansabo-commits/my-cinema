@@ -12,13 +12,12 @@ import {
   getNowPlayingMovies,
   getUpcomingMovies,
   getBackdropUrl,
+  findByExternalId,
 } from '@/services/tmdbService'
-import { useListsStore } from '@/stores/listsStore'
+import { libraryService, type RadarrMovie, type SonarrSeries } from '@/services/libraryService'
 import MediaCarousel from '@/components/media/MediaCarousel.vue'
 import Button from 'primevue/button'
 import Skeleton from 'primevue/skeleton'
-
-const listsStore = useListsStore()
 
 // State
 const featuredItem = ref<Media | null>(null)
@@ -29,6 +28,7 @@ const topRatedMovies = ref<Media[]>([])
 const topRatedTV = ref<Media[]>([])
 const nowPlaying = ref<Media[]>([])
 const upcoming = ref<Media[]>([])
+const libraryItems = ref<Media[]>([])
 
 const isLoadingHero = ref(true)
 const isLoadingContent = ref(true)
@@ -49,36 +49,57 @@ const heroRating = computed(() => {
   return Math.round(featuredItem.value.voteAverage * 10)
 })
 
-const isInMyList = computed(() => {
-  if (!featuredItem.value) return false
-  return listsStore.isInList('my-list', featuredItem.value.id, featuredItem.value.mediaType)
-})
+// Fetch library items and convert to Media format
+const loadLibraryItems = async () => {
+  try {
+    const [movies, series] = await Promise.all([
+      libraryService.getRadarrMovies(),
+      libraryService.getSonarrSeries(),
+    ])
 
-const myListItems = computed(() => {
-  const items = listsStore.getListById('my-list')?.items || []
-  return items.map(item => ({
-    id: item.mediaId,
-    title: item.title,
-    posterPath: item.posterPath,
-    releaseDate: item.releaseDate,
-    voteAverage: item.voteAverage,
-    mediaType: item.mediaType,
-    overview: '',
-    backdropPath: null,
-    voteCount: 0,
-    genreIds: [],
-    popularity: 0,
-  } as Media)).slice(0, 20)
-})
+    // Convert Radarr movies to Media format
+    const movieMedia = await Promise.all(
+      movies.slice(0, 10).map(async (movie: RadarrMovie) => {
+        const tmdb = await findByExternalId(movie.tmdbId, 'imdb_id').catch(() => null)
+        return {
+          id: movie.tmdbId,
+          title: movie.title,
+          posterPath: tmdb?.posterPath || movie.images?.find((i: { coverType: string }) => i.coverType === 'poster')?.remoteUrl || null,
+          releaseDate: movie.year ? `${movie.year}-01-01` : '',
+          voteAverage: movie.ratings?.tmdb?.value || 0,
+          mediaType: 'movie' as const,
+          overview: movie.overview || '',
+          backdropPath: null,
+          voteCount: 0,
+          genreIds: [],
+          popularity: 0,
+        }
+      })
+    )
 
-// Actions
-const toggleMyList = () => {
-  if (!featuredItem.value) return
+    // Convert Sonarr series to Media format
+    const seriesMedia = await Promise.all(
+      series.slice(0, 10).map(async (s: SonarrSeries) => {
+        const tmdb = await findByExternalId(s.tvdbId, 'tvdb_id').catch(() => null)
+        return {
+          id: tmdb?.id || s.tvdbId,
+          title: s.title,
+          posterPath: tmdb?.posterPath || s.images?.find((i: { coverType: string }) => i.coverType === 'poster')?.remoteUrl || null,
+          releaseDate: s.year ? `${s.year}-01-01` : '',
+          voteAverage: s.ratings?.value || 0,
+          mediaType: 'tv' as const,
+          overview: s.overview || '',
+          backdropPath: null,
+          voteCount: 0,
+          genreIds: [],
+          popularity: 0,
+        }
+      })
+    )
 
-  if (isInMyList.value) {
-    listsStore.removeFromList('my-list', featuredItem.value.id, featuredItem.value.mediaType)
-  } else {
-    listsStore.addToList('my-list', featuredItem.value)
+    libraryItems.value = [...movieMedia, ...seriesMedia].slice(0, 20)
+  } catch (error) {
+    console.error('Failed to load library items:', error)
   }
 }
 
@@ -92,6 +113,9 @@ onMounted(async () => {
   } finally {
     isLoadingHero.value = false
   }
+
+  // Load library items in background
+  loadLibraryItems()
 
   // Load all carousels in parallel
   try {
@@ -194,13 +218,6 @@ onMounted(async () => {
                   class="!bg-white/30 !border-0 hover:!bg-white/20 !text-white font-semibold !text-xs sm:!text-sm !py-2 sm:!py-2.5 !px-3 sm:!px-4"
                 />
               </RouterLink>
-              <Button
-                :label="isInMyList ? 'In My List' : 'My List'"
-                :icon="isInMyList ? 'pi pi-check' : 'pi pi-plus'"
-                severity="secondary"
-                class="font-semibold !text-xs sm:!text-sm !py-2 sm:!py-2.5 !px-3 sm:!px-4"
-                @click="toggleMyList"
-              />
             </div>
           </template>
         </div>
@@ -209,12 +226,12 @@ onMounted(async () => {
 
     <!-- Carousels -->
     <div class="relative z-10 -mt-16 sm:-mt-24 pb-8 sm:pb-12 space-y-1 sm:space-y-2">
-      <!-- My List (if has items) -->
+      <!-- My Library (if has items) -->
       <MediaCarousel
-        v-if="myListItems.length > 0"
-        title="My List"
-        :items="myListItems"
-        see-all-link="/list/my-list"
+        v-if="libraryItems.length > 0"
+        title="My Library"
+        :items="libraryItems"
+        see-all-link="/my-library"
       />
 
       <!-- Trending Now -->

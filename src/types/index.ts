@@ -41,6 +41,35 @@ export interface MediaDetails extends Media {
   similar?: Media[]
   seasons?: Season[] // tv
   videos?: Video[]
+  collection?: Collection // movies only - belongs to collection
+  // Box office data (movies only)
+  budget?: number
+  revenue?: number
+  // External IDs for linking to other services
+  imdbId?: string
+}
+
+// Movie Collection (franchise)
+export interface Collection {
+  id: number
+  name: string
+  posterPath: string | null
+  backdropPath: string | null
+}
+
+export interface CollectionDetails extends Collection {
+  overview: string
+  parts: CollectionPart[]
+}
+
+export interface CollectionPart {
+  id: number
+  title: string
+  overview: string
+  posterPath: string | null
+  backdropPath: string | null
+  releaseDate: string
+  voteAverage: number
 }
 
 // TV Season and Episode types

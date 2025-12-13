@@ -12,6 +12,8 @@ import type {
   Season,
   SeasonDetails,
   Episode,
+  CollectionDetails,
+  CollectionPart,
 } from '@/types'
 
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3'
@@ -299,14 +301,16 @@ export async function getEnhancedRecommendations(
 }
 
 export async function getMediaDetails(mediaType: MediaType, id: number): Promise<MediaDetails> {
-  const [detailsResponse, watchProvidersResponse, creditsResponse, videosResponse] = await Promise.all([
+  const [detailsResponse, watchProvidersResponse, creditsResponse, videosResponse, externalIdsResponse] = await Promise.all([
     api.get(`/${mediaType}/${id}`),
     api.get<WatchProviders>(`/${mediaType}/${id}/watch/providers`),
     api.get<Credits>(`/${mediaType}/${id}/credits`),
     api.get(`/${mediaType}/${id}/videos`),
+    api.get(`/${mediaType}/${id}/external_ids`),
   ])
 
   const details = detailsResponse.data
+  const externalIds = externalIdsResponse.data
   const genreIds = details.genres?.map((g: Genre) => g.id) || []
 
   // Get enhanced recommendations
@@ -395,6 +399,14 @@ export async function getMediaDetails(mediaType: MediaType, id: number): Promise
       return priority(a) - priority(b)
     })
 
+  // Transform collection data for movies
+  const collection = details.belongs_to_collection ? {
+    id: details.belongs_to_collection.id,
+    name: details.belongs_to_collection.name,
+    posterPath: details.belongs_to_collection.poster_path,
+    backdropPath: details.belongs_to_collection.backdrop_path,
+  } : undefined
+
   return {
     id: details.id,
     title: details.title || details.name,
@@ -423,6 +435,12 @@ export async function getMediaDetails(mediaType: MediaType, id: number): Promise
     similar: sortedRecommendations,
     seasons,
     videos: transformedVideos,
+    collection,
+    // Box office data (movies only)
+    budget: mediaType === 'movie' ? details.budget : undefined,
+    revenue: mediaType === 'movie' ? details.revenue : undefined,
+    // External IDs
+    imdbId: externalIds.imdb_id || undefined,
   }
 }
 
@@ -658,6 +676,48 @@ export async function getPersonCredits(personId: number): Promise<PersonCombined
     }
   } catch (error) {
     console.error('Error fetching person credits:', error)
+    return null
+  }
+}
+
+// Get movie collection details with all parts
+export async function getCollectionDetails(collectionId: number): Promise<CollectionDetails | null> {
+  try {
+    const { data } = await api.get(`/collection/${collectionId}`)
+
+    return {
+      id: data.id,
+      name: data.name,
+      overview: data.overview || '',
+      posterPath: data.poster_path,
+      backdropPath: data.backdrop_path,
+      parts: (data.parts || [])
+        .map((part: {
+          id: number
+          title: string
+          overview: string
+          poster_path: string | null
+          backdrop_path: string | null
+          release_date: string
+          vote_average: number
+        }): CollectionPart => ({
+          id: part.id,
+          title: part.title,
+          overview: part.overview || '',
+          posterPath: part.poster_path,
+          backdropPath: part.backdrop_path,
+          releaseDate: part.release_date || '',
+          voteAverage: part.vote_average,
+        }))
+        .sort((a: CollectionPart, b: CollectionPart) => {
+          // Sort by release date (oldest first for chronological order)
+          const dateA = a.releaseDate ? new Date(a.releaseDate).getTime() : Infinity
+          const dateB = b.releaseDate ? new Date(b.releaseDate).getTime() : Infinity
+          return dateA - dateB
+        }),
+    }
+  } catch (error) {
+    console.error('Error fetching collection details:', error)
     return null
   }
 }

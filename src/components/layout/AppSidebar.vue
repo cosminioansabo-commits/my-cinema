@@ -16,7 +16,7 @@ const navLinks = [
   { path: '/', label: 'Home', icon: 'pi-home' },
   { path: '/browse', label: 'Browse', icon: 'pi-compass' },
   { path: '/search', label: 'Search', icon: 'pi-search' },
-  { path: '/my-lists', label: 'My Lists', icon: 'pi-list' },
+  { path: '/my-library', label: 'My Library', icon: 'pi-database' },
   { path: '/calendar', label: 'Calendar', icon: 'pi-calendar' },
   { path: '/downloads', label: 'Downloads', icon: 'pi-download' },
 ]

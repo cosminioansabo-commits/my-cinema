@@ -3,19 +3,15 @@ import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import type { Media } from '@/types'
 import { getImageUrl } from '@/services/tmdbService'
-import { useListsStore } from '@/stores/listsStore'
 import { useFiltersStore } from '@/stores/filtersStore'
 
 const props = withDefaults(defineProps<{
   media: Media
-  showAddButton?: boolean
   variant?: 'default' | 'compact' | 'wide'
 }>(), {
-  showAddButton: true,
   variant: 'default',
 })
 
-const listsStore = useListsStore()
 const filtersStore = useFiltersStore()
 const imageLoaded = ref(false)
 
@@ -47,21 +43,6 @@ const matchBgColor = computed(() => {
   if (score >= 5) return 'bg-yellow-500/20'
   return 'bg-red-500/20'
 })
-
-const isInMyList = computed(() => {
-  return listsStore.isInList('my-list', props.media.id, props.media.mediaType)
-})
-
-const toggleMyList = (e: Event) => {
-  e.preventDefault()
-  e.stopPropagation()
-
-  if (isInMyList.value) {
-    listsStore.removeFromList('my-list', props.media.id, props.media.mediaType)
-  } else {
-    listsStore.addToList('my-list', props.media)
-  }
-}
 
 const mediaTypeLabel = computed(() => props.media.mediaType === 'movie' ? 'Movie' : 'Series')
 
@@ -116,17 +97,6 @@ const onImageLoad = () => {
             <span :class="[matchColor, matchBgColor]" class="font-bold px-1.5 sm:px-2 py-0.5 rounded">{{ ratingPercent }}%</span>
             <span class="text-gray-400">{{ year }}</span>
           </div>
-        </div>
-
-        <!-- Action buttons -->
-        <div class="absolute top-2 right-2 sm:top-3 sm:right-3 flex gap-1.5 sm:gap-2">
-          <button
-            class="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-black/80 backdrop-blur-sm border border-zinc-600 flex items-center justify-center hover:border-white hover:scale-110 transition-all duration-200"
-            @click="toggleMyList"
-            :title="isInMyList ? 'In My List' : 'Add to My List'"
-          >
-            <i :class="['pi text-xs sm:text-sm', isInMyList ? 'pi-check text-green-500' : 'pi-plus text-white']"></i>
-          </button>
         </div>
       </div>
     </div>
@@ -184,20 +154,6 @@ const onImageLoad = () => {
 
       <!-- Expanded details panel (appears on hover) - outside card-content for absolute positioning -->
       <div class="expanded-details hidden sm:block">
-        <!-- Action buttons -->
-        <div class="flex items-center gap-2 mb-3">
-          <button class="flex-1 h-10 rounded-lg bg-white flex items-center justify-center gap-2 hover:bg-white/90 transition-colors">
-            <i class="pi pi-play text-black text-sm"></i>
-            <span class="text-black text-sm font-semibold">Play</span>
-          </button>
-          <button
-            class="w-10 h-10 rounded-lg border-2 border-zinc-500 flex items-center justify-center hover:border-white transition-colors bg-zinc-800/80"
-            @click="toggleMyList"
-          >
-            <i :class="['pi text-sm', isInMyList ? 'pi-check text-green-500' : 'pi-plus text-white']"></i>
-          </button>
-        </div>
-
         <!-- Meta info row -->
         <div class="flex items-center gap-2 mb-2">
           <span :class="[matchColor]" class="font-bold text-sm">{{ ratingPercent }}% Match</span>

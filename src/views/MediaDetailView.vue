@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, watch, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useMediaStore } from '@/stores/mediaStore'
-import { useListsStore } from '@/stores/listsStore'
-import type { MediaType, Media, Video } from '@/types'
-import { getImageUrl, getBackdropUrl } from '@/services/tmdbService'
+import type { MediaType, Video, CollectionDetails } from '@/types'
+import { getImageUrl, getBackdropUrl, getCollectionDetails } from '@/services/tmdbService'
 import { libraryService } from '@/services/libraryService'
+import { getExternalRatings, type ExternalRatings } from '@/services/omdbService'
 import TorrentSearchModal from '@/components/torrents/TorrentSearchModal.vue'
 import TrailerModal from '@/components/media/TrailerModal.vue'
 import SeasonEpisodes from '@/components/media/SeasonEpisodes.vue'
@@ -16,7 +16,6 @@ import { useToast } from 'primevue/usetoast'
 const route = useRoute()
 const router = useRouter()
 const mediaStore = useMediaStore()
-const listsStore = useListsStore()
 const toast = useToast()
 
 const showTorrentModal = ref(false)
@@ -29,6 +28,13 @@ const torrentSearchEpisode = ref<number | undefined>()
 const libraryStatus = ref<{ inLibrary: boolean; enabled: boolean; id?: number }>({ inLibrary: false, enabled: false })
 const isAddingToLibrary = ref(false)
 
+// Collection state
+const collectionDetails = ref<CollectionDetails | null>(null)
+const isLoadingCollection = ref(false)
+
+// External ratings state (OMDb)
+const externalRatings = ref<ExternalRatings | null>(null)
+
 const mediaType = computed(() => route.params.type as MediaType)
 const mediaId = computed(() => Number(route.params.id))
 
@@ -39,6 +45,37 @@ const year = computed(() => {
   if (!media.value?.releaseDate) return ''
   return new Date(media.value.releaseDate).getFullYear()
 })
+
+const fetchCollection = async () => {
+  if (!media.value?.collection) {
+    collectionDetails.value = null
+    return
+  }
+
+  isLoadingCollection.value = true
+  try {
+    collectionDetails.value = await getCollectionDetails(media.value.collection.id)
+  } catch (error) {
+    console.error('Error fetching collection:', error)
+    collectionDetails.value = null
+  } finally {
+    isLoadingCollection.value = false
+  }
+}
+
+const fetchExternalRatings = async () => {
+  if (!media.value?.imdbId) {
+    externalRatings.value = null
+    return
+  }
+
+  try {
+    externalRatings.value = await getExternalRatings(media.value.imdbId)
+  } catch (error) {
+    console.error('Error fetching external ratings:', error)
+    externalRatings.value = null
+  }
+}
 
 const checkLibraryStatus = async () => {
   if (!media.value) return
@@ -152,14 +189,18 @@ onMounted(() => {
 watch([mediaType, mediaId], ([newType, newId]) => {
   mediaStore.fetchMediaDetails(newType, Number(newId))
   libraryStatus.value = { inLibrary: false, enabled: false }
+  collectionDetails.value = null
+  externalRatings.value = null
   // Scroll to top on navigation
   window.scrollTo({ top: 0, behavior: 'smooth' })
 })
 
-// Check library status when media loads
+// Check library status, fetch collection and external ratings when media loads
 watch(media, (newMedia) => {
   if (newMedia) {
     checkLibraryStatus()
+    fetchCollection()
+    fetchExternalRatings()
   }
 })
 
@@ -220,39 +261,43 @@ const handleMainTorrentSearch = () => {
   showTorrentModal.value = true
 }
 
-// List management
-const isInMyList = computed(() => {
-  if (!media.value) return false
-  return listsStore.isInList('my-list', media.value.id, media.value.mediaType)
+// Recommendations from TMDB (stored in 'similar' field which contains combined recommendations)
+const recommendations = computed(() => {
+  return media.value?.similar || []
 })
 
-const mediaForList = computed((): Media | null => {
-  if (!media.value) return null
-  return {
-    id: media.value.id,
-    title: media.value.title,
-    originalTitle: media.value.originalTitle,
-    overview: media.value.overview,
-    posterPath: media.value.posterPath,
-    backdropPath: media.value.backdropPath,
-    mediaType: media.value.mediaType,
-    releaseDate: media.value.releaseDate,
-    voteAverage: media.value.voteAverage,
-    voteCount: media.value.voteCount,
-    genreIds: media.value.genreIds,
-    popularity: media.value.popularity,
-  }
+// Collection parts excluding current movie
+const otherCollectionParts = computed(() => {
+  if (!collectionDetails.value?.parts || !media.value) return []
+  return collectionDetails.value.parts.filter(part => part.id !== media.value!.id)
 })
 
-const toggleMyList = () => {
-  if (!mediaForList.value) return
-
-  if (isInMyList.value) {
-    listsStore.removeFromList('my-list', mediaForList.value.id, mediaForList.value.mediaType)
-  } else {
-    listsStore.addToList('my-list', mediaForList.value)
-  }
+// Box office formatting
+const formatCurrency = (value: number | undefined): string => {
+  if (!value || value === 0) return ''
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  }).format(value)
 }
+
+const budget = computed(() => formatCurrency(media.value?.budget))
+const revenue = computed(() => formatCurrency(media.value?.revenue))
+const profit = computed(() => {
+  if (!media.value?.budget || !media.value?.revenue) return ''
+  const profitValue = media.value.revenue - media.value.budget
+  return formatCurrency(profitValue)
+})
+const profitIsPositive = computed(() => {
+  if (!media.value?.budget || !media.value?.revenue) return true
+  return media.value.revenue >= media.value.budget
+})
+
+// Has box office data
+const hasBoxOffice = computed(() => {
+  return mediaType.value === 'movie' && (media.value?.budget || media.value?.revenue)
+})
 
 const goBack = () => {
   router.back()
@@ -354,25 +399,21 @@ const goBack = () => {
                   @click="showTrailerModal = true"
                 />
                 <Button
-                  :label="isInMyList ? 'In My List' : 'My List'"
-                  :icon="isInMyList ? 'pi pi-check' : 'pi pi-plus'"
-                  :severity="isInMyList ? 'success' : undefined"
-                  class="!text-xs sm:!text-sm !py-2 sm:!py-2.5 !px-3 sm:!px-4"
-                  @click="toggleMyList"
-                />
-                <Button
                   v-if="libraryStatus.enabled"
-                  :label="libraryStatus.inLibrary ? 'Library' : 'Add Library'"
-                  :icon="isAddingToLibrary ? 'pi pi-spin pi-spinner' : (libraryStatus.inLibrary ? 'pi pi-database' : 'pi pi-plus-circle')"
-                  :severity="libraryStatus.inLibrary ? 'info' : 'secondary'"
+                  :label="libraryStatus.inLibrary ? 'In Library' : 'Add to Library'"
+                  :icon="isAddingToLibrary ? 'pi pi-spin pi-spinner' : (libraryStatus.inLibrary ? 'pi pi-check' : 'pi pi-plus')"
+                  :severity="libraryStatus.inLibrary ? 'success' : 'secondary'"
                   :disabled="isAddingToLibrary"
                   class="!text-xs sm:!text-sm !py-2 sm:!py-2.5 !px-3 sm:!px-4"
                   @click="toggleLibrary"
                 />
                 <Button
+                  v-if="libraryStatus.enabled"
                   label="Torrent"
                   icon="pi pi-download"
                   severity="help"
+                  :disabled="!libraryStatus.inLibrary"
+                  :title="!libraryStatus.inLibrary ? 'Add to library first to download' : 'Search for torrents'"
                   class="!text-xs sm:!text-sm !py-2 sm:!py-2.5 !px-3 sm:!px-4"
                   @click="handleMainTorrentSearch"
                 />
@@ -394,7 +435,87 @@ const goBack = () => {
               <!-- Director/Creator -->
               <div v-if="directors.length > 0" class="mb-4">
                 <span class="text-gray-400">{{ mediaType === 'movie' ? 'Director' : 'Creator' }}: </span>
-                <span class="text-white">{{ directors.map(d => d.name).join(', ') }}</span>
+                <template v-for="(director, index) in directors" :key="director.id">
+                  <RouterLink
+                    :to="`/actor/${director.id}`"
+                    class="text-white hover:text-purple-400 hover:underline transition-colors"
+                  >
+                    {{ director.name }}
+                  </RouterLink>
+                  <span v-if="index < directors.length - 1" class="text-white">, </span>
+                </template>
+              </div>
+
+              <!-- Box Office (Movies only) -->
+              <div v-if="hasBoxOffice" class="mb-4 flex flex-wrap gap-x-6 gap-y-2 text-sm">
+                <div v-if="budget">
+                  <span class="text-gray-400">Budget: </span>
+                  <span class="text-white">{{ budget }}</span>
+                </div>
+                <div v-if="revenue">
+                  <span class="text-gray-400">Revenue: </span>
+                  <span class="text-white">{{ revenue }}</span>
+                </div>
+                <div v-if="profit">
+                  <span class="text-gray-400">Profit: </span>
+                  <span :class="profitIsPositive ? 'text-green-400' : 'text-red-400'">{{ profit }}</span>
+                </div>
+              </div>
+
+              <!-- External Ratings & Links -->
+              <div v-if="media.imdbId || externalRatings" class="flex flex-wrap items-center gap-3">
+                <!-- Rotten Tomatoes -->
+                <div
+                  v-if="externalRatings?.rottenTomatoes"
+                  class="flex items-center gap-2 px-3 py-1.5 bg-zinc-800 rounded"
+                  :title="`Rotten Tomatoes: ${externalRatings.rottenTomatoes.rating}%`"
+                >
+                  <span class="text-lg">🍅</span>
+                  <span
+                    :class="externalRatings.rottenTomatoes.rating >= 60 ? 'text-red-400' : 'text-green-400'"
+                    class="font-bold text-sm"
+                  >
+                    {{ externalRatings.rottenTomatoes.rating }}%
+                  </span>
+                </div>
+
+                <!-- Metacritic -->
+                <div
+                  v-if="externalRatings?.metacritic"
+                  class="flex items-center gap-2 px-3 py-1.5 bg-zinc-800 rounded"
+                  :title="`Metacritic: ${externalRatings.metacritic.rating}/100`"
+                >
+                  <span
+                    class="w-6 h-6 flex items-center justify-center text-xs font-bold rounded"
+                    :class="[
+                      externalRatings.metacritic.rating >= 61 ? 'bg-green-500' :
+                      externalRatings.metacritic.rating >= 40 ? 'bg-yellow-500' : 'bg-red-500',
+                      'text-white'
+                    ]"
+                  >
+                    {{ externalRatings.metacritic.rating }}
+                  </span>
+                  <span class="text-gray-400 text-xs">Metacritic</span>
+                </div>
+
+                <!-- IMDb Link -->
+                <a
+                  v-if="media.imdbId"
+                  :href="`https://www.imdb.com/title/${media.imdbId}`"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="inline-flex items-center gap-2 px-3 py-1.5 bg-[#f5c518] text-black text-xs sm:text-sm font-bold rounded hover:bg-[#e0b015] transition-colors"
+                >
+                  <span>IMDb</span>
+                  <span v-if="externalRatings?.imdb" class="text-black/70">{{ externalRatings.imdb.rating.toFixed(1) }}</span>
+                  <i class="pi pi-external-link text-xs"></i>
+                </a>
+              </div>
+
+              <!-- Awards -->
+              <div v-if="externalRatings?.awards" class="mt-3 text-sm">
+                <span class="text-yellow-500 mr-2">🏆</span>
+                <span class="text-gray-300">{{ externalRatings.awards }}</span>
               </div>
             </div>
           </div>
@@ -435,6 +556,66 @@ const goBack = () => {
               </div>
               <p class="font-semibold text-xs sm:text-sm text-white truncate px-1 group-hover:text-purple-400 transition-colors">{{ member.name }}</p>
               <p class="text-[10px] sm:text-xs text-gray-500 truncate px-1 mt-0.5 sm:mt-1">{{ member.character }}</p>
+            </router-link>
+          </div>
+        </section>
+
+        <!-- Collection Section (Movies only) -->
+        <section v-if="collectionDetails && otherCollectionParts.length > 0" class="mt-8 sm:mt-12 md:mt-16 max-w-6xl mx-auto">
+          <h2 class="row-title text-lg sm:text-xl mb-4 sm:mb-6">{{ collectionDetails.name }}</h2>
+          <div class="flex gap-3 sm:gap-4 overflow-x-auto pb-4 hide-scrollbar">
+            <router-link
+              v-for="part in otherCollectionParts"
+              :key="part.id"
+              :to="`/media/movie/${part.id}`"
+              class="flex-shrink-0 w-28 sm:w-40 group cursor-pointer"
+            >
+              <div class="aspect-[2/3] rounded-lg sm:rounded-xl overflow-hidden bg-zinc-800 mb-2 sm:mb-3 shadow-lg shadow-black/30 border border-zinc-700/50 group-hover:border-purple-500/50 transition-all duration-200">
+                <img
+                  v-if="part.posterPath"
+                  :src="getImageUrl(part.posterPath, 'w300')"
+                  :alt="part.title"
+                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  loading="lazy"
+                />
+                <div v-else class="w-full h-full flex items-center justify-center">
+                  <i class="pi pi-video text-2xl sm:text-4xl text-gray-600"></i>
+                </div>
+              </div>
+              <p class="font-medium text-xs sm:text-sm text-white truncate">{{ part.title }}</p>
+              <p class="text-[10px] sm:text-xs text-gray-500 mt-0.5">
+                {{ part.releaseDate?.slice(0, 4) || 'TBA' }}
+              </p>
+            </router-link>
+          </div>
+        </section>
+
+        <!-- Recommendations Section -->
+        <section v-if="recommendations.length > 0" class="mt-8 sm:mt-12 md:mt-16 max-w-6xl mx-auto">
+          <h2 class="row-title text-lg sm:text-xl mb-4 sm:mb-6">More Like This</h2>
+          <div class="flex gap-3 sm:gap-4 overflow-x-auto pb-4 hide-scrollbar">
+            <router-link
+              v-for="item in recommendations"
+              :key="`${item.mediaType}-${item.id}`"
+              :to="`/media/${item.mediaType}/${item.id}`"
+              class="flex-shrink-0 w-28 sm:w-40 group cursor-pointer"
+            >
+              <div class="aspect-[2/3] rounded-lg sm:rounded-xl overflow-hidden bg-zinc-800 mb-2 sm:mb-3 shadow-lg shadow-black/30 border border-zinc-700/50 group-hover:border-purple-500/50 transition-all duration-200">
+                <img
+                  v-if="item.posterPath"
+                  :src="getImageUrl(item.posterPath, 'w300')"
+                  :alt="item.title"
+                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  loading="lazy"
+                />
+                <div v-else class="w-full h-full flex items-center justify-center">
+                  <i class="pi pi-video text-2xl sm:text-4xl text-gray-600"></i>
+                </div>
+              </div>
+              <p class="font-medium text-xs sm:text-sm text-white truncate">{{ item.title }}</p>
+              <p class="text-[10px] sm:text-xs text-gray-500 mt-0.5">
+                {{ item.releaseDate?.slice(0, 4) || '' }}
+              </p>
             </router-link>
           </div>
         </section>
