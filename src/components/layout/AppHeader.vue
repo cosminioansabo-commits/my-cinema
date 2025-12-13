@@ -1,9 +1,17 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import DownloadManager from '@/components/torrents/DownloadManager.vue'
+import { useAuthStore } from '@/stores/authStore'
 
 const route = useRoute()
+const router = useRouter()
+const authStore = useAuthStore()
+
+const handleLogout = () => {
+  authStore.logout()
+  router.push({ name: 'login' })
+}
 
 const emit = defineEmits<{
   toggleSidebar: []
@@ -88,6 +96,16 @@ onUnmounted(() => {
       <div class="flex items-center gap-2 sm:gap-4">
         <!-- Download Manager -->
         <DownloadManager />
+
+        <!-- Logout button (only show when auth is enabled and authenticated) -->
+        <button
+          v-if="authStore.authEnabled && authStore.isAuthenticated"
+          @click="handleLogout"
+          class="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
+          title="Logout"
+        >
+          <i class="pi pi-sign-out text-lg"></i>
+        </button>
       </div>
     </div>
   </header>

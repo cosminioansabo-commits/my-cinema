@@ -2,8 +2,10 @@ import express from 'express'
 import cors from 'cors'
 import { createServer } from 'http'
 import { config } from './config.js'
+import authRoutes from './routes/auth.js'
 import torrentRoutes from './routes/torrents.js'
 import libraryRoutes from './routes/library.js'
+import { authMiddleware } from './middleware/auth.js'
 import { setupWebSocket } from './websocket/progressSocket.js'
 import { downloadManager } from './services/downloadManager.js'
 
@@ -17,9 +19,12 @@ app.use(cors({
 }))
 app.use(express.json())
 
-// Routes
-app.use('/api/torrents', torrentRoutes)
-app.use('/api/library', libraryRoutes)
+// Public routes (no auth required)
+app.use('/api/auth', authRoutes)
+
+// Protected routes (auth required)
+app.use('/api/torrents', authMiddleware, torrentRoutes)
+app.use('/api/library', authMiddleware, libraryRoutes)
 
 // Health check
 app.get('/health', (req, res) => {
@@ -49,4 +54,5 @@ server.listen(config.port, () => {
   console.log(`Server running on http://localhost:${config.port}`)
   console.log(`Download path: ${config.downloadPath}`)
   console.log(`CORS origin: ${config.corsOrigin}`)
+  console.log(`Auth enabled: ${config.auth.enabled}`)
 })

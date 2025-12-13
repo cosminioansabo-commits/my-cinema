@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { setupAuthInterceptor } from '@/composables/useAuthInterceptor'
 
 const API_BASE = import.meta.env.VITE_TORRENT_API_URL || 'http://localhost:3001'
 
@@ -6,6 +7,9 @@ const api = axios.create({
   baseURL: `${API_BASE}/api/library`,
   timeout: 30000
 })
+
+// Setup auth interceptor
+setupAuthInterceptor(api)
 
 export interface ServiceStatus {
   radarr: { enabled: boolean; connected: boolean }

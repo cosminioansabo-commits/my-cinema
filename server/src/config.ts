@@ -57,5 +57,13 @@ export const config = {
     username: process.env.QBITTORRENT_USERNAME || 'admin',
     password: process.env.QBITTORRENT_PASSWORD || '',
     enabled: !!process.env.QBITTORRENT_URL && !!process.env.QBITTORRENT_PASSWORD
+  },
+
+  // Authentication settings
+  auth: {
+    jwtSecret: process.env.JWT_SECRET || 'change-me-in-production-use-random-32-chars',
+    passwordHash: process.env.APP_PASSWORD_HASH || '',
+    tokenExpiry: process.env.TOKEN_EXPIRY || '7d',
+    enabled: !!process.env.APP_PASSWORD_HASH
   }
 }

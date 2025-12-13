@@ -45,8 +45,13 @@ services:
       - RADARR_API_KEY=${RADARR_API_KEY}
       - SONARR_URL=http://sonarr:8989
       - SONARR_API_KEY=${SONARR_API_KEY}
+      # Authentication
+      - JWT_SECRET=${JWT_SECRET}
+      - APP_PASSWORD_HASH=${APP_PASSWORD_HASH}
+      - TOKEN_EXPIRY=7d
     volumes:
       - /volume1/data:/data
+      - /volume2/docker/my-cinema/logs:/app/logs
     depends_on:
       - qbittorrent
       - radarr

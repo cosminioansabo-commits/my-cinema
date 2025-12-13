@@ -1,5 +1,7 @@
 import axios from 'axios'
 import type { TorrentResult, Download, SearchQuery, ProgressUpdate } from '@/types/torrent'
+import { setupAuthInterceptor } from '@/composables/useAuthInterceptor'
+import { useAuthStore } from '@/stores/authStore'
 
 const API_BASE = import.meta.env.VITE_TORRENT_API_URL || 'http://localhost:3001'
 
@@ -7,6 +9,9 @@ const api = axios.create({
   baseURL: `${API_BASE}/api/torrents`,
   timeout: 30000
 })
+
+// Setup auth interceptor
+setupAuthInterceptor(api)
 
 export const torrentService = {
   async search(query: SearchQuery): Promise<{ results: TorrentResult[]; providers: string[] }> {
@@ -59,7 +64,14 @@ export const torrentService = {
   },
 
   createWebSocket(onMessage: (update: ProgressUpdate) => void): WebSocket {
-    const wsUrl = API_BASE.replace('http', 'ws') + '/ws'
+    const authStore = useAuthStore()
+    let wsUrl = API_BASE.replace('http', 'ws') + '/ws'
+
+    // Add token to WebSocket URL if authenticated
+    if (authStore.token) {
+      wsUrl += `?token=${encodeURIComponent(authStore.token)}`
+    }
+
     const ws = new WebSocket(wsUrl)
 
     ws.onmessage = (event) => {

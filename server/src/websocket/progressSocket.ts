@@ -1,7 +1,19 @@
 import { WebSocketServer, WebSocket } from 'ws'
 import type { Server } from 'http'
+import type { IncomingMessage } from 'http'
+import jwt from 'jsonwebtoken'
 import type { ProgressUpdate, WSMessage } from '../types/index.js'
 import { downloadManager } from '../services/downloadManager.js'
+import { config } from '../config.js'
+
+function verifyToken(token: string): boolean {
+  try {
+    jwt.verify(token, config.auth.jwtSecret)
+    return true
+  } catch {
+    return false
+  }
+}
 
 export function setupWebSocket(server: Server): WebSocketServer {
   const wss = new WebSocketServer({ server, path: '/ws' })
@@ -11,7 +23,19 @@ export function setupWebSocket(server: Server): WebSocketServer {
     broadcast(wss, update)
   })
 
-  wss.on('connection', (ws: WebSocket) => {
+  wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
+    // Check authentication if enabled
+    if (config.auth.enabled) {
+      const url = new URL(req.url || '', `http://${req.headers.host}`)
+      const token = url.searchParams.get('token')
+
+      if (!token || !verifyToken(token)) {
+        console.log('WebSocket connection rejected: Invalid or missing token')
+        ws.close(4001, 'Unauthorized')
+        return
+      }
+    }
+
     console.log('WebSocket client connected')
 
     // Send current state of all downloads
