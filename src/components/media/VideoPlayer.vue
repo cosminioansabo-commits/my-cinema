@@ -3,18 +3,38 @@ import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import Hls from 'hls.js'
 import Button from 'primevue/button'
 import Slider from 'primevue/slider'
+import Select from 'primevue/select'
+
+interface SubtitleTrack {
+  id: number
+  language: string
+  languageCode: string
+  displayTitle: string
+}
+
+interface AudioTrack {
+  id: number
+  language: string
+  languageCode: string
+  displayTitle: string
+  selected: boolean
+}
 
 const props = defineProps<{
   streamUrl: string
   title: string
   resumePosition?: number // in milliseconds
   duration?: number // in milliseconds
+  subtitles?: SubtitleTrack[]
+  audioTracks?: AudioTrack[]
   onProgress?: (timeMs: number, state: 'playing' | 'paused' | 'stopped') => void
+  onQualityChange?: (quality: string) => void
 }>()
 
 const emit = defineEmits<{
   close: []
   ended: []
+  qualityChange: [quality: string]
 }>()
 
 const videoRef = ref<HTMLVideoElement | null>(null)
@@ -33,6 +53,19 @@ const isLoading = ref(true)
 const hasError = ref(false)
 const errorMessage = ref('')
 const showResumePrompt = ref(false)
+const showSettings = ref(false)
+
+// Quality options
+const qualityOptions = [
+  { label: 'Original', value: 'original' },
+  { label: '1080p', value: '1080p' },
+  { label: '720p', value: '720p' },
+  { label: '480p', value: '480p' }
+]
+const selectedQuality = ref('original')
+
+// Subtitle state
+const selectedSubtitle = ref<number | null>(null)
 
 let controlsTimeout: ReturnType<typeof setTimeout> | null = null
 let progressInterval: ReturnType<typeof setInterval> | null = null
@@ -213,6 +246,32 @@ const toggleMute = () => {
     videoRef.value.muted = !videoRef.value.muted
   }
 }
+
+// Quality change handler
+const changeQuality = (quality: string) => {
+  selectedQuality.value = quality
+  showSettings.value = false
+  emit('qualityChange', quality)
+  if (props.onQualityChange) {
+    props.onQualityChange(quality)
+  }
+}
+
+// Toggle settings menu
+const toggleSettings = () => {
+  showSettings.value = !showSettings.value
+}
+
+// Subtitle options for display
+const subtitleOptions = computed(() => {
+  const options = [{ label: 'Off', value: null as number | null }]
+  if (props.subtitles) {
+    props.subtitles.forEach(sub => {
+      options.push({ label: sub.displayTitle, value: sub.id })
+    })
+  }
+  return options
+})
 
 const setVolume = (value: number | number[]) => {
   const volumeValue = Array.isArray(value) ? value[0] : value
@@ -520,6 +579,59 @@ defineExpose({
           </div>
 
           <div class="flex items-center gap-2">
+            <!-- Settings (Quality & Subtitles) -->
+            <div class="relative">
+              <Button
+                icon="pi pi-cog"
+                severity="secondary"
+                text
+                rounded
+                @click="toggleSettings"
+                class="!text-white hover:!bg-white/20"
+                v-tooltip.top="'Settings'"
+              />
+
+              <!-- Settings Menu -->
+              <div
+                v-if="showSettings"
+                class="absolute bottom-12 right-0 bg-zinc-900/95 backdrop-blur-sm rounded-lg p-4 min-w-[200px] shadow-xl border border-zinc-700"
+                @click.stop
+              >
+                <!-- Quality Selection -->
+                <div class="mb-4">
+                  <label class="text-gray-400 text-xs uppercase tracking-wide mb-2 block">Quality</label>
+                  <div class="flex flex-col gap-1">
+                    <button
+                      v-for="option in qualityOptions"
+                      :key="option.value"
+                      class="text-left px-3 py-2 rounded text-sm transition-colors"
+                      :class="selectedQuality === option.value ? 'bg-red-600 text-white' : 'text-gray-300 hover:bg-zinc-700'"
+                      @click="changeQuality(option.value)"
+                    >
+                      {{ option.label }}
+                      <span v-if="option.value === 'original'" class="text-xs text-gray-400 ml-1">(Direct)</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Subtitle Selection -->
+                <div v-if="subtitles && subtitles.length > 0">
+                  <label class="text-gray-400 text-xs uppercase tracking-wide mb-2 block">Subtitles</label>
+                  <div class="flex flex-col gap-1 max-h-40 overflow-y-auto">
+                    <button
+                      v-for="option in subtitleOptions"
+                      :key="option.value ?? 'off'"
+                      class="text-left px-3 py-2 rounded text-sm transition-colors"
+                      :class="selectedSubtitle === option.value ? 'bg-red-600 text-white' : 'text-gray-300 hover:bg-zinc-700'"
+                      @click="selectedSubtitle = option.value"
+                    >
+                      {{ option.label }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- Fullscreen -->
             <Button
               :icon="isFullscreen ? 'pi pi-window-minimize' : 'pi pi-window-maximize'"
@@ -533,6 +645,13 @@ defineExpose({
         </div>
       </div>
     </div>
+
+    <!-- Click outside to close settings -->
+    <div
+      v-if="showSettings"
+      class="absolute inset-0 z-10"
+      @click="showSettings = false"
+    />
   </div>
 </template>
 

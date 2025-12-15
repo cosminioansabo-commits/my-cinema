@@ -30,29 +30,42 @@ const hasError = ref(false)
 const errorMessage = ref('')
 const playbackInfo = ref<PlaybackInfo | null>(null)
 const playerRef = ref<InstanceType<typeof VideoPlayer> | null>(null)
+const currentQuality = ref('original')
 
 // Fetch playback info when modal opens
-const fetchPlaybackInfo = async () => {
+const fetchPlaybackInfo = async (quality?: string) => {
   if (!props.visible) return
 
   isLoading.value = true
   hasError.value = false
+
+  // Keep previous playback info for quality changes to preserve position
+  const previousPosition = playbackInfo.value?.viewOffset
   playbackInfo.value = null
 
   try {
+    const qualityParam = quality || currentQuality.value
+    console.log('Fetching playback info:', { mediaType: props.mediaType, tmdbId: props.tmdbId, showTmdbId: props.showTmdbId, season: props.seasonNumber, episode: props.episodeNumber, quality: qualityParam })
+
     if (props.mediaType === 'movie' && props.tmdbId) {
-      playbackInfo.value = await playbackService.getMoviePlayback(props.tmdbId)
+      playbackInfo.value = await playbackService.getMoviePlayback(props.tmdbId, qualityParam)
     } else if (props.mediaType === 'tv' && props.showTmdbId && props.seasonNumber && props.episodeNumber) {
       playbackInfo.value = await playbackService.getEpisodePlayback(
         props.showTmdbId,
         props.seasonNumber,
-        props.episodeNumber
+        props.episodeNumber,
+        qualityParam
       )
     }
+
+    console.log('Playback info received:', playbackInfo.value)
 
     if (!playbackInfo.value) {
       hasError.value = true
       errorMessage.value = 'Media not found in Plex. Make sure Plex has scanned your library.'
+    } else if (previousPosition && quality) {
+      // Preserve position when changing quality
+      playbackInfo.value.viewOffset = previousPosition
     }
   } catch (error) {
     console.error('Error fetching playback info:', error)
@@ -61,6 +74,14 @@ const fetchPlaybackInfo = async () => {
   } finally {
     isLoading.value = false
   }
+}
+
+// Handle quality change from player
+const handleQualityChange = (quality: string) => {
+  console.log('Quality changed to:', quality)
+  currentQuality.value = quality
+  // Re-fetch with new quality - the player will reload
+  fetchPlaybackInfo(quality)
 }
 
 // Handle progress updates
@@ -94,15 +115,17 @@ const handleEnded = () => {
   }, 2000)
 }
 
-// Watch for modal open
+// Watch for modal open - use immediate: true in case component mounts with visible=true
 watch(() => props.visible, (newValue) => {
+  console.log('PlaybackModal visible changed:', newValue, { mediaType: props.mediaType, tmdbId: props.tmdbId, showTmdbId: props.showTmdbId })
   if (newValue) {
     fetchPlaybackInfo()
   } else {
     // Cleanup when closing
     playbackInfo.value = null
+    currentQuality.value = 'original'
   }
-})
+}, { immediate: true })
 
 // Cleanup on unmount
 onUnmounted(() => {
@@ -154,10 +177,24 @@ const displayTitle = computed(() => {
         :title="displayTitle"
         :resume-position="playbackInfo.viewOffset"
         :duration="playbackInfo.duration"
+        :subtitles="playbackInfo.subtitles"
+        :audio-tracks="playbackInfo.audioTracks"
         :on-progress="handleProgress"
+        :on-quality-change="handleQualityChange"
         @close="handleClose"
         @ended="handleEnded"
+        @quality-change="handleQualityChange"
       />
+    </div>
+
+    <!-- Debug info for development -->
+    <div v-else-if="!isLoading && !hasError" class="flex flex-col items-center justify-center h-[60vh]">
+      <i class="pi pi-exclamation-circle text-5xl text-yellow-500 mb-4"></i>
+      <p class="text-white text-lg mb-2">No stream available</p>
+      <p class="text-gray-400 text-center max-w-md text-sm">
+        playbackInfo: {{ playbackInfo ? 'exists' : 'null' }}<br>
+        streamUrl: {{ playbackInfo?.streamUrl || 'none' }}
+      </p>
     </div>
   </Dialog>
 </template>
