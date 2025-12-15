@@ -64,15 +64,9 @@ onMounted(() => {
   }
 })
 
-// For anime (Japanese content), prefer the original Japanese title for better search results on private trackers
-const isJapanese = computed(() => props.originalLanguage === 'ja')
-const hasOriginalTitle = computed(() => props.originalTitle && props.originalTitle !== props.title)
-
-// Compute the actual search query - use customQuery for episode searches, originalTitle for anime
+// Compute the actual search query - use customQuery for episode searches, otherwise use English title
 const searchQuery = computed(() => {
   if (props.customQuery) return props.customQuery
-  // For Japanese content with different original title, use the original (Japanese) title
-  if (isJapanese.value && hasOriginalTitle.value) return props.originalTitle!
   return props.title
 })
 const displayTitle = computed(() => props.customQuery || props.title)
@@ -144,9 +138,6 @@ async function handleDownload(torrent: TorrentResult) {
               v-tooltip.bottom="'Search'"
             />
           </div>
-          <p v-if="isJapanese && !customQuery" class="text-[10px] sm:text-xs text-gray-500 mt-1">
-            Tip: For anime, use romanized Japanese title (e.g., "Sousou no Frieren")
-          </p>
         </div>
       </div>
     </template>

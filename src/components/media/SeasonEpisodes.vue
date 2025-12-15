@@ -1,18 +1,21 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import type { Season, SeasonDetails, Episode } from '@/types'
 import { getTVSeasonDetails, getImageUrl } from '@/services/tmdbService'
+import { libraryService, type SonarrEpisode } from '@/services/libraryService'
 import Accordion from 'primevue/accordion'
 import AccordionPanel from 'primevue/accordionpanel'
 import AccordionHeader from 'primevue/accordionheader'
 import AccordionContent from 'primevue/accordioncontent'
 import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
+import Tag from 'primevue/tag'
 
 const props = defineProps<{
   tvId: number
   seasons: Season[]
   showTitle: string
+  sonarrSeriesId?: number // Sonarr internal series ID for fetching download status
 }>()
 
 const emit = defineEmits<{
@@ -23,6 +26,48 @@ const emit = defineEmits<{
 const loadedSeasons = ref<Record<number, SeasonDetails>>({})
 const loadingSeasons = ref<Record<number, boolean>>({})
 const expandedSeasons = ref<number[]>([])
+
+// Sonarr episode download status
+const sonarrEpisodes = ref<SonarrEpisode[]>([])
+const downloadStatusLoaded = ref(false)
+
+// Load download status from Sonarr
+const loadDownloadStatus = async () => {
+  if (!props.sonarrSeriesId || downloadStatusLoaded.value) return
+
+  try {
+    sonarrEpisodes.value = await libraryService.getSeriesEpisodes(props.sonarrSeriesId)
+    downloadStatusLoaded.value = true
+  } catch (error) {
+    console.error('Error loading download status:', error)
+  }
+}
+
+// Check if an episode is downloaded
+const isEpisodeDownloaded = (seasonNumber: number, episodeNumber: number): boolean => {
+  return sonarrEpisodes.value.some(
+    ep => ep.seasonNumber === seasonNumber && ep.episodeNumber === episodeNumber && ep.hasFile
+  )
+}
+
+// Count downloaded episodes in a season
+const getSeasonDownloadCount = (seasonNumber: number): { downloaded: number; total: number } => {
+  const seasonEps = sonarrEpisodes.value.filter(ep => ep.seasonNumber === seasonNumber)
+  const downloaded = seasonEps.filter(ep => ep.hasFile).length
+  return { downloaded, total: seasonEps.length }
+}
+
+// Load download status when sonarrSeriesId is provided
+onMounted(() => {
+  loadDownloadStatus()
+})
+
+watch(() => props.sonarrSeriesId, (newId) => {
+  if (newId) {
+    downloadStatusLoaded.value = false
+    loadDownloadStatus()
+  }
+})
 
 // Load season details when expanded
 const loadSeasonDetails = async (seasonNumber: number) => {
@@ -118,7 +163,18 @@ const isEpisodeAired = (airDate: string | null): boolean => {
             </div>
 
             <div class="flex-1 min-w-0">
-              <h3 class="text-lg font-semibold text-white">{{ season.name }}</h3>
+              <div class="flex items-center gap-2">
+                <h3 class="text-lg font-semibold text-white">{{ season.name }}</h3>
+                <!-- Season download progress -->
+                <Tag
+                  v-if="sonarrSeriesId && getSeasonDownloadCount(season.seasonNumber).total > 0"
+                  :severity="getSeasonDownloadCount(season.seasonNumber).downloaded === getSeasonDownloadCount(season.seasonNumber).total ? 'success' : 'secondary'"
+                  class="!text-xs"
+                >
+                  <i class="pi pi-check mr-1" v-if="getSeasonDownloadCount(season.seasonNumber).downloaded === getSeasonDownloadCount(season.seasonNumber).total"></i>
+                  {{ getSeasonDownloadCount(season.seasonNumber).downloaded }}/{{ getSeasonDownloadCount(season.seasonNumber).total }}
+                </Tag>
+              </div>
               <div class="flex items-center gap-3 text-sm text-gray-400">
                 <span>{{ season.episodeCount }} episodes</span>
                 <span v-if="season.airDate">{{ formatDate(season.airDate) }}</span>
@@ -167,6 +223,14 @@ const isEpisodeAired = (airDate: string | null): boolean => {
                   <!-- Episode number badge -->
                   <div class="absolute bottom-1 left-1 bg-black/90 px-2 py-1 rounded text-xs font-bold text-white shadow-lg">
                     E{{ episode.episodeNumber }}
+                  </div>
+                  <!-- Downloaded indicator -->
+                  <div
+                    v-if="isEpisodeDownloaded(episode.seasonNumber, episode.episodeNumber)"
+                    class="absolute top-1 right-1 bg-green-500 w-5 h-5 rounded-full flex items-center justify-center shadow-lg"
+                    v-tooltip.top="'Downloaded'"
+                  >
+                    <i class="pi pi-check text-white text-xs"></i>
                   </div>
                 </div>
 

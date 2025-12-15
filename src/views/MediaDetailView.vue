@@ -11,6 +11,7 @@ import TrailerModal from '@/components/media/TrailerModal.vue'
 import SeasonEpisodes from '@/components/media/SeasonEpisodes.vue'
 import Button from 'primevue/button'
 import Skeleton from 'primevue/skeleton'
+import Tag from 'primevue/tag'
 import { useToast } from 'primevue/usetoast'
 
 const route = useRoute()
@@ -25,7 +26,7 @@ const torrentSearchSeason = ref<number | undefined>()
 const torrentSearchEpisode = ref<number | undefined>()
 
 // Library state
-const libraryStatus = ref<{ inLibrary: boolean; enabled: boolean; id?: number }>({ inLibrary: false, enabled: false })
+const libraryStatus = ref<{ inLibrary: boolean; enabled: boolean; id?: number; hasFile?: boolean }>({ inLibrary: false, enabled: false })
 const isAddingToLibrary = ref(false)
 
 // Collection state
@@ -86,7 +87,8 @@ const checkLibraryStatus = async () => {
       libraryStatus.value = {
         inLibrary: result.inLibrary,
         enabled: result.enabled,
-        id: result.movie?.id
+        id: result.movie?.id,
+        hasFile: result.movie?.hasFile
       }
     } else {
       // For TV shows, we need the external IDs to get TVDB ID
@@ -389,7 +391,7 @@ const goBack = () => {
               </div>
 
               <!-- Actions -->
-              <div class="flex flex-wrap gap-2 sm:gap-3 mb-4 sm:mb-6">
+              <div class="flex flex-wrap items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
                 <Button
                   v-if="trailer"
                   label="Trailer"
@@ -416,6 +418,15 @@ const goBack = () => {
                   class="!text-xs sm:!text-sm !py-2 sm:!py-2.5 !px-3 sm:!px-4"
                   @click="handleMainTorrentSearch"
                 />
+                <!-- Movie download status indicator -->
+                <Tag
+                  v-if="mediaType === 'movie' && libraryStatus.inLibrary && libraryStatus.hasFile"
+                  severity="success"
+                  class="!text-xs sm:!text-sm"
+                >
+                  <i class="pi pi-check mr-1"></i>
+                  Downloaded
+                </Tag>
               </div>
 
               <!-- style improvements -->
@@ -529,6 +540,7 @@ const goBack = () => {
             :tv-id="media.id"
             :seasons="seasons"
             :show-title="media.title"
+            :sonarr-series-id="mediaType === 'tv' && libraryStatus.inLibrary ? libraryStatus.id : undefined"
             @search-torrent="handleEpisodeTorrentSearch"
           />
         </section>

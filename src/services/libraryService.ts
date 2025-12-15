@@ -174,5 +174,15 @@ export const libraryService = {
       params: { days }
     })
     return response.data.episodes
+  },
+
+  async getSeriesEpisodes(seriesId: number): Promise<SonarrEpisode[]> {
+    try {
+      const response = await api.get(`/series/${seriesId}/episodes`)
+      return response.data.episodes
+    } catch (error) {
+      console.error('Error fetching series episodes:', error)
+      return []
+    }
   }
 }
