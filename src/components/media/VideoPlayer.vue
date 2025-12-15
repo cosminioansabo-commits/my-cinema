@@ -52,9 +52,129 @@ const hasError = ref(false)
 const errorMessage = ref('')
 const showResumePrompt = ref(false)
 const showSettings = ref(false)
+const settingsTab = ref<'main' | 'subtitleStyle'>('main')
 
 // Subtitle state
 const selectedSubtitle = ref<number | null>(null)
+
+// Playback speed state
+const playbackSpeed = ref(1)
+const speedOptions = [
+  { label: '0.5x', value: 0.5 },
+  { label: '0.75x', value: 0.75 },
+  { label: 'Normal', value: 1 },
+  { label: '1.25x', value: 1.25 },
+  { label: '1.5x', value: 1.5 },
+  { label: '2x', value: 2 }
+]
+
+// Buffering state
+const bufferedProgress = ref(0)
+
+// Subtitle styling
+interface SubtitleStyle {
+  fontSize: 'small' | 'medium' | 'large' | 'xlarge'
+  fontColor: string
+  backgroundColor: string
+  backgroundOpacity: number
+}
+
+const defaultSubtitleStyle: SubtitleStyle = {
+  fontSize: 'medium',
+  fontColor: '#ffffff',
+  backgroundColor: '#000000',
+  backgroundOpacity: 0.75
+}
+
+// Load subtitle style from localStorage
+const loadSubtitleStyle = (): SubtitleStyle => {
+  try {
+    const stored = localStorage.getItem('my-cinema-subtitle-style')
+    if (stored) return JSON.parse(stored)
+  } catch (e) {
+    console.error('Failed to load subtitle style:', e)
+  }
+  return defaultSubtitleStyle
+}
+
+const subtitleStyle = ref<SubtitleStyle>(loadSubtitleStyle())
+
+// Save subtitle style to localStorage
+const saveSubtitleStyle = () => {
+  localStorage.setItem('my-cinema-subtitle-style', JSON.stringify(subtitleStyle.value))
+  applySubtitleStyle()
+}
+
+// Font size options
+const fontSizeOptions = [
+  { label: 'Small', value: 'small' as const },
+  { label: 'Medium', value: 'medium' as const },
+  { label: 'Large', value: 'large' as const },
+  { label: 'X-Large', value: 'xlarge' as const }
+]
+
+// Font color options
+const fontColorOptions = [
+  { label: 'White', value: '#ffffff' },
+  { label: 'Yellow', value: '#ffff00' },
+  { label: 'Green', value: '#00ff00' },
+  { label: 'Cyan', value: '#00ffff' }
+]
+
+// Background opacity options
+const bgOpacityOptions = [
+  { label: 'None', value: 0 },
+  { label: '50%', value: 0.5 },
+  { label: '75%', value: 0.75 },
+  { label: '100%', value: 1 }
+]
+
+// Apply subtitle style to video element
+const applySubtitleStyle = () => {
+  const video = videoRef.value
+  if (!video) return
+
+  // Calculate font size in pixels
+  const fontSizes: Record<string, string> = {
+    small: '16px',
+    medium: '22px',
+    large: '28px',
+    xlarge: '36px'
+  }
+
+  // Create style element for ::cue
+  let styleEl = document.getElementById('subtitle-style')
+  if (!styleEl) {
+    styleEl = document.createElement('style')
+    styleEl.id = 'subtitle-style'
+    document.head.appendChild(styleEl)
+  }
+
+  const bgColor = subtitleStyle.value.backgroundColor
+  const bgOpacity = subtitleStyle.value.backgroundOpacity
+  const r = parseInt(bgColor.slice(1, 3), 16)
+  const g = parseInt(bgColor.slice(3, 5), 16)
+  const b = parseInt(bgColor.slice(5, 7), 16)
+
+  styleEl.textContent = `
+    video::cue {
+      font-size: ${fontSizes[subtitleStyle.value.fontSize]};
+      color: ${subtitleStyle.value.fontColor};
+      background-color: rgba(${r}, ${g}, ${b}, ${bgOpacity});
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+  `
+}
+
+// Double-tap seek state (mobile)
+const lastTapTime = ref(0)
+const lastTapX = ref(0)
+const seekIndicator = ref<{ show: boolean; side: 'left' | 'right'; text: string }>({
+  show: false,
+  side: 'left',
+  text: ''
+})
+let seekIndicatorTimeout: ReturnType<typeof setTimeout> | null = null
 
 let controlsTimeout: ReturnType<typeof setTimeout> | null = null
 let progressInterval: ReturnType<typeof setInterval> | null = null
@@ -151,7 +271,12 @@ const initPlayer = () => {
   })
 
   video.addEventListener('timeupdate', () => {
-    currentTime.value = video.currentTime
+    // For transcoded streams, add the seek offset to get the actual position
+    if (isTranscodeStream.value) {
+      currentTime.value = transcodeSeekOffset.value + video.currentTime
+    } else {
+      currentTime.value = video.currentTime
+    }
   })
 
   video.addEventListener('durationchange', () => {
@@ -188,6 +313,17 @@ const initPlayer = () => {
     volume.value = video.volume
     isMuted.value = video.muted
   })
+
+  // Track buffered progress
+  video.addEventListener('progress', () => {
+    if (video.buffered.length > 0 && video.duration > 0) {
+      const bufferedEnd = video.buffered.end(video.buffered.length - 1)
+      bufferedProgress.value = (bufferedEnd / video.duration) * 100
+    }
+  })
+
+  // Apply subtitle style on load
+  applySubtitleStyle()
 }
 
 const checkResumePosition = () => {
@@ -230,19 +366,82 @@ const pause = () => {
   videoRef.value?.pause()
 }
 
+// Track the current seek offset for transcoded streams
+const transcodeSeekOffset = ref(0)
+
+// Check if we're using a transcode URL
+const isTranscodeStream = computed(() => props.streamUrl.includes('/transcode/'))
+
+// Get the base transcode URL without any start parameter
+const getBaseTranscodeUrl = (): string => {
+  const url = new URL(props.streamUrl, window.location.origin)
+  url.searchParams.delete('start')
+  return url.toString()
+}
+
 const seek = (value: number | number[]) => {
   const seekValue = Array.isArray(value) ? value[0] : value
   if (videoRef.value && videoDuration.value > 0) {
     const newTime = (seekValue / 100) * videoDuration.value
-    videoRef.value.currentTime = newTime
-    currentTime.value = newTime
+
+    if (isTranscodeStream.value) {
+      // For transcoded streams, we need to reload with a new start time
+      seekToTranscodePosition(newTime)
+    } else {
+      // For direct streams, use native seeking
+      videoRef.value.currentTime = newTime
+      currentTime.value = newTime
+    }
   }
 }
 
 const seekRelative = (seconds: number) => {
   if (videoRef.value) {
-    videoRef.value.currentTime = Math.max(0, Math.min(videoDuration.value, videoRef.value.currentTime + seconds))
+    const newTime = Math.max(0, Math.min(videoDuration.value, currentTime.value + seconds))
+
+    if (isTranscodeStream.value) {
+      seekToTranscodePosition(newTime)
+    } else {
+      videoRef.value.currentTime = newTime
+    }
   }
+}
+
+// Seek in a transcoded stream by reloading with new start position
+const seekToTranscodePosition = (targetTime: number) => {
+  if (!videoRef.value) return
+
+  const wasPlaying = isPlaying.value
+  isLoading.value = true
+
+  // Update the offset and current time
+  transcodeSeekOffset.value = targetTime
+  currentTime.value = targetTime
+
+  // Build the new URL with start parameter
+  const baseUrl = getBaseTranscodeUrl()
+  const separator = baseUrl.includes('?') ? '&' : '?'
+  const newUrl = `${baseUrl}${separator}start=${targetTime}`
+
+  console.log(`Seeking transcode stream to ${targetTime}s`)
+
+  // Destroy HLS if active
+  if (hls.value) {
+    hls.value.destroy()
+    hls.value = null
+  }
+
+  // Update video source
+  videoRef.value.src = newUrl
+  videoRef.value.load()
+
+  // Resume playback once loaded
+  videoRef.value.addEventListener('canplay', () => {
+    isLoading.value = false
+    if (wasPlaying) {
+      videoRef.value?.play()
+    }
+  }, { once: true })
 }
 
 const toggleMute = () => {
@@ -251,9 +450,71 @@ const toggleMute = () => {
   }
 }
 
+// Playback speed control
+const setPlaybackSpeed = (speed: number) => {
+  if (videoRef.value) {
+    videoRef.value.playbackRate = speed
+    playbackSpeed.value = speed
+  }
+}
+
+const cyclePlaybackSpeed = (direction: 'up' | 'down') => {
+  const currentIndex = speedOptions.findIndex(opt => opt.value === playbackSpeed.value)
+  let newIndex = currentIndex
+  if (direction === 'up' && currentIndex < speedOptions.length - 1) {
+    newIndex = currentIndex + 1
+  } else if (direction === 'down' && currentIndex > 0) {
+    newIndex = currentIndex - 1
+  }
+  setPlaybackSpeed(speedOptions[newIndex].value)
+}
+
+// Double-tap seek handler (mobile)
+const handleDoubleTapSeek = (clientX: number) => {
+  const container = containerRef.value
+  if (!container) return
+
+  const rect = container.getBoundingClientRect()
+  const tapX = clientX - rect.left
+  const isLeftSide = tapX < rect.width / 2
+
+  if (isLeftSide) {
+    seekRelative(-10)
+    showSeekIndicator('left', '-10s')
+  } else {
+    seekRelative(10)
+    showSeekIndicator('right', '+10s')
+  }
+}
+
+const showSeekIndicator = (side: 'left' | 'right', text: string) => {
+  seekIndicator.value = { show: true, side, text }
+  if (seekIndicatorTimeout) {
+    clearTimeout(seekIndicatorTimeout)
+  }
+  seekIndicatorTimeout = setTimeout(() => {
+    seekIndicator.value.show = false
+  }, 600)
+}
+
+const handleTouchStart = (e: TouchEvent) => {
+  const now = Date.now()
+  const touch = e.touches[0]
+
+  // Detect double tap (within 300ms and similar position)
+  if (now - lastTapTime.value < 300 && Math.abs(touch.clientX - lastTapX.value) < 50) {
+    e.preventDefault()
+    handleDoubleTapSeek(touch.clientX)
+  }
+
+  lastTapTime.value = now
+  lastTapX.value = touch.clientX
+}
+
 // Toggle settings menu
 const toggleSettings = () => {
   showSettings.value = !showSettings.value
+  settingsTab.value = 'main'
 }
 
 // Subtitle options for display
@@ -409,6 +670,16 @@ const handleKeydown = (e: KeyboardEvent) => {
       e.preventDefault()
       toggleMute()
       break
+    case '>':
+    case '.':
+      e.preventDefault()
+      cyclePlaybackSpeed('up')
+      break
+    case '<':
+    case ',':
+      e.preventDefault()
+      cyclePlaybackSpeed('down')
+      break
     case 'Escape':
       if (!document.fullscreenElement) {
         emit('close')
@@ -481,6 +752,7 @@ defineExpose({
     :class="{ 'cursor-none': !showControls && isPlaying }"
     @mousemove="handleMouseMove"
     @keydown="handleKeydown"
+    @touchstart="handleTouchStart"
     tabindex="0"
   >
     <!-- Video Element -->
@@ -492,6 +764,22 @@ defineExpose({
       @click="togglePlay"
       @dblclick="toggleFullscreen"
     />
+
+    <!-- Double-tap Seek Indicator (Mobile) -->
+    <Transition name="seek-fade">
+      <div
+        v-if="seekIndicator.show"
+        class="absolute top-1/2 -translate-y-1/2 pointer-events-none"
+        :class="seekIndicator.side === 'left' ? 'left-16' : 'right-16'"
+      >
+        <div class="flex flex-col items-center gap-2">
+          <div class="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center">
+            <i :class="seekIndicator.side === 'left' ? 'pi pi-replay' : 'pi pi-forward'" class="text-2xl text-white"></i>
+          </div>
+          <span class="text-white text-lg font-semibold">{{ seekIndicator.text }}</span>
+        </div>
+      </div>
+    </Transition>
 
     <!-- Loading Spinner -->
     <div
@@ -569,15 +857,23 @@ defineExpose({
 
       <!-- Bottom Controls -->
       <div class="bg-gradient-to-t from-black/80 to-transparent p-4">
-        <!-- Progress Bar -->
-        <div class="mb-3">
+        <!-- Progress Bar with Buffering Indicator -->
+        <div class="mb-3 relative">
+          <!-- Buffered Progress (gray background bar) -->
+          <div class="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-1 bg-white/20 rounded">
+            <div
+              class="h-full bg-white/40 rounded transition-all duration-300"
+              :style="{ width: `${bufferedProgress}%` }"
+            />
+          </div>
+          <!-- Playback Progress Slider -->
           <Slider
             :modelValue="progress"
             @update:modelValue="seek"
             :min="0"
             :max="100"
             :step="0.1"
-            class="w-full video-progress-slider"
+            class="w-full video-progress-slider relative z-10"
           />
         </div>
 
@@ -655,43 +951,124 @@ defineExpose({
               <!-- Settings Menu -->
               <div
                 v-if="showSettings"
-                class="absolute bottom-12 right-0 bg-zinc-900/95 backdrop-blur-sm rounded-lg p-4 min-w-[200px] shadow-xl border border-zinc-700 z-20"
+                class="absolute bottom-12 right-0 bg-zinc-900/95 backdrop-blur-sm rounded-lg shadow-xl border border-zinc-700 z-20 min-w-[250px] max-h-[400px] overflow-y-auto"
                 @click.stop
               >
-                <!-- Subtitle Selection -->
-                <div v-if="subtitles && subtitles.length > 0">
-                  <label class="text-gray-400 text-xs uppercase tracking-wide mb-2 block">Subtitles</label>
-                  <div class="flex flex-col gap-1 max-h-40 overflow-y-auto">
-                    <button
-                      v-for="option in subtitleOptions"
-                      :key="option.value ?? 'off'"
-                      class="text-left px-3 py-2 rounded text-sm transition-colors"
-                      :class="selectedSubtitle === option.value ? 'bg-red-600 text-white' : 'text-gray-300 hover:bg-zinc-700'"
-                      @click="selectedSubtitle = option.value"
-                    >
-                      {{ option.label }}
-                    </button>
+                <!-- Main Settings Tab -->
+                <div v-if="settingsTab === 'main'" class="p-4">
+                  <!-- Playback Speed -->
+                  <div class="mb-4">
+                    <label class="text-gray-400 text-xs uppercase tracking-wide mb-2 block">Speed</label>
+                    <div class="flex flex-wrap gap-1">
+                      <button
+                        v-for="option in speedOptions"
+                        :key="option.value"
+                        class="px-3 py-1.5 rounded text-sm transition-colors"
+                        :class="playbackSpeed === option.value ? 'bg-red-600 text-white' : 'text-gray-300 hover:bg-zinc-700'"
+                        @click="setPlaybackSpeed(option.value)"
+                      >
+                        {{ option.label }}
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Subtitle Selection -->
+                  <div v-if="subtitles && subtitles.length > 0" class="mb-4">
+                    <div class="flex items-center justify-between mb-2">
+                      <label class="text-gray-400 text-xs uppercase tracking-wide">Subtitles</label>
+                      <button
+                        class="text-xs text-gray-400 hover:text-white transition-colors"
+                        @click="settingsTab = 'subtitleStyle'"
+                      >
+                        Style <i class="pi pi-chevron-right text-xs"></i>
+                      </button>
+                    </div>
+                    <div class="flex flex-col gap-1 max-h-32 overflow-y-auto">
+                      <button
+                        v-for="option in subtitleOptions"
+                        :key="option.value ?? 'off'"
+                        class="text-left px-3 py-2 rounded text-sm transition-colors"
+                        :class="selectedSubtitle === option.value ? 'bg-red-600 text-white' : 'text-gray-300 hover:bg-zinc-700'"
+                        @click="selectedSubtitle = option.value"
+                      >
+                        {{ option.label }}
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Audio Track Selection -->
+                  <div v-if="audioTracks && audioTracks.length > 1">
+                    <label class="text-gray-400 text-xs uppercase tracking-wide mb-2 block">Audio</label>
+                    <div class="flex flex-col gap-1 max-h-32 overflow-y-auto">
+                      <button
+                        v-for="track in audioTracks"
+                        :key="track.id"
+                        class="text-left px-3 py-2 rounded text-sm transition-colors"
+                        :class="track.selected ? 'bg-red-600 text-white' : 'text-gray-300 hover:bg-zinc-700'"
+                      >
+                        {{ track.displayTitle }}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                <!-- Audio Track Selection -->
-                <div v-if="audioTracks && audioTracks.length > 1" :class="{ 'mt-4': subtitles && subtitles.length > 0 }">
-                  <label class="text-gray-400 text-xs uppercase tracking-wide mb-2 block">Audio</label>
-                  <div class="flex flex-col gap-1 max-h-40 overflow-y-auto">
-                    <button
-                      v-for="track in audioTracks"
-                      :key="track.id"
-                      class="text-left px-3 py-2 rounded text-sm transition-colors"
-                      :class="track.selected ? 'bg-red-600 text-white' : 'text-gray-300 hover:bg-zinc-700'"
-                    >
-                      {{ track.displayTitle }}
-                    </button>
-                  </div>
-                </div>
+                <!-- Subtitle Style Tab -->
+                <div v-else-if="settingsTab === 'subtitleStyle'" class="p-4">
+                  <button
+                    class="flex items-center gap-2 text-gray-400 hover:text-white mb-4 transition-colors"
+                    @click="settingsTab = 'main'"
+                  >
+                    <i class="pi pi-chevron-left text-xs"></i>
+                    <span class="text-sm">Subtitle Style</span>
+                  </button>
 
-                <!-- No settings available message -->
-                <div v-if="(!subtitles || subtitles.length === 0) && (!audioTracks || audioTracks.length <= 1)" class="text-gray-400 text-sm">
-                  No additional settings available
+                  <!-- Font Size -->
+                  <div class="mb-4">
+                    <label class="text-gray-400 text-xs uppercase tracking-wide mb-2 block">Font Size</label>
+                    <div class="flex flex-wrap gap-1">
+                      <button
+                        v-for="option in fontSizeOptions"
+                        :key="option.value"
+                        class="px-3 py-1.5 rounded text-sm transition-colors"
+                        :class="subtitleStyle.fontSize === option.value ? 'bg-red-600 text-white' : 'text-gray-300 hover:bg-zinc-700'"
+                        @click="subtitleStyle.fontSize = option.value; saveSubtitleStyle()"
+                      >
+                        {{ option.label }}
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Font Color -->
+                  <div class="mb-4">
+                    <label class="text-gray-400 text-xs uppercase tracking-wide mb-2 block">Font Color</label>
+                    <div class="flex flex-wrap gap-2">
+                      <button
+                        v-for="option in fontColorOptions"
+                        :key="option.value"
+                        class="w-8 h-8 rounded-full border-2 transition-all"
+                        :class="subtitleStyle.fontColor === option.value ? 'border-red-500 scale-110' : 'border-transparent hover:border-gray-500'"
+                        :style="{ backgroundColor: option.value }"
+                        :title="option.label"
+                        @click="subtitleStyle.fontColor = option.value; saveSubtitleStyle()"
+                      />
+                    </div>
+                  </div>
+
+                  <!-- Background Opacity -->
+                  <div>
+                    <label class="text-gray-400 text-xs uppercase tracking-wide mb-2 block">Background</label>
+                    <div class="flex flex-wrap gap-1">
+                      <button
+                        v-for="option in bgOpacityOptions"
+                        :key="option.value"
+                        class="px-3 py-1.5 rounded text-sm transition-colors"
+                        :class="subtitleStyle.backgroundOpacity === option.value ? 'bg-red-600 text-white' : 'text-gray-300 hover:bg-zinc-700'"
+                        @click="subtitleStyle.backgroundOpacity = option.value; saveSubtitleStyle()"
+                      >
+                        {{ option.label }}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -770,5 +1147,21 @@ defineExpose({
   background: white;
   border: none;
   margin-top: -4px;
+}
+
+/* Seek indicator fade animation */
+.seek-fade-enter-active,
+.seek-fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.seek-fade-enter-from,
+.seek-fade-leave-to {
+  opacity: 0;
+}
+
+/* Make progress slider background transparent for buffering indicator to show */
+.video-progress-slider.p-slider {
+  background: transparent;
 }
 </style>

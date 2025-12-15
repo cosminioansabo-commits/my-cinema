@@ -155,10 +155,12 @@ router.get('/stream/:filePath', async (req: Request, res: Response) => {
 // ============================================================================
 // TRANSCODING (for incompatible audio codecs)
 // Uses ffmpeg to transcode audio to AAC while passing through video
+// Supports seeking via ?start=<seconds> query parameter
 // ============================================================================
 
 router.get('/transcode/:filePath', async (req: Request, res: Response) => {
   const filePath = decodeURIComponent(req.params.filePath)
+  const startTime = parseFloat(req.query.start as string) || 0
 
   try {
     // Verify file exists
@@ -168,15 +170,22 @@ router.get('/transcode/:filePath', async (req: Request, res: Response) => {
       return
     }
 
-    console.log(`Transcoding: ${filePath}`)
+    console.log(`Transcoding: ${filePath} (start: ${startTime}s)`)
 
     // Set response headers for streaming
     res.setHeader('Content-Type', 'video/mp4')
     res.setHeader('Access-Control-Allow-Origin', '*')
     res.setHeader('Transfer-Encoding', 'chunked')
 
-    // ffmpeg command: copy video, transcode audio to AAC, output to stdout
-    const ffmpeg = spawn('ffmpeg', [
+    // Build ffmpeg arguments
+    const ffmpegArgs: string[] = []
+
+    // Add seek position BEFORE input for fast seeking
+    if (startTime > 0) {
+      ffmpegArgs.push('-ss', startTime.toString())
+    }
+
+    ffmpegArgs.push(
       '-i', filePath,
       '-c:v', 'copy',           // Copy video stream (no re-encoding)
       '-c:a', 'aac',            // Transcode audio to AAC
@@ -185,7 +194,9 @@ router.get('/transcode/:filePath', async (req: Request, res: Response) => {
       '-movflags', 'frag_keyframe+empty_moov+faststart', // Enable streaming
       '-f', 'mp4',              // Output format
       'pipe:1'                  // Output to stdout
-    ])
+    )
+
+    const ffmpeg = spawn('ffmpeg', ffmpegArgs)
 
     ffmpeg.stdout.pipe(res)
 
@@ -195,7 +206,7 @@ router.get('/transcode/:filePath', async (req: Request, res: Response) => {
     })
 
     ffmpeg.on('close', (code) => {
-      if (code !== 0) {
+      if (code !== 0 && code !== 255) { // 255 is normal when client disconnects
         console.error(`ffmpeg exited with code ${code}`)
       }
     })

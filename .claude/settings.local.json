@@ -31,7 +31,8 @@
       "Bash(gh api:*)",
       "Bash(timeout 5 npm start)",
       "Bash(nvm use:*)",
-      "Bash(nvm ls:*)"
+      "Bash(nvm ls:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

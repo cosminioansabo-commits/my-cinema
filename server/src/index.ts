@@ -7,6 +7,7 @@ import torrentRoutes from './routes/torrents.js'
 import libraryRoutes from './routes/library.js'
 import playbackRoutes from './routes/playback.js'
 import mediaRoutes from './routes/media.js'
+import progressRoutes from './routes/progress.js'
 import { authMiddleware } from './middleware/auth.js'
 import { setupWebSocket } from './websocket/progressSocket.js'
 import { downloadManager } from './services/downloadManager.js'
@@ -46,7 +47,8 @@ app.use('/api/auth', authRoutes)
 app.use('/api/torrents', authMiddleware, torrentRoutes)
 app.use('/api/library', authMiddleware, libraryRoutes)
 app.use('/api/playback', authMiddleware, playbackRoutes)
-app.use('/api/media', authMiddleware, mediaRoutes) // New Plex-free media routes
+app.use('/api/media', authMiddleware, mediaRoutes) // Plex-free media routes
+app.use('/api/progress', authMiddleware, progressRoutes) // Watch progress tracking
 
 // Health check
 app.get('/health', (req, res) => {

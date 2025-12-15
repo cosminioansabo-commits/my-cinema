@@ -13,9 +13,12 @@ import {
   getUpcomingMovies,
   getBackdropUrl,
   findByExternalId,
+  getMediaDetails,
 } from '@/services/tmdbService'
 import { libraryService, type RadarrMovie, type SonarrSeries } from '@/services/libraryService'
+import { progressService, type ContinueWatchingItem } from '@/services/progressService'
 import MediaCarousel from '@/components/media/MediaCarousel.vue'
+import ContinueWatchingCarousel, { type ContinueWatchingItem as CarouselItem } from '@/components/media/ContinueWatchingCarousel.vue'
 import Button from 'primevue/button'
 import Skeleton from 'primevue/skeleton'
 
@@ -29,9 +32,11 @@ const topRatedTV = ref<Media[]>([])
 const nowPlaying = ref<Media[]>([])
 const upcoming = ref<Media[]>([])
 const libraryItems = ref<Media[]>([])
+const continueWatchingItems = ref<CarouselItem[]>([])
 
 const isLoadingHero = ref(true)
 const isLoadingContent = ref(true)
+const isLoadingContinueWatching = ref(true)
 
 // Computed
 const heroBackdrop = computed(() => {
@@ -48,6 +53,54 @@ const heroRating = computed(() => {
   if (!featuredItem.value) return '0'
   return Math.round(featuredItem.value.voteAverage * 10)
 })
+
+// Fetch continue watching items and enrich with TMDB data
+const loadContinueWatching = async () => {
+  try {
+    isLoadingContinueWatching.value = true
+    const items = await progressService.getContinueWatching(10)
+
+    // Enrich each item with TMDB data
+    const enrichedItems: CarouselItem[] = await Promise.all(
+      items.map(async (item) => {
+        try {
+          if (item.mediaType === 'movie') {
+            const movieDetails = await getMediaDetails('movie', item.tmdbId)
+            return {
+              ...item,
+              title: movieDetails?.title || 'Unknown Movie',
+              posterPath: movieDetails?.posterPath || null,
+            }
+          } else {
+            // For episodes, get the TV show details
+            const showDetails = await getMediaDetails('tv', item.tmdbId)
+            return {
+              ...item,
+              title: showDetails?.title || 'Unknown Show',
+              posterPath: showDetails?.posterPath || null,
+              episodeTitle: item.seasonNumber && item.episodeNumber
+                ? `S${item.seasonNumber}:E${item.episodeNumber}`
+                : undefined,
+            }
+          }
+        } catch {
+          return {
+            ...item,
+            title: 'Unknown',
+            posterPath: null,
+          }
+        }
+      })
+    )
+
+    continueWatchingItems.value = enrichedItems
+  } catch (error) {
+    console.error('Failed to load continue watching:', error)
+    continueWatchingItems.value = []
+  } finally {
+    isLoadingContinueWatching.value = false
+  }
+}
 
 // Fetch library items and convert to Media format
 const loadLibraryItems = async () => {
@@ -114,7 +167,8 @@ onMounted(async () => {
     isLoadingHero.value = false
   }
 
-  // Load library items in background
+  // Load continue watching and library items in background
+  loadContinueWatching()
   loadLibraryItems()
 
   // Load all carousels in parallel
@@ -226,6 +280,15 @@ onMounted(async () => {
 
     <!-- Carousels -->
     <div class="relative flex flex-col gap-10 z-10 -mt-16 sm:-mt-24 pb-8 sm:pb-12 px-2 sm:px-0">
+      <!-- Continue Watching (if has items) -->
+      <ContinueWatchingCarousel
+        v-if="continueWatchingItems.length > 0 || isLoadingContinueWatching"
+        title="Continue Watching"
+        :items="continueWatchingItems"
+        :loading="isLoadingContinueWatching"
+        @refresh="loadContinueWatching"
+      />
+
       <!-- My Library (if has items) -->
       <MediaCarousel
         v-if="libraryItems.length > 0"
