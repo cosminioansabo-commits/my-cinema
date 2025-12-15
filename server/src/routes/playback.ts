@@ -297,12 +297,22 @@ router.get('/proxy/hls/:ratingKey/master.m3u8', async (req: Request, res: Respon
       }
     )
 
-    // Also handle relative URLs that start with /video
+    // Handle relative URLs that start with /video
     manifest = manifest.replace(
       /^(\/video\/[^\s"']+)/gm,
       (match) => {
         const hasQuery = match.includes('?')
         return `/api/playback/proxy/plex${match}${hasQuery ? tokenSuffix : `?dummy=1${tokenSuffix}`}`
+      }
+    )
+
+    // Handle relative URLs like "session/xxx/base/index.m3u8" (no leading slash)
+    // These are relative to the transcode endpoint, so we need to make them absolute
+    manifest = manifest.replace(
+      /^(session\/[^\s"']+)/gm,
+      (match) => {
+        const hasQuery = match.includes('?')
+        return `/api/playback/proxy/plex/video/:/transcode/universal/${match}${hasQuery ? tokenSuffix : `?dummy=1${tokenSuffix}`}`
       }
     )
 
@@ -376,12 +386,28 @@ router.get('/proxy/plex/*', async (req: Request, res: Response) => {
         }
       )
 
-      // Rewrite relative URLs
+      // Rewrite relative URLs that start with /video
       manifest = manifest.replace(
         /^(\/video\/[^\s"']+)/gm,
         (match) => {
           const hasQuery = match.includes('?')
           return `/api/playback/proxy/plex${match}${hasQuery ? tokenSuffix : `?dummy=1${tokenSuffix}`}`
+        }
+      )
+
+      // Handle relative URLs like "session/xxx/..." or segment files
+      // Get the base path from the current request to resolve relative URLs
+      const pathParts = plexPath.split('/')
+      pathParts.pop() // Remove filename
+      const basePath = pathParts.join('/')
+
+      // Rewrite relative segment URLs (e.g., "00000/00000.ts" or "chunk-00001.ts")
+      manifest = manifest.replace(
+        /^([a-zA-Z0-9_-]+(?:\/[a-zA-Z0-9_.-]+)*\.(?:ts|m4s|mp4|m3u8))/gm,
+        (match) => {
+          const fullPath = basePath ? `${basePath}/${match}` : match
+          const hasQuery = match.includes('?')
+          return `/api/playback/proxy/plex/${fullPath}${hasQuery ? tokenSuffix : `?dummy=1${tokenSuffix}`}`
         }
       )
 
