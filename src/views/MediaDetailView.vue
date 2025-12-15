@@ -8,6 +8,7 @@ import { libraryService } from '@/services/libraryService'
 import { getExternalRatings, type ExternalRatings } from '@/services/omdbService'
 import TorrentSearchModal from '@/components/torrents/TorrentSearchModal.vue'
 import TrailerModal from '@/components/media/TrailerModal.vue'
+import PlaybackModal from '@/components/media/PlaybackModal.vue'
 import SeasonEpisodes from '@/components/media/SeasonEpisodes.vue'
 import Button from 'primevue/button'
 import Skeleton from 'primevue/skeleton'
@@ -21,6 +22,7 @@ const toast = useToast()
 
 const showTorrentModal = ref(false)
 const showTrailerModal = ref(false)
+const showPlaybackModal = ref(false)
 const torrentSearchQuery = ref('')
 const torrentSearchSeason = ref<number | undefined>()
 const torrentSearchEpisode = ref<number | undefined>()
@@ -392,6 +394,14 @@ const goBack = () => {
 
               <!-- Actions -->
               <div class="flex flex-wrap items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
+                <!-- Play Button (for movies with file) -->
+                <Button
+                  v-if="mediaType === 'movie' && libraryStatus.inLibrary && libraryStatus.hasFile"
+                  label="Play"
+                  icon="pi pi-play"
+                  class="play-btn !text-xs sm:!text-sm !py-2 sm:!py-2.5 !px-3 sm:!px-4 !border-0"
+                  @click="showPlaybackModal = true"
+                />
                 <Button
                   v-if="trailer"
                   label="Trailer"
@@ -418,15 +428,6 @@ const goBack = () => {
                   class="!text-xs sm:!text-sm !py-2 sm:!py-2.5 !px-3 sm:!px-4"
                   @click="handleMainTorrentSearch"
                 />
-                <!-- Movie download status indicator -->
-                <Tag
-                  v-if="mediaType === 'movie' && libraryStatus.inLibrary && libraryStatus.hasFile"
-                  severity="success"
-                  class="!text-xs sm:!text-sm"
-                >
-                  <i class="pi pi-check mr-1"></i>
-                  Downloaded
-                </Tag>
               </div>
 
               <!-- style improvements -->
@@ -656,10 +657,38 @@ const goBack = () => {
       :video="trailer"
       :title="media.title"
     />
+
+    <!-- Playback Modal (for movies) -->
+    <PlaybackModal
+      v-if="media && mediaType === 'movie'"
+      v-model:visible="showPlaybackModal"
+      :tmdb-id="media.id"
+      media-type="movie"
+      :title="media.title"
+    />
   </div>
 </template>
 
 <style scoped>
+/* Play button with gradient */
+.play-btn {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  color: white !important;
+  font-weight: 600 !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3) !important;
+}
+
+.play-btn:hover {
+  background: linear-gradient(135deg, #34d399 0%, #10b981 100%) !important;
+  transform: scale(1.02) !important;
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4) !important;
+}
+
+.play-btn :deep(.pi-play) {
+  color: white !important;
+}
+
 /* Trailer button with red gradient */
 .trailer-btn {
   background: linear-gradient(135deg, #e50914 0%, #b81d24 100%) !important;

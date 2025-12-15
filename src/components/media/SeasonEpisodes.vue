@@ -10,6 +10,7 @@ import AccordionContent from 'primevue/accordioncontent'
 import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
 import Tag from 'primevue/tag'
+import PlaybackModal from './PlaybackModal.vue'
 
 const props = defineProps<{
   tvId: number
@@ -26,6 +27,20 @@ const emit = defineEmits<{
 const loadedSeasons = ref<Record<number, SeasonDetails>>({})
 const loadingSeasons = ref<Record<number, boolean>>({})
 const expandedSeasons = ref<number[]>([])
+
+// Playback state
+const showPlaybackModal = ref(false)
+const playbackEpisode = ref<{ season: number; episode: number; title: string } | null>(null)
+
+// Handle episode play
+const playEpisode = (episode: Episode) => {
+  playbackEpisode.value = {
+    season: episode.seasonNumber,
+    episode: episode.episodeNumber,
+    title: `${props.showTitle} - S${episode.seasonNumber}E${episode.episodeNumber} - ${episode.name}`
+  }
+  showPlaybackModal.value = true
+}
 
 // Sonarr data for download status
 const sonarrSeasons = ref<SonarrSeasonStats[]>([])
@@ -381,20 +396,34 @@ const isEpisodeAired = (airDate: string | null): boolean => {
                       </div>
                     </div>
 
-                    <!-- Search episode torrent button -->
-                    <Button
-                      v-if="isEpisodeAired(episode.airDate)"
-                      icon="pi pi-download"
-                      severity="help"
-                      size="small"
-                      rounded
-                      text
-                      @click="searchEpisodeTorrent(episode)"
-                      v-tooltip.left="'Find episode torrent'"
-                    />
-                    <span v-else class="text-xs text-gray-500 px-2 py-1 bg-zinc-800 rounded">
-                      Not aired
-                    </span>
+                    <!-- Episode action buttons -->
+                    <div class="flex items-center gap-1">
+                      <!-- Play button (for downloaded episodes) -->
+                      <Button
+                        v-if="isEpisodeDownloaded(episode.seasonNumber, episode.episodeNumber)"
+                        icon="pi pi-play"
+                        severity="success"
+                        size="small"
+                        rounded
+                        text
+                        @click="playEpisode(episode)"
+                        v-tooltip.left="'Play'"
+                      />
+                      <!-- Search episode torrent button -->
+                      <Button
+                        v-if="isEpisodeAired(episode.airDate)"
+                        icon="pi pi-download"
+                        severity="help"
+                        size="small"
+                        rounded
+                        text
+                        @click="searchEpisodeTorrent(episode)"
+                        v-tooltip.left="'Find torrent'"
+                      />
+                      <span v-if="!isEpisodeAired(episode.airDate)" class="text-xs text-gray-500 px-2 py-1 bg-zinc-800 rounded">
+                        Not aired
+                      </span>
+                    </div>
                   </div>
 
                   <p v-if="episode.overview" class="text-xs text-gray-400 mt-2 line-clamp-2">
@@ -412,6 +441,17 @@ const isEpisodeAired = (airDate: string | null): boolean => {
         </AccordionContent>
       </AccordionPanel>
     </Accordion>
+
+    <!-- Playback Modal -->
+    <PlaybackModal
+      v-if="playbackEpisode"
+      v-model:visible="showPlaybackModal"
+      media-type="tv"
+      :show-tmdb-id="tvId"
+      :season-number="playbackEpisode.season"
+      :episode-number="playbackEpisode.episode"
+      :title="playbackEpisode.title"
+    />
   </div>
 </template>
 

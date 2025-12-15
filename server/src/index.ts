@@ -5,6 +5,7 @@ import { config } from './config.js'
 import authRoutes from './routes/auth.js'
 import torrentRoutes from './routes/torrents.js'
 import libraryRoutes from './routes/library.js'
+import playbackRoutes from './routes/playback.js'
 import { authMiddleware } from './middleware/auth.js'
 import { setupWebSocket } from './websocket/progressSocket.js'
 import { downloadManager } from './services/downloadManager.js'
@@ -25,6 +26,7 @@ app.use('/api/auth', authRoutes)
 // Protected routes (auth required)
 app.use('/api/torrents', authMiddleware, torrentRoutes)
 app.use('/api/library', authMiddleware, libraryRoutes)
+app.use('/api/playback', authMiddleware, playbackRoutes)
 
 // Health check
 app.get('/health', (req, res) => {

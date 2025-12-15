@@ -65,5 +65,12 @@ export const config = {
     passwordHash: process.env.APP_PASSWORD_HASH || '',
     tokenExpiry: process.env.TOKEN_EXPIRY || '7d',
     enabled: !!process.env.APP_PASSWORD_HASH
+  },
+
+  // Plex Media Server settings
+  plex: {
+    url: process.env.PLEX_URL || 'http://localhost:32400',
+    token: process.env.PLEX_TOKEN || '',
+    enabled: !!process.env.PLEX_URL && !!process.env.PLEX_TOKEN
   }
 }
