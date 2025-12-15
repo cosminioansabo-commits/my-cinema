@@ -2,6 +2,7 @@ import axios from 'axios'
 import { setupAuthInterceptor } from '@/composables/useAuthInterceptor'
 
 const API_BASE = import.meta.env.VITE_TORRENT_API_URL || 'http://localhost:3001'
+const TOKEN_KEY = 'my-cinema-auth-token'
 
 const api = axios.create({
   baseURL: `${API_BASE}/api/playback`,
@@ -10,6 +11,11 @@ const api = axios.create({
 
 // Setup auth interceptor
 setupAuthInterceptor(api)
+
+// Helper to get auth token for stream URLs (HLS.js doesn't use axios)
+const getAuthToken = (): string | null => {
+  return localStorage.getItem(TOKEN_KEY)
+}
 
 export interface PlaybackStatus {
   enabled: boolean
@@ -119,9 +125,11 @@ export const playbackService = {
         return null
       }
 
-      // Prepend API base URL to relative stream URLs
+      // Prepend API base URL to relative stream URLs and add auth token
       if (response.data.streamUrl && response.data.streamUrl.startsWith('/')) {
-        response.data.streamUrl = `${API_BASE}${response.data.streamUrl}`
+        const token = getAuthToken()
+        const authParam = token ? `&token=${encodeURIComponent(token)}` : ''
+        response.data.streamUrl = `${API_BASE}${response.data.streamUrl}${authParam}`
       }
 
       return response.data
@@ -148,9 +156,11 @@ export const playbackService = {
         return null
       }
 
-      // Prepend API base URL to relative stream URLs
+      // Prepend API base URL to relative stream URLs and add auth token
       if (response.data.streamUrl && response.data.streamUrl.startsWith('/')) {
-        response.data.streamUrl = `${API_BASE}${response.data.streamUrl}`
+        const token = getAuthToken()
+        const authParam = token ? `&token=${encodeURIComponent(token)}` : ''
+        response.data.streamUrl = `${API_BASE}${response.data.streamUrl}${authParam}`
       }
 
       return response.data

@@ -17,17 +17,22 @@ export const authMiddleware = (req: AuthenticatedRequest, res: Response, next: N
   }
 
   const authHeader = req.headers.authorization
+  const queryToken = req.query.token as string | undefined
 
-  if (!authHeader) {
-    return res.status(401).json({ error: 'No authorization header provided' })
+  // Try to get token from Authorization header or query parameter
+  // Query parameter is needed for HLS.js requests that can't set headers
+  let token: string | null = null
+
+  if (authHeader) {
+    token = authHeader.startsWith('Bearer ')
+      ? authHeader.slice(7)
+      : authHeader
+  } else if (queryToken) {
+    token = queryToken
   }
 
-  const token = authHeader.startsWith('Bearer ')
-    ? authHeader.slice(7)
-    : authHeader
-
   if (!token) {
-    return res.status(401).json({ error: 'No token provided' })
+    return res.status(401).json({ error: 'No authorization header provided' })
   }
 
   try {

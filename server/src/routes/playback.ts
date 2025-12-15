@@ -236,6 +236,7 @@ router.get('/proxy/hls/:ratingKey/master.m3u8', async (req: Request, res: Respon
 
   const { ratingKey } = req.params
   const quality = req.query.quality as string | undefined
+  const authToken = req.query.token as string | undefined
   const sessionId = req.query.session as string || `my-cinema-${Date.now()}`
 
   try {
@@ -283,16 +284,26 @@ router.get('/proxy/hls/:ratingKey/master.m3u8', async (req: Request, res: Respon
     // Rewrite URLs in the manifest to go through our proxy
     let manifest = response.data as string
 
+    // Build auth token suffix for rewritten URLs
+    const tokenSuffix = authToken ? `&token=${encodeURIComponent(authToken)}` : ''
+
     // Rewrite absolute Plex URLs to use our proxy
     manifest = manifest.replace(
-      new RegExp(`${config.plex.url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'g'),
-      `/api/playback/proxy/plex`
+      new RegExp(`${config.plex.url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(/[^\\s"']+)`, 'g'),
+      (match, path) => {
+        // Check if URL already has query params
+        const hasQuery = path.includes('?')
+        return `/api/playback/proxy/plex${path}${hasQuery ? tokenSuffix : `?dummy=1${tokenSuffix}`}`
+      }
     )
 
     // Also handle relative URLs that start with /video
     manifest = manifest.replace(
-      /^(\/video\/)/gm,
-      `/api/playback/proxy/plex$1`
+      /^(\/video\/[^\s"']+)/gm,
+      (match) => {
+        const hasQuery = match.includes('?')
+        return `/api/playback/proxy/plex${match}${hasQuery ? tokenSuffix : `?dummy=1${tokenSuffix}`}`
+      }
     )
 
     res.setHeader('Content-Type', 'application/vnd.apple.mpegurl')
@@ -313,7 +324,16 @@ router.get('/proxy/plex/*', async (req: Request, res: Response) => {
 
   // Get the path after /proxy/plex/
   const plexPath = req.params[0]
-  const queryString = req.url.includes('?') ? req.url.split('?')[1] : ''
+  const authToken = req.query.token as string | undefined
+
+  // Build query string, excluding our auth token (it's for our API, not Plex)
+  const queryParams = new URLSearchParams()
+  for (const [key, value] of Object.entries(req.query)) {
+    if (key !== 'token' && key !== 'dummy' && typeof value === 'string') {
+      queryParams.set(key, value)
+    }
+  }
+  const queryString = queryParams.toString()
 
   // Build full Plex URL
   let plexUrl = `${config.plex.url}/${plexPath}`
@@ -321,7 +341,7 @@ router.get('/proxy/plex/*', async (req: Request, res: Response) => {
     plexUrl += `?${queryString}`
   }
 
-  // Add token if not present
+  // Add Plex token if not present
   if (!plexUrl.includes('X-Plex-Token')) {
     plexUrl += (plexUrl.includes('?') ? '&' : '?') + `X-Plex-Token=${config.plex.token}`
   }
@@ -344,16 +364,25 @@ router.get('/proxy/plex/*', async (req: Request, res: Response) => {
     if (contentType.includes('mpegurl') || plexPath.endsWith('.m3u8')) {
       let manifest = Buffer.from(response.data).toString('utf-8')
 
+      // Build auth token suffix for rewritten URLs
+      const tokenSuffix = authToken ? `&token=${encodeURIComponent(authToken)}` : ''
+
       // Rewrite absolute Plex URLs
       manifest = manifest.replace(
-        new RegExp(`${config.plex.url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'g'),
-        `/api/playback/proxy/plex`
+        new RegExp(`${config.plex.url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(/[^\\s"']+)`, 'g'),
+        (match, path) => {
+          const hasQuery = path.includes('?')
+          return `/api/playback/proxy/plex${path}${hasQuery ? tokenSuffix : `?dummy=1${tokenSuffix}`}`
+        }
       )
 
       // Rewrite relative URLs
       manifest = manifest.replace(
-        /^(\/video\/)/gm,
-        `/api/playback/proxy/plex$1`
+        /^(\/video\/[^\s"']+)/gm,
+        (match) => {
+          const hasQuery = match.includes('?')
+          return `/api/playback/proxy/plex${match}${hasQuery ? tokenSuffix : `?dummy=1${tokenSuffix}`}`
+        }
       )
 
       res.setHeader('Content-Type', 'application/vnd.apple.mpegurl')
