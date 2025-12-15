@@ -187,10 +187,13 @@ router.get('/transcode/:filePath', async (req: Request, res: Response) => {
 
     ffmpegArgs.push(
       '-i', filePath,
+      '-map', '0:v:0',          // Select first video stream
+      '-map', '0:a:0',          // Select first audio stream
       '-c:v', 'copy',           // Copy video stream (no re-encoding)
       '-c:a', 'aac',            // Transcode audio to AAC
       '-b:a', '192k',           // Audio bitrate
       '-ac', '2',               // Stereo output
+      '-af', 'aresample=async=1:first_pts=0', // Audio filter to maintain sync
       '-movflags', 'frag_keyframe+empty_moov+faststart', // Enable streaming
       '-f', 'mp4',              // Output format
       'pipe:1'                  // Output to stdout
