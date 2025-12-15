@@ -7,7 +7,6 @@ import type {
   TMDBResponse,
   TMDBSearchResult,
   WatchProviders,
-  Credits,
   FilterOptions,
   Season,
   SeasonDetails,
@@ -304,7 +303,8 @@ export async function getMediaDetails(mediaType: MediaType, id: number): Promise
   const [detailsResponse, watchProvidersResponse, creditsResponse, videosResponse, externalIdsResponse] = await Promise.all([
     api.get(`/${mediaType}/${id}`),
     api.get<WatchProviders>(`/${mediaType}/${id}/watch/providers`),
-    api.get<Credits>(`/${mediaType}/${id}/credits`),
+    // Credits response uses snake_case, we transform it below
+    api.get(`/${mediaType}/${id}/credits`),
     api.get(`/${mediaType}/${id}/videos`),
     api.get(`/${mediaType}/${id}/external_ids`),
   ])

@@ -193,12 +193,12 @@ export type SortOption =
   | 'title.asc'
   | 'title.desc'
 
-// API Response Types
+// API Response Types (using snake_case to match TMDB API response)
 export interface TMDBResponse<T> {
   page: number
   results: T[]
-  totalPages: number
-  totalResults: number
+  total_pages: number
+  total_results: number
 }
 
 export interface TMDBSearchResult {

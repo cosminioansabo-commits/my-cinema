@@ -3,7 +3,6 @@ import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import Hls from 'hls.js'
 import Button from 'primevue/button'
 import Slider from 'primevue/slider'
-import Select from 'primevue/select'
 
 interface SubtitleTrack {
   id: number
@@ -27,8 +26,8 @@ const props = defineProps<{
   duration?: number // in milliseconds
   subtitles?: SubtitleTrack[]
   audioTracks?: AudioTrack[]
+  currentQuality?: string // Currently selected quality
   onProgress?: (timeMs: number, state: 'playing' | 'paused' | 'stopped') => void
-  onQualityChange?: (quality: string) => void
 }>()
 
 const emit = defineEmits<{
@@ -62,7 +61,8 @@ const qualityOptions = [
   { label: '720p', value: '720p' },
   { label: '480p', value: '480p' }
 ]
-const selectedQuality = ref('original')
+// Initialize with prop value if provided
+const selectedQuality = ref(props.currentQuality || 'original')
 
 // Subtitle state
 const selectedSubtitle = ref<number | null>(null)
@@ -252,9 +252,6 @@ const changeQuality = (quality: string) => {
   selectedQuality.value = quality
   showSettings.value = false
   emit('qualityChange', quality)
-  if (props.onQualityChange) {
-    props.onQualityChange(quality)
-  }
 }
 
 // Toggle settings menu
@@ -598,7 +595,7 @@ defineExpose({
                 @click.stop
               >
                 <!-- Quality Selection -->
-                <div class="mb-4">
+                <div :class="{ 'mb-4': subtitles && subtitles.length > 0 }">
                   <label class="text-gray-400 text-xs uppercase tracking-wide mb-2 block">Quality</label>
                   <div class="flex flex-col gap-1">
                     <button
@@ -615,7 +612,7 @@ defineExpose({
                 </div>
 
                 <!-- Subtitle Selection -->
-                <div v-if="subtitles && subtitles.length > 0">
+                <div v-if="subtitles && subtitles.length > 0" class="mt-4">
                   <label class="text-gray-400 text-xs uppercase tracking-wide mb-2 block">Subtitles</label>
                   <div class="flex flex-col gap-1 max-h-40 overflow-y-auto">
                     <button
@@ -626,6 +623,21 @@ defineExpose({
                       @click="selectedSubtitle = option.value"
                     >
                       {{ option.label }}
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Audio Track Selection -->
+                <div v-if="audioTracks && audioTracks.length > 1" class="mt-4">
+                  <label class="text-gray-400 text-xs uppercase tracking-wide mb-2 block">Audio</label>
+                  <div class="flex flex-col gap-1 max-h-40 overflow-y-auto">
+                    <button
+                      v-for="track in audioTracks"
+                      :key="track.id"
+                      class="text-left px-3 py-2 rounded text-sm transition-colors"
+                      :class="track.selected ? 'bg-red-600 text-white' : 'text-gray-300 hover:bg-zinc-700'"
+                    >
+                      {{ track.displayTitle }}
                     </button>
                   </div>
                 </div>

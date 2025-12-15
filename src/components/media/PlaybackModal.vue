@@ -31,21 +31,19 @@ const errorMessage = ref('')
 const playbackInfo = ref<PlaybackInfo | null>(null)
 const playerRef = ref<InstanceType<typeof VideoPlayer> | null>(null)
 const currentQuality = ref('original')
+const currentPlaybackPosition = ref(0) // Track current position for quality changes
 
 // Fetch playback info when modal opens
-const fetchPlaybackInfo = async (quality?: string) => {
+const fetchPlaybackInfo = async (quality?: string, resumeFromPosition?: number) => {
   if (!props.visible) return
 
   isLoading.value = true
   hasError.value = false
-
-  // Keep previous playback info for quality changes to preserve position
-  const previousPosition = playbackInfo.value?.viewOffset
   playbackInfo.value = null
 
   try {
     const qualityParam = quality || currentQuality.value
-    console.log('Fetching playback info:', { mediaType: props.mediaType, tmdbId: props.tmdbId, showTmdbId: props.showTmdbId, season: props.seasonNumber, episode: props.episodeNumber, quality: qualityParam })
+    console.log('Fetching playback info:', { mediaType: props.mediaType, tmdbId: props.tmdbId, showTmdbId: props.showTmdbId, season: props.seasonNumber, episode: props.episodeNumber, quality: qualityParam, resumeFrom: resumeFromPosition })
 
     if (props.mediaType === 'movie' && props.tmdbId) {
       playbackInfo.value = await playbackService.getMoviePlayback(props.tmdbId, qualityParam)
@@ -63,9 +61,9 @@ const fetchPlaybackInfo = async (quality?: string) => {
     if (!playbackInfo.value) {
       hasError.value = true
       errorMessage.value = 'Media not found in Plex. Make sure Plex has scanned your library.'
-    } else if (previousPosition && quality) {
-      // Preserve position when changing quality
-      playbackInfo.value.viewOffset = previousPosition
+    } else if (resumeFromPosition !== undefined && resumeFromPosition > 0) {
+      // Use the position we were at when quality was changed
+      playbackInfo.value.viewOffset = resumeFromPosition
     }
   } catch (error) {
     console.error('Error fetching playback info:', error)
@@ -78,14 +76,17 @@ const fetchPlaybackInfo = async (quality?: string) => {
 
 // Handle quality change from player
 const handleQualityChange = (quality: string) => {
-  console.log('Quality changed to:', quality)
+  console.log('Quality changed to:', quality, 'at position:', currentPlaybackPosition.value)
   currentQuality.value = quality
-  // Re-fetch with new quality - the player will reload
-  fetchPlaybackInfo(quality)
+  // Re-fetch with new quality - the player will reload from current position
+  fetchPlaybackInfo(quality, currentPlaybackPosition.value)
 }
 
 // Handle progress updates
 const handleProgress = async (timeMs: number, state: 'playing' | 'paused' | 'stopped') => {
+  // Track current position for quality changes
+  currentPlaybackPosition.value = timeMs
+
   if (playbackInfo.value?.ratingKey) {
     try {
       await playbackService.reportProgress(
@@ -124,6 +125,7 @@ watch(() => props.visible, (newValue) => {
     // Cleanup when closing
     playbackInfo.value = null
     currentQuality.value = 'original'
+    currentPlaybackPosition.value = 0
   }
 }, { immediate: true })
 
@@ -179,8 +181,8 @@ const displayTitle = computed(() => {
         :duration="playbackInfo.duration"
         :subtitles="playbackInfo.subtitles"
         :audio-tracks="playbackInfo.audioTracks"
+        :current-quality="currentQuality"
         :on-progress="handleProgress"
-        :on-quality-change="handleQualityChange"
         @close="handleClose"
         @ended="handleEnded"
         @quality-change="handleQualityChange"

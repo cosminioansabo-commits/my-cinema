@@ -21,6 +21,7 @@ interface PlexMediaPart {
   file: string
   size: number
   container: string
+  Stream?: PlexMediaStream[]
 }
 
 interface PlexMediaStream {
@@ -322,7 +323,10 @@ class PlexService {
 
     const media = metadata.Media[0]
     const part = media.Part?.[0]
-    const streams = media.Stream || []
+    // Streams are inside Part, not Media
+    const streams = part?.Stream || []
+
+    console.log(`Plex: Found ${streams.length} streams for ratingKey ${ratingKey}`)
 
     // Extract subtitle tracks (streamType 3)
     const subtitles = streams
@@ -345,8 +349,16 @@ class PlexService {
         selected: s.selected || false
       }))
 
-    // Use proxied stream URL to avoid CORS issues
-    const quality = options?.quality || 'original'
+    console.log(`Plex: Found ${subtitles.length} subtitles, ${audioTracks.length} audio tracks`)
+
+    // Auto-select quality based on resolution to prevent buffering issues
+    // For 4K content, default to 1080p unless explicitly set to original
+    let quality = options?.quality || 'original'
+    if (quality === 'original' && media.width >= 3840) {
+      console.log(`Plex: 4K content detected (${media.width}x${media.height}), defaulting to 1080p`)
+      quality = '1080p'
+    }
+
     const proxyStreamUrl = `/api/playback/proxy/hls/${ratingKey}/master.m3u8?quality=${quality}`
 
     return {
