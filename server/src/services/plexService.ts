@@ -340,7 +340,12 @@ class PlexService {
     const subtitles = streams
       .filter((s: PlexMediaStream) => s.streamType === 3)
       .map((s: PlexMediaStream) => {
-        // Build subtitle URL with partId and streamId
+        // If subtitle has a key (external file), encode it in the URL
+        // Otherwise use partId and streamId for embedded subtitles
+        const subtitleParam = s.key
+          ? `key:${encodeURIComponent(s.key)}`
+          : `${partId}:${s.id}`
+
         return {
           id: s.id,
           language: s.language || 'Unknown',
@@ -348,8 +353,7 @@ class PlexService {
           displayTitle: s.displayTitle || s.language || 'Unknown',
           format: s.format || s.codec || 'srt',
           key: s.key,
-          // Pass partId and streamId for proper Plex subtitle URL construction
-          url: `/api/playback/subtitle/${partId}/${s.id}`
+          url: `/api/playback/subtitle/${subtitleParam}`
         }
       })
 

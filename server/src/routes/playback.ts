@@ -224,41 +224,80 @@ router.post('/refresh-cache', async (req: Request, res: Response) => {
 // Proxies subtitles from Plex and converts to WebVTT format
 // ============================================================================
 
-// Get subtitle from Plex by partId and streamId
-router.get('/subtitle/:partId/:streamId', async (req: Request, res: Response) => {
+// Get subtitle - handles both external files (key:path) and embedded (partId:streamId)
+router.get('/subtitle/:subtitleParam', async (req: Request, res: Response) => {
   if (!plexService.isEnabled()) {
     res.status(503).json({ error: 'Plex is not configured' })
     return
   }
 
-  const { partId, streamId } = req.params
+  const { subtitleParam } = req.params
+  const urlsToTry: string[] = []
 
-  // Plex subtitle URL: /library/parts/{partId}/indexes/sd/{streamId}
-  // This extracts embedded subtitles from the container file
-  const subtitleUrl = `${config.plex.url}/library/parts/${partId}/indexes/sd/${streamId}?X-Plex-Token=${config.plex.token}`
+  // Check if it's an external subtitle file (starts with "key:")
+  if (subtitleParam.startsWith('key:')) {
+    const subtitleKey = decodeURIComponent(subtitleParam.substring(4))
+    console.log('External subtitle key:', subtitleKey)
+    // External subtitle file - use the key directly
+    urlsToTry.push(`${config.plex.url}${subtitleKey}?X-Plex-Token=${config.plex.token}`)
+  } else {
+    // Embedded subtitle - parse partId:streamId
+    const [partId, streamId] = subtitleParam.split(':')
+    console.log('Embedded subtitle - partId:', partId, 'streamId:', streamId)
 
-  try {
-    console.log(`Fetching subtitle: ${subtitleUrl}`)
-
-    const response = await axios.get(subtitleUrl, {
-      responseType: 'text',
-      timeout: 60000 // Longer timeout for subtitle extraction
-    })
-
-    let subtitleContent = response.data as string
-
-    // Convert SRT/ASS to WebVTT if needed
-    if (!subtitleContent.startsWith('WEBVTT')) {
-      subtitleContent = convertSrtToVtt(subtitleContent)
-    }
-
-    res.setHeader('Content-Type', 'text/vtt; charset=utf-8')
-    res.setHeader('Access-Control-Allow-Origin', '*')
-    res.send(subtitleContent)
-  } catch (error: any) {
-    console.error('Subtitle fetch error:', error.message)
-    res.status(502).json({ error: 'Failed to fetch subtitle' })
+    // Try multiple Plex subtitle URL formats for embedded subtitles
+    urlsToTry.push(
+      // Format 1: Direct subtitle stream extraction
+      `${config.plex.url}/library/parts/${partId}/indexes/sd/${streamId}?X-Plex-Token=${config.plex.token}`,
+      // Format 2: Subtitle file endpoint
+      `${config.plex.url}/library/streams/${streamId}?X-Plex-Token=${config.plex.token}`,
+      // Format 3: Part file with subtitle selection
+      `${config.plex.url}/library/parts/${partId}/file.srt?subtitleStreamID=${streamId}&X-Plex-Token=${config.plex.token}`,
+    )
   }
+
+  for (const subtitleUrl of urlsToTry) {
+    try {
+      console.log(`Trying subtitle URL: ${subtitleUrl}`)
+
+      const response = await axios.get(subtitleUrl, {
+        responseType: 'arraybuffer',
+        timeout: 60000,
+        validateStatus: (status) => status === 200
+      })
+
+      // Convert buffer to string
+      let subtitleContent = Buffer.from(response.data).toString('utf-8')
+
+      // Skip if response is HTML error page or XML
+      if (subtitleContent.trim().startsWith('<')) {
+        console.log('Got HTML/XML response, trying next URL')
+        continue
+      }
+
+      // Skip if empty
+      if (!subtitleContent.trim()) {
+        console.log('Got empty response, trying next URL')
+        continue
+      }
+
+      // Convert SRT/ASS to WebVTT if needed
+      if (!subtitleContent.startsWith('WEBVTT')) {
+        subtitleContent = convertSrtToVtt(subtitleContent)
+      }
+
+      console.log('Subtitle fetched successfully, length:', subtitleContent.length)
+      res.setHeader('Content-Type', 'text/vtt; charset=utf-8')
+      res.setHeader('Access-Control-Allow-Origin', '*')
+      res.send(subtitleContent)
+      return
+    } catch (error: any) {
+      console.log(`URL failed: ${error.message}`)
+    }
+  }
+
+  console.error('All subtitle URLs failed for:', subtitleParam)
+  res.status(502).json({ error: 'Failed to fetch subtitle from Plex' })
 })
 
 // Convert SRT format to WebVTT
