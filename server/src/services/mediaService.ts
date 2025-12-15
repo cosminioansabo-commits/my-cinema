@@ -46,6 +46,87 @@ export interface PlaybackInfo {
 // Browser-compatible audio codecs
 const BROWSER_COMPATIBLE_AUDIO = ['aac', 'mp3', 'opus', 'vorbis', 'flac', 'pcm']
 
+// Language code to full name mapping
+const LANGUAGE_NAMES: Record<string, string> = {
+  'eng': 'English',
+  'en': 'English',
+  'spa': 'Spanish',
+  'es': 'Spanish',
+  'fre': 'French',
+  'fra': 'French',
+  'fr': 'French',
+  'ger': 'German',
+  'deu': 'German',
+  'de': 'German',
+  'ita': 'Italian',
+  'it': 'Italian',
+  'por': 'Portuguese',
+  'pt': 'Portuguese',
+  'rus': 'Russian',
+  'ru': 'Russian',
+  'jpn': 'Japanese',
+  'ja': 'Japanese',
+  'kor': 'Korean',
+  'ko': 'Korean',
+  'chi': 'Chinese',
+  'zho': 'Chinese',
+  'zh': 'Chinese',
+  'ara': 'Arabic',
+  'ar': 'Arabic',
+  'hin': 'Hindi',
+  'hi': 'Hindi',
+  'tur': 'Turkish',
+  'tr': 'Turkish',
+  'pol': 'Polish',
+  'pl': 'Polish',
+  'dut': 'Dutch',
+  'nld': 'Dutch',
+  'nl': 'Dutch',
+  'swe': 'Swedish',
+  'sv': 'Swedish',
+  'nor': 'Norwegian',
+  'no': 'Norwegian',
+  'dan': 'Danish',
+  'da': 'Danish',
+  'fin': 'Finnish',
+  'fi': 'Finnish',
+  'gre': 'Greek',
+  'ell': 'Greek',
+  'el': 'Greek',
+  'heb': 'Hebrew',
+  'he': 'Hebrew',
+  'tha': 'Thai',
+  'th': 'Thai',
+  'vie': 'Vietnamese',
+  'vi': 'Vietnamese',
+  'ind': 'Indonesian',
+  'id': 'Indonesian',
+  'rum': 'Romanian',
+  'ron': 'Romanian',
+  'ro': 'Romanian',
+  'cze': 'Czech',
+  'ces': 'Czech',
+  'cs': 'Czech',
+  'hun': 'Hungarian',
+  'hu': 'Hungarian',
+  'ukr': 'Ukrainian',
+  'uk': 'Ukrainian',
+  'bul': 'Bulgarian',
+  'bg': 'Bulgarian',
+  'hrv': 'Croatian',
+  'hr': 'Croatian',
+  'slv': 'Slovenian',
+  'sl': 'Slovenian',
+  'srp': 'Serbian',
+  'sr': 'Serbian',
+}
+
+// Convert language code to full name
+function getLanguageName(code: string): string {
+  const normalized = code.toLowerCase().trim()
+  return LANGUAGE_NAMES[normalized] || code
+}
+
 // Parse resolution string like "1920x1080" to width/height
 function parseResolution(resolution: string): { width: number; height: number } {
   const match = resolution?.match(/(\d+)x(\d+)/)
@@ -67,22 +148,25 @@ function parseRuntime(runtime: string): number {
   return 0
 }
 
-// Parse subtitle languages string like "English / French" to SubtitleTrack[]
+// Parse subtitle languages string like "English / French" or "eng / spa" to SubtitleTrack[]
 function parseSubtitles(subtitles: string): SubtitleTrack[] {
   if (!subtitles) return []
 
   const languages = subtitles.split('/').map(s => s.trim()).filter(Boolean)
-  return languages.map((lang, index) => ({
-    id: index,
-    streamIndex: index,
-    language: lang,
-    languageCode: lang.toLowerCase().substring(0, 3),
-    displayTitle: lang,
-    format: 'srt' // Assume SRT, will be extracted as WebVTT
-  }))
+  return languages.map((lang, index) => {
+    const fullName = getLanguageName(lang)
+    return {
+      id: index,
+      streamIndex: index,
+      language: fullName,
+      languageCode: lang.toLowerCase().substring(0, 3),
+      displayTitle: fullName,
+      format: 'srt' // Assume SRT, will be extracted as WebVTT
+    }
+  })
 }
 
-// Parse audio languages string like "English / Japanese" to AudioTrack[]
+// Parse audio languages string like "English / Japanese" or "eng / jpn" to AudioTrack[]
 function parseAudioTracks(audioLanguages: string, audioCodec: string, audioChannels: number): AudioTrack[] {
   if (!audioLanguages) {
     // Return a single default track
@@ -99,16 +183,19 @@ function parseAudioTracks(audioLanguages: string, audioCodec: string, audioChann
   }
 
   const languages = audioLanguages.split('/').map(s => s.trim()).filter(Boolean)
-  return languages.map((lang, index) => ({
-    id: index,
-    streamIndex: index,
-    language: lang,
-    languageCode: lang.toLowerCase().substring(0, 3),
-    displayTitle: `${lang} (${audioCodec} ${audioChannels}ch)`,
-    codec: audioCodec,
-    channels: audioChannels,
-    selected: index === 0
-  }))
+  return languages.map((lang, index) => {
+    const fullName = getLanguageName(lang)
+    return {
+      id: index,
+      streamIndex: index,
+      language: fullName,
+      languageCode: lang.toLowerCase().substring(0, 3),
+      displayTitle: `${fullName} (${audioCodec} ${audioChannels}ch)`,
+      codec: audioCodec,
+      channels: audioChannels,
+      selected: index === 0
+    }
+  })
 }
 
 class MediaService {

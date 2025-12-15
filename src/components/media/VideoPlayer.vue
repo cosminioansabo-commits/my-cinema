@@ -155,7 +155,13 @@ const initPlayer = () => {
   })
 
   video.addEventListener('durationchange', () => {
-    videoDuration.value = video.duration
+    // Prefer duration from props (from Radarr/Sonarr) over video element duration
+    // This is important for transcoded streams where duration keeps updating
+    if (props.duration && props.duration > 0) {
+      videoDuration.value = props.duration / 1000 // Convert ms to seconds
+    } else if (video.duration && isFinite(video.duration)) {
+      videoDuration.value = video.duration
+    }
   })
 
   video.addEventListener('ended', () => {
@@ -434,6 +440,11 @@ const cleanup = () => {
 
 // Lifecycle
 onMounted(() => {
+  // Set initial duration from props if available (important for transcoded streams)
+  if (props.duration && props.duration > 0) {
+    videoDuration.value = props.duration / 1000 // Convert ms to seconds
+  }
+
   initPlayer()
   document.addEventListener('fullscreenchange', handleFullscreenChange)
 
