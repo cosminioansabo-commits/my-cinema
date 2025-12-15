@@ -30,12 +30,40 @@ const expandedSeasons = ref<number[]>([])
 // Sonarr data for download status
 const sonarrSeasons = ref<SonarrSeasonStats[]>([])
 const sonarrEpisodes = ref<SonarrEpisode[]>([])
-const downloadStatusLoaded = ref(false)
+const sonarrDataLoaded = ref(false)
+const loadingSonarrData = ref(false)
 
-// Load download status from Sonarr - get both series (for season stats) and episodes
-const loadDownloadStatus = async () => {
-  if (!props.sonarrSeriesId || downloadStatusLoaded.value) return
+// Computed: Use Sonarr seasons when available (excluding specials), otherwise TMDB
+const displaySeasons = computed(() => {
+  // If Sonarr data is loaded and has seasons, use Sonarr's structure
+  if (sonarrDataLoaded.value && sonarrSeasons.value.length > 0) {
+    // Filter out specials (season 0) and map to display format
+    return sonarrSeasons.value
+      .filter(s => s.seasonNumber > 0)
+      .sort((a, b) => a.seasonNumber - b.seasonNumber)
+      .map(sonarrSeason => {
+        // Try to find matching TMDB season for poster and air date
+        const tmdbSeason = props.seasons.find(s => s.seasonNumber === sonarrSeason.seasonNumber)
+        return {
+          id: sonarrSeason.seasonNumber, // Use season number as ID
+          seasonNumber: sonarrSeason.seasonNumber,
+          name: tmdbSeason?.name || `Season ${sonarrSeason.seasonNumber}`,
+          episodeCount: sonarrSeason.statistics?.episodeCount || 0,
+          airDate: tmdbSeason?.airDate || null,
+          posterPath: tmdbSeason?.posterPath || null,
+          overview: tmdbSeason?.overview || ''
+        } as Season
+      })
+  }
+  // Fallback to TMDB seasons
+  return props.seasons
+})
 
+// Load Sonarr data - get both series (for season stats) and episodes
+const loadSonarrData = async () => {
+  if (!props.sonarrSeriesId || sonarrDataLoaded.value || loadingSonarrData.value) return
+
+  loadingSonarrData.value = true
   try {
     // Fetch series details (includes season stats) and episodes in parallel
     const [seriesDetails, episodes] = await Promise.all([
@@ -47,9 +75,11 @@ const loadDownloadStatus = async () => {
       sonarrSeasons.value = seriesDetails.seasons
     }
     sonarrEpisodes.value = episodes
-    downloadStatusLoaded.value = true
+    sonarrDataLoaded.value = true
   } catch (error) {
-    console.error('Error loading download status:', error)
+    console.error('Error loading Sonarr data:', error)
+  } finally {
+    loadingSonarrData.value = false
   }
 }
 
@@ -58,57 +88,16 @@ const getSonarrSeasonStats = (seasonNumber: number): SonarrSeasonStats | undefin
   return sonarrSeasons.value.find(s => s.seasonNumber === seasonNumber)
 }
 
-// Get total download count from Sonarr's season stats (more reliable than episode matching)
-const getTotalDownloadCount = computed(() => {
-  let downloaded = 0
-  let total = 0
-  for (const season of sonarrSeasons.value) {
-    if (season.seasonNumber > 0 && season.statistics) { // Exclude specials
-      downloaded += season.statistics.episodeFileCount
-      total += season.statistics.episodeCount
-    }
-  }
-  return { downloaded, total }
-})
-
 // Check if episode is downloaded using Sonarr episode data
 const isEpisodeDownloaded = (seasonNumber: number, episodeNumber: number): boolean => {
-  // Try exact match first
-  const exactMatch = sonarrEpisodes.value.find(
+  const match = sonarrEpisodes.value.find(
     ep => ep.seasonNumber === seasonNumber && ep.episodeNumber === episodeNumber && ep.hasFile
   )
-  if (exactMatch) return true
-
-  // If TMDB has only 1 season but Sonarr has multiple, calculate absolute episode number
-  if (props.seasons.length === 1 && seasonNumber === 1) {
-    let cumulativeEp = 0
-    const sortedSeasons = [...new Set(sonarrEpisodes.value.filter(ep => ep.seasonNumber > 0).map(ep => ep.seasonNumber))].sort((a, b) => a - b)
-
-    for (const sonarrSeason of sortedSeasons) {
-      const seasonEps = sonarrEpisodes.value
-        .filter(ep => ep.seasonNumber === sonarrSeason)
-        .sort((a, b) => a.episodeNumber - b.episodeNumber)
-
-      for (const ep of seasonEps) {
-        cumulativeEp++
-        if (cumulativeEp === episodeNumber && ep.hasFile) {
-          return true
-        }
-      }
-    }
-  }
-
-  return false
+  return !!match
 }
 
 // Get season download count - uses Sonarr's season statistics which are authoritative
 const getSeasonDownloadCount = (seasonNumber: number): { downloaded: number; total: number } => {
-  // If TMDB has only 1 season but Sonarr has multiple, show total across all Sonarr seasons
-  if (props.seasons.length === 1 && seasonNumber === 1) {
-    return getTotalDownloadCount.value
-  }
-
-  // Use Sonarr's season statistics (more reliable than counting episodes)
   const sonarrSeason = getSonarrSeasonStats(seasonNumber)
   if (sonarrSeason?.statistics) {
     return {
@@ -120,19 +109,19 @@ const getSeasonDownloadCount = (seasonNumber: number): { downloaded: number; tot
   return { downloaded: 0, total: 0 }
 }
 
-// Load download status when sonarrSeriesId is provided
+// Load Sonarr data when sonarrSeriesId is provided
 onMounted(() => {
-  loadDownloadStatus()
+  loadSonarrData()
 })
 
 watch(() => props.sonarrSeriesId, (newId) => {
   if (newId) {
-    downloadStatusLoaded.value = false
-    loadDownloadStatus()
+    sonarrDataLoaded.value = false
+    loadSonarrData()
   }
 })
 
-// Load season details when expanded
+// Load season details from TMDB when expanded (for episode details like overview, thumbnail)
 const loadSeasonDetails = async (seasonNumber: number) => {
   if (loadedSeasons.value[seasonNumber] || loadingSeasons.value[seasonNumber]) {
     return
@@ -151,19 +140,46 @@ const loadSeasonDetails = async (seasonNumber: number) => {
   }
 }
 
-// Watch for accordion expansion - immediate to handle initial state
+// Watch for accordion expansion - load data for expanded seasons
 watch(expandedSeasons, (newExpanded) => {
-  console.log('Expanded seasons changed:', newExpanded)
   newExpanded.forEach(index => {
-    const season = props.seasons[index]
-    console.log('Loading season at index', index, ':', season)
+    const season = displaySeasons.value[index]
     if (season) {
       loadSeasonDetails(season.seasonNumber)
     }
   })
 }, { deep: true, immediate: true })
 
+// Get episodes for a season - prefer Sonarr data structure
 const getSeasonEpisodes = (seasonNumber: number): Episode[] => {
+  // If we have Sonarr data, use it as the source of truth for episode list
+  if (sonarrDataLoaded.value) {
+    const sonarrEps = sonarrEpisodes.value
+      .filter(ep => ep.seasonNumber === seasonNumber)
+      .sort((a, b) => a.episodeNumber - b.episodeNumber)
+
+    // Get TMDB episodes for additional metadata (thumbnails, overview)
+    const tmdbEpisodes = loadedSeasons.value[seasonNumber]?.episodes || []
+    const tmdbEpMap = new Map(tmdbEpisodes.map(ep => [ep.episodeNumber, ep]))
+
+    // Map Sonarr episodes to display format, enriching with TMDB data
+    return sonarrEps.map(sonarrEp => {
+      const tmdbEp = tmdbEpMap.get(sonarrEp.episodeNumber)
+      return {
+        id: sonarrEp.id,
+        seasonNumber: sonarrEp.seasonNumber,
+        episodeNumber: sonarrEp.episodeNumber,
+        name: sonarrEp.title || tmdbEp?.name || `Episode ${sonarrEp.episodeNumber}`,
+        overview: sonarrEp.overview || tmdbEp?.overview || '',
+        airDate: sonarrEp.airDate || tmdbEp?.airDate || null,
+        stillPath: tmdbEp?.stillPath || null,
+        runtime: tmdbEp?.runtime || null,
+        voteAverage: tmdbEp?.voteAverage || 0
+      } as Episode
+    })
+  }
+
+  // Fallback to TMDB episodes
   return loadedSeasons.value[seasonNumber]?.episodes || []
 }
 
@@ -203,10 +219,16 @@ const isEpisodeAired = (airDate: string | null): boolean => {
 
 <template>
   <div class="seasons-episodes">
-    <Accordion v-model:value="expandedSeasons" multiple class="seasons-accordion">
+    <!-- Loading state for Sonarr data -->
+    <div v-if="loadingSonarrData" class="flex items-center gap-3 py-4 text-gray-400">
+      <ProgressSpinner style="width: 24px; height: 24px" strokeWidth="4" />
+      <span class="text-sm">Loading season data...</span>
+    </div>
+
+    <Accordion v-else v-model:value="expandedSeasons" multiple class="seasons-accordion">
       <AccordionPanel
-        v-for="(season, index) in seasons"
-        :key="season.id"
+        v-for="(season, index) in displaySeasons"
+        :key="season.seasonNumber"
         :value="index"
         class="mb-3"
       >
