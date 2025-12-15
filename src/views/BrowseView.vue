@@ -1,27 +1,17 @@
 <script setup lang="ts">
 import { onMounted, watch, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { useMediaStore } from '@/stores/mediaStore'
 import { useFiltersStore } from '@/stores/filtersStore'
 import MediaGrid from '@/components/media/MediaGrid.vue'
 import MediaFilters from '@/components/media/MediaFilters.vue'
-import SearchBar from '@/components/common/SearchBar.vue'
 import Button from 'primevue/button'
 import Drawer from 'primevue/drawer'
 
-const router = useRouter()
 const mediaStore = useMediaStore()
 const filtersStore = useFiltersStore()
 
 const showMobileFilters = ref(false)
-const searchQuery = ref('')
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
-
-const handleSearch = (query: string) => {
-  if (query.trim()) {
-    router.push({ name: 'search', query: { q: query.trim() } })
-  }
-}
 
 const debouncedBrowse = () => {
   if (debounceTimer) {
@@ -95,14 +85,6 @@ const hasMore = () => {
 
     <!-- Main Content -->
     <main class="flex-1 min-w-0">
-      <!-- Search Bar -->
-      <div class="mb-6">
-        <SearchBar
-          v-model="searchQuery"
-          @search="handleSearch"
-        />
-      </div>
-
       <div class="flex items-center justify-between mb-4 sm:mb-6">
         <div>
           <h1 class="text-xl sm:text-2xl font-bold">Browse</h1>

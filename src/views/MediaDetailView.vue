@@ -375,7 +375,6 @@ const goBack = () => {
                 <span v-if="media.numberOfSeasons" class="text-gray-400">
                   {{ media.numberOfSeasons }} Season{{ media.numberOfSeasons > 1 ? 's' : '' }}
                 </span>
-                <span class="px-1.5 border border-gray-500 text-gray-400 text-xs">HD</span>
               </div>
 
               <!-- Genres -->
@@ -572,7 +571,7 @@ const goBack = () => {
               :to="`/media/movie/${part.id}`"
               class="flex-shrink-0 w-28 sm:w-40 group cursor-pointer"
             >
-              <div class="aspect-[2/3] rounded-lg sm:rounded-xl overflow-hidden bg-zinc-800 mb-2 sm:mb-3 shadow-lg shadow-black/30 border border-zinc-700/50 group-hover:border-purple-500/50 transition-all duration-200">
+              <div class="aspect-2/3 rounded-lg sm:rounded-xl overflow-hidden bg-zinc-800 mb-2 sm:mb-3 shadow-lg shadow-black/30 border border-zinc-700/50 group-hover:border-purple-500/50 transition-all duration-200">
                 <img
                   v-if="part.posterPath"
                   :src="getImageUrl(part.posterPath, 'w300')"
@@ -602,7 +601,7 @@ const goBack = () => {
               :to="`/media/${item.mediaType}/${item.id}`"
               class="flex-shrink-0 w-28 sm:w-40 group cursor-pointer"
             >
-              <div class="aspect-[2/3] rounded-lg sm:rounded-xl overflow-hidden bg-zinc-800 mb-2 sm:mb-3 shadow-lg shadow-black/30 border border-zinc-700/50 group-hover:border-purple-500/50 transition-all duration-200">
+              <div class="aspect-2/3 rounded-lg sm:rounded-xl overflow-hidden bg-zinc-800 mb-2 sm:mb-3 shadow-lg shadow-black/30 border border-zinc-700/50 group-hover:border-purple-500/50 transition-all duration-200">
                 <img
                   v-if="item.posterPath"
                   :src="getImageUrl(item.posterPath, 'w300')"

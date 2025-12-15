@@ -225,7 +225,7 @@ onMounted(async () => {
     </section>
 
     <!-- Carousels -->
-    <div class="relative z-10 -mt-16 sm:-mt-24 pb-8 sm:pb-12 space-y-1 sm:space-y-2">
+    <div class="relative flex flex-col gap-10 z-10 -mt-16 sm:-mt-24 pb-8 sm:pb-12 px-2 sm:px-0">
       <!-- My Library (if has items) -->
       <MediaCarousel
         v-if="libraryItems.length > 0"

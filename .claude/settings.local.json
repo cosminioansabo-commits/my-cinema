@@ -29,7 +29,8 @@
       "Bash(git push:*)",
       "Bash(gh run list:*)",
       "Bash(gh api:*)",
-      "Bash(timeout 5 npm start)"
+      "Bash(timeout 5 npm start)",
+      "Bash(nvm use:*)"
     ],
     "deny": [],
     "ask": []

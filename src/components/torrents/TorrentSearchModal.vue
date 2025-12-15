@@ -2,6 +2,7 @@
 import { ref, watch, onMounted, computed } from 'vue'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
+import InputText from 'primevue/inputtext'
 import ProgressSpinner from 'primevue/progressspinner'
 import Message from 'primevue/message'
 import TorrentResultCard from './TorrentResultCard.vue'
@@ -28,6 +29,8 @@ const torrentsStore = useTorrentsStore()
 const downloadingId = ref<string | null>(null)
 
 const dialogVisible = ref(props.visible)
+const editableQuery = ref('')
+const isEditingQuery = ref(false)
 
 // Filter results to only show 2160p and 1080p quality
 const filteredResults = computed(() => {
@@ -40,6 +43,9 @@ const filteredResults = computed(() => {
 watch(() => props.visible, (val) => {
   dialogVisible.value = val
   if (val) {
+    // Initialize editable query with the computed search query
+    editableQuery.value = searchQuery.value
+    isEditingQuery.value = false
     performSearch()
   }
 })
@@ -53,6 +59,7 @@ watch(dialogVisible, (val) => {
 
 onMounted(() => {
   if (props.visible) {
+    editableQuery.value = searchQuery.value
     performSearch()
   }
 })
@@ -70,12 +77,19 @@ const searchQuery = computed(() => {
 })
 const displayTitle = computed(() => props.customQuery || props.title)
 
+// Use editableQuery for actual searches (allows user modification)
 async function performSearch() {
+  const queryToSearch = editableQuery.value || searchQuery.value
   await torrentsStore.search({
-    title: searchQuery.value,
+    title: queryToSearch,
     year: props.customQuery ? undefined : props.year, // Don't include year for episode searches
     type: props.mediaType
   })
+}
+
+function handleSearchWithNewQuery() {
+  isEditingQuery.value = false
+  performSearch()
 }
 
 async function handleDownload(torrent: TorrentResult) {
@@ -106,17 +120,32 @@ async function handleDownload(torrent: TorrentResult) {
     }"
   >
     <template #header>
-      <div class="flex items-center gap-2 sm:gap-3">
-        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary/20 flex items-center justify-center">
+      <div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
           <i class="pi pi-search text-primary text-sm sm:text-lg"></i>
         </div>
-        <div>
-          <h2 class="text-sm sm:text-lg font-semibold text-white">Find Torrent</h2>
-          <p class="text-xs sm:text-sm text-gray-400 truncate max-w-[180px] sm:max-w-none">
-            {{ searchQuery }}<span v-if="year && !customQuery" class="text-gray-500"> ({{ year }})</span>
-          </p>
-          <p v-if="isJapanese && hasOriginalTitle && !customQuery" class="text-[10px] sm:text-xs text-gray-500">
-            Searching with Japanese title
+        <div class="flex-1 min-w-0">
+          <h2 class="text-sm sm:text-lg font-semibold text-white mb-1">Find Torrent</h2>
+          <!-- Editable search query -->
+          <div class="flex items-center gap-2">
+            <InputText
+              v-model="editableQuery"
+              class="!text-xs sm:!text-sm !py-1 !px-2 flex-1 min-w-0"
+              placeholder="Search query..."
+              @keyup.enter="handleSearchWithNewQuery"
+            />
+            <Button
+              icon="pi pi-search"
+              severity="primary"
+              size="small"
+              class="!p-1.5 flex-shrink-0"
+              :loading="torrentsStore.isSearching"
+              @click="handleSearchWithNewQuery"
+              v-tooltip.bottom="'Search'"
+            />
+          </div>
+          <p v-if="isJapanese && !customQuery" class="text-[10px] sm:text-xs text-gray-500 mt-1">
+            Tip: For anime, use romanized Japanese title (e.g., "Sousou no Frieren")
           </p>
         </div>
       </div>

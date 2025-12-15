@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import AppHeader from '@/components/layout/AppHeader.vue'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
@@ -14,6 +14,11 @@ const toggleSidebar = () => {
 
 // Hide header/sidebar on login page
 const showLayout = computed(() => route.name !== 'login')
+
+// Add dark-mode class to html element for PrimeVue overlays
+onMounted(() => {
+  document.documentElement.classList.add('dark-mode')
+})
 </script>
 
 <template>

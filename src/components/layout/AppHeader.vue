@@ -94,6 +94,16 @@ onUnmounted(() => {
 
       <!-- Right side -->
       <div class="flex items-center gap-2 sm:gap-4">
+        <!-- Search icon -->
+        <RouterLink
+          to="/search"
+          class="p-2 hover:bg-white/10 rounded-lg transition-colors"
+          :class="isActiveRoute('/search') ? 'text-white bg-white/10' : 'text-gray-400 hover:text-white'"
+          title="Search"
+        >
+          <i class="pi pi-search text-lg"></i>
+        </RouterLink>
+
         <!-- Download Manager -->
         <DownloadManager />
 

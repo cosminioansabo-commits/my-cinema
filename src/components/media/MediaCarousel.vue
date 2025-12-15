@@ -67,9 +67,9 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <section class="carousel-section mb-6 sm:mb-10">
+  <section class="carousel-section">
     <!-- Header -->
-    <div class="flex items-center justify-between mb-2 sm:mb-4 px-3 sm:px-4 md:px-10">
+    <div class="flex items-center justify-between px-3 sm:px-4 md:px-10">
       <component
         :is="seeAllLink ? RouterLink : 'h2'"
         :to="seeAllLink"
@@ -98,7 +98,7 @@ onUnmounted(() => {
       <!-- Track -->
       <div
         ref="trackRef"
-        class="carousel-track px-3 sm:px-4 md:px-10"
+        class="carousel-track"
       >
         <!-- Loading skeletons with better styling -->
         <template v-if="loading">
@@ -109,7 +109,7 @@ onUnmounted(() => {
             :style="cardStyle"
           >
             <div class="bg-[#181818] rounded-xl overflow-hidden shadow-lg shadow-black/30 border border-zinc-800/50 animate-pulse">
-              <div class="aspect-[2/3] bg-zinc-800"></div>
+              <div class="aspect-2/3 bg-zinc-800"></div>
             </div>
           </div>
         </template>

@@ -57,6 +57,7 @@ const clearSearch = () => {
         v-model="searchQuery"
         :auto-focus="true"
         @search="handleSearch"
+        @clear="clearSearch"
       />
     </div>
 

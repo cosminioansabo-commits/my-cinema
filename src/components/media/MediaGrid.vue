@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Media } from '@/types'
 import MediaCard from './MediaCard.vue'
+import Card from 'primevue/card'
 import Skeleton from 'primevue/skeleton'
 
 defineProps<{
@@ -12,19 +13,27 @@ defineProps<{
 
 <template>
   <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 sm:gap-4 md:gap-5 lg:gap-6">
-    <!-- Loading skeletons with better styling -->
+    <!-- Loading skeletons -->
     <template v-if="loading">
-      <div
+      <Card
         v-for="i in (skeletonCount || 12)"
         :key="`skeleton-${i}`"
-        class="bg-[#181818] rounded-lg sm:rounded-xl overflow-hidden shadow-lg shadow-black/30 border border-zinc-800/50 animate-pulse"
+        :pt="{
+          root: { class: 'bg-[#181818] border border-zinc-800/50 shadow-lg shadow-black/30 overflow-hidden' },
+          body: { class: '!p-0' },
+          content: { class: '!p-0' }
+        }"
       >
-        <div class="aspect-[2/3] bg-zinc-800"></div>
-        <div class="p-2.5 sm:p-4 space-y-2 sm:space-y-3">
-          <div class="h-3 sm:h-4 bg-zinc-700 rounded-md w-3/4"></div>
-          <div class="h-2.5 sm:h-3 bg-zinc-700/60 rounded-md w-1/2"></div>
-        </div>
-      </div>
+        <template #header>
+          <Skeleton class="!w-full aspect-2/3" />
+        </template>
+        <template #content>
+          <div class="p-2.5 sm:p-4 space-y-2 sm:space-y-3">
+            <Skeleton width="75%" height="1rem" />
+            <Skeleton width="50%" height="0.75rem" />
+          </div>
+        </template>
+      </Card>
     </template>
 
     <!-- Media cards -->

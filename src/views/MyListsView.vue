@@ -175,7 +175,7 @@ onMounted(() => {
             class="group cursor-pointer"
             @click="goToMovie(movie.tmdbId)"
           >
-            <div class="relative aspect-[2/3] rounded-md sm:rounded-lg overflow-hidden bg-zinc-800 mb-1.5 sm:mb-2">
+            <div class="relative aspect-2/3 rounded-md sm:rounded-lg overflow-hidden bg-zinc-800 mb-1.5 sm:mb-2">
               <img
                 v-if="getMoviePoster(movie)"
                 :src="getMoviePoster(movie)"
@@ -213,7 +213,7 @@ onMounted(() => {
             class="group cursor-pointer"
             @click="goToSeries(series.tvdbId)"
           >
-            <div class="relative aspect-[2/3] rounded-md sm:rounded-lg overflow-hidden bg-zinc-800 mb-1.5 sm:mb-2">
+            <div class="relative aspect-2/3 rounded-md sm:rounded-lg overflow-hidden bg-zinc-800 mb-1.5 sm:mb-2">
               <img
                 v-if="getSeriesPoster(series)"
                 :src="getSeriesPoster(series)"

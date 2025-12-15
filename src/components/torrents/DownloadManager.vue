@@ -55,14 +55,17 @@ function goToDownloads() {
       class="absolute -top-1 -right-1 !text-[10px] sm:!text-xs !min-w-[18px] !h-[18px] !flex !items-center !justify-center pointer-events-none"
     />
 
-    <OverlayPanel ref="op" class="!w-[calc(100vw-24px)] sm:!w-[400px]">
+    <OverlayPanel
+      ref="op"
+      class="!w-[calc(100vw-24px)] sm:!w-[400px]"
+    >
       <div class="flex items-center justify-between mb-3 sm:mb-4">
         <h3 class="text-base sm:text-lg font-semibold text-white">Downloads</h3>
         <Button
           label="View All"
           link
           size="small"
-          class="!text-xs sm:!text-sm"
+          class="!text-xs sm:!text-sm !text-purple-400 hover:!text-purple-300"
           @click="goToDownloads"
         />
       </div>
@@ -79,8 +82,10 @@ function goToDownloads() {
       </div>
 
       <!-- No downloads -->
-      <div v-if="torrentsStore.downloads.length === 0" class="text-center py-4 sm:py-6">
-        <i class="pi pi-inbox text-2xl sm:text-3xl text-gray-500 mb-2"></i>
+      <div v-if="torrentsStore.downloads.length === 0" class="text-center py-6 sm:py-8">
+        <div class="w-12 h-12 sm:w-14 sm:h-14 mx-auto rounded-full bg-zinc-800 flex items-center justify-center mb-3">
+          <i class="pi pi-inbox text-xl sm:text-2xl text-gray-500"></i>
+        </div>
         <p class="text-gray-400 text-xs sm:text-sm">No downloads yet</p>
       </div>
 
@@ -105,3 +110,7 @@ function goToDownloads() {
     </OverlayPanel>
   </div>
 </template>
+
+<style>
+/* Download overlay specific styles - base dark mode handled in main.css */
+</style>

@@ -163,7 +163,7 @@ const profileUrl = computed(() => {
         <div class="flex flex-col md:flex-row gap-6 md:gap-10 mb-8 sm:mb-12">
           <!-- Profile Image -->
           <div class="flex-shrink-0 mx-auto md:mx-0">
-            <div class="w-48 sm:w-64 aspect-[2/3] rounded-2xl overflow-hidden bg-zinc-800 shadow-2xl">
+            <div class="w-48 sm:w-64 aspect-2/3 rounded-2xl overflow-hidden bg-zinc-800 shadow-2xl">
               <img
                 v-if="profileUrl"
                 :src="profileUrl"
@@ -230,7 +230,7 @@ const profileUrl = computed(() => {
               class="flex-shrink-0 w-28 sm:w-40 cursor-pointer group"
               @click="goToMedia(item.id, item.mediaType)"
             >
-              <div class="aspect-[2/3] rounded-lg sm:rounded-xl overflow-hidden bg-zinc-800 mb-2 sm:mb-3 shadow-lg shadow-black/30 border border-zinc-700/50 group-hover:border-purple-500/50 transition-all duration-200">
+              <div class="aspect-2/3 rounded-lg sm:rounded-xl overflow-hidden bg-zinc-800 mb-2 sm:mb-3 shadow-lg shadow-black/30 border border-zinc-700/50 group-hover:border-purple-500/50 transition-all duration-200">
                 <img
                   :src="getImageUrl(item.posterPath, 'w300')"
                   :alt="item.title"
@@ -256,7 +256,7 @@ const profileUrl = computed(() => {
               class="cursor-pointer group"
               @click="goToMedia(credit.id, credit.mediaType)"
             >
-              <div class="aspect-[2/3] rounded-lg sm:rounded-xl overflow-hidden bg-zinc-800 mb-2 shadow-lg shadow-black/30 border border-zinc-700/50 group-hover:border-purple-500/50 transition-all duration-200">
+              <div class="aspect-2/3 rounded-lg sm:rounded-xl overflow-hidden bg-zinc-800 mb-2 shadow-lg shadow-black/30 border border-zinc-700/50 group-hover:border-purple-500/50 transition-all duration-200">
                 <img
                   :src="getImageUrl(credit.posterPath, 'w300')"
                   :alt="credit.title"

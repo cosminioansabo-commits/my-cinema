@@ -12,16 +12,20 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:modelValue': [value: string]
   search: [query: string]
+  clear: []
 }>()
 
 const router = useRouter()
 const localQuery = ref(props.modelValue || '')
 const debouncedQuery = useDebounce(localQuery, 300)
 
-watch(debouncedQuery, (newVal) => {
+watch(debouncedQuery, (newVal, oldVal) => {
   emit('update:modelValue', newVal)
   if (newVal.trim()) {
     emit('search', newVal.trim())
+  } else if (oldVal && oldVal.trim()) {
+    // Input was cleared by deleting text
+    emit('clear')
   }
 })
 
@@ -41,6 +45,7 @@ const handleSubmit = () => {
 const clearSearch = () => {
   localQuery.value = ''
   emit('update:modelValue', '')
+  emit('clear')
 }
 </script>
 
