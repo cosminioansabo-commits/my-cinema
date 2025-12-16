@@ -350,6 +350,8 @@ const displayTitle = computed(() => {
         :duration="playbackInfo.duration"
         :subtitles="playbackInfo.subtitles"
         :audio-tracks="playbackInfo.audioTracks"
+        :playback-strategy="playbackInfo.playbackStrategy"
+        :file-path="playbackInfo.filePath"
         :on-progress="handleProgress"
         @close="handleClose"
         @ended="handleEnded"

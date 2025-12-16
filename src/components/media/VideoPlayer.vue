@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import Hls from 'hls.js'
 import Button from 'primevue/button'
 import Slider from 'primevue/slider'
+import { mediaService } from '@/services/mediaService'
 
 interface SubtitleTrack {
   id: number
@@ -14,10 +15,23 @@ interface SubtitleTrack {
 
 interface AudioTrack {
   id: number
+  streamIndex: number
   language: string
   languageCode: string
   displayTitle: string
   selected: boolean
+}
+
+// Playback strategy from backend
+type PlaybackStrategy = 'direct' | 'remux' | 'transcode'
+
+// Quality options for transcoding
+type QualityOption = 'original' | '1080p' | '720p' | '480p'
+
+interface QualityOptionItem {
+  label: string
+  value: QualityOption
+  resolution?: string
 }
 
 const props = defineProps<{
@@ -27,6 +41,8 @@ const props = defineProps<{
   duration?: number // in milliseconds
   subtitles?: SubtitleTrack[]
   audioTracks?: AudioTrack[]
+  playbackStrategy?: PlaybackStrategy // New: determines how to handle seeking
+  filePath?: string // New: for HLS session management
   onProgress?: (timeMs: number, state: 'playing' | 'paused' | 'stopped') => void
 }>()
 
@@ -70,6 +86,21 @@ const speedOptions = [
 
 // Buffering state
 const bufferedProgress = ref(0)
+
+// Quality selection state
+const qualityOptions: QualityOptionItem[] = [
+  { label: 'Original', value: 'original', resolution: 'Source' },
+  { label: '1080p', value: '1080p', resolution: '1920x1080' },
+  { label: '720p', value: '720p', resolution: '1280x720' },
+  { label: '480p', value: '480p', resolution: '854x480' }
+]
+const selectedQuality = ref<QualityOption>('original')
+
+// HLS session state
+const hlsSessionId = ref<string | null>(null)
+
+// Audio track state
+const selectedAudioTrack = ref<number>(0)
 
 // Subtitle styling
 interface SubtitleStyle {
@@ -372,6 +403,24 @@ const transcodeSeekOffset = ref(0)
 // Check if we're using a transcode URL
 const isTranscodeStream = computed(() => props.streamUrl.includes('/transcode/'))
 
+// Check if we're using an HLS stream (.m3u8)
+const isHlsStream = computed(() => props.streamUrl.includes('.m3u8'))
+
+// Determine if we should use native seeking or stream reload
+// Direct play and remux (within buffered range) can use native seeking
+const canUseNativeSeeking = computed(() => {
+  // Direct play always supports native seeking
+  if (props.playbackStrategy === 'direct') return true
+
+  // HLS streams support seeking via HLS.js
+  if (isHlsStream.value) return true
+
+  // Non-transcode streams support native seeking
+  if (!isTranscodeStream.value) return true
+
+  return false
+})
+
 // Get the base transcode URL without any start parameter
 const getBaseTranscodeUrl = (): string => {
   const url = new URL(props.streamUrl, window.location.origin)
@@ -379,18 +428,26 @@ const getBaseTranscodeUrl = (): string => {
   return url.toString()
 }
 
+// Debounced seek for smoother slider interaction
+let seekTimeout: ReturnType<typeof setTimeout> | null = null
+
 const seek = (value: number | number[]) => {
   const seekValue = Array.isArray(value) ? value[0] : value
   if (videoRef.value && videoDuration.value > 0) {
     const newTime = (seekValue / 100) * videoDuration.value
 
-    if (isTranscodeStream.value) {
-      // For transcoded streams, we need to reload with a new start time
-      seekToTranscodePosition(newTime)
+    // Update visual feedback immediately
+    currentTime.value = newTime
+
+    // Debounce the actual seek for transcoded streams
+    if (isTranscodeStream.value && !canUseNativeSeeking.value) {
+      if (seekTimeout) clearTimeout(seekTimeout)
+      seekTimeout = setTimeout(() => {
+        seekToTranscodePosition(newTime)
+      }, 300) // Wait 300ms after user stops dragging
     } else {
-      // For direct streams, use native seeking
+      // For direct/HLS streams, seek immediately
       videoRef.value.currentTime = newTime
-      currentTime.value = newTime
     }
   }
 }
@@ -399,19 +456,43 @@ const seekRelative = (seconds: number) => {
   if (videoRef.value) {
     const newTime = Math.max(0, Math.min(videoDuration.value, currentTime.value + seconds))
 
-    if (isTranscodeStream.value) {
-      seekToTranscodePosition(newTime)
+    if (isTranscodeStream.value && !canUseNativeSeeking.value) {
+      // For transcode streams, check if we can seek within buffer
+      const buffered = videoRef.value.buffered
+      let canSeekInBuffer = false
+
+      for (let i = 0; i < buffered.length; i++) {
+        const actualNewTime = newTime - transcodeSeekOffset.value
+        if (actualNewTime >= buffered.start(i) && actualNewTime <= buffered.end(i)) {
+          canSeekInBuffer = true
+          break
+        }
+      }
+
+      if (canSeekInBuffer) {
+        // Seek within buffer - no reload needed
+        videoRef.value.currentTime = newTime - transcodeSeekOffset.value
+        currentTime.value = newTime
+      } else {
+        // Need to reload stream from new position
+        seekToTranscodePosition(newTime)
+      }
     } else {
+      // Direct play or HLS - use native seeking
       videoRef.value.currentTime = newTime
+      currentTime.value = newTime
     }
   }
 }
 
 // Seek in a transcoded stream by reloading with new start position
+// IMPROVED: Better handling to minimize audio sync issues
 const seekToTranscodePosition = (targetTime: number) => {
   if (!videoRef.value) return
 
   const wasPlaying = isPlaying.value
+  const currentPlaybackRate = videoRef.value.playbackRate
+
   isLoading.value = true
 
   // Update the offset and current time
@@ -421,12 +502,13 @@ const seekToTranscodePosition = (targetTime: number) => {
   // Build the new URL with start parameter
   const baseUrl = getBaseTranscodeUrl()
   const separator = baseUrl.includes('?') ? '&' : '?'
-  const newUrl = `${baseUrl}${separator}start=${targetTime}`
+  const newUrl = `${baseUrl}${separator}start=${Math.floor(targetTime)}`
 
-  console.log(`Seeking transcode stream to ${targetTime}s`)
+  console.log(`Seeking transcode stream to ${targetTime}s (strategy: ${props.playbackStrategy || 'unknown'})`)
 
-  // Destroy HLS if active
-  if (hls.value) {
+  // For non-HLS transcode streams, we need to reload
+  // But we DON'T destroy HLS for HLS streams - let HLS.js handle it
+  if (!isHlsStream.value && hls.value) {
     hls.value.destroy()
     hls.value = null
   }
@@ -436,12 +518,28 @@ const seekToTranscodePosition = (targetTime: number) => {
   videoRef.value.load()
 
   // Resume playback once loaded
-  videoRef.value.addEventListener('canplay', () => {
+  const onCanPlay = () => {
     isLoading.value = false
+    // Restore playback rate
+    if (videoRef.value) {
+      videoRef.value.playbackRate = currentPlaybackRate
+    }
     if (wasPlaying) {
       videoRef.value?.play()
     }
-  }, { once: true })
+  }
+
+  videoRef.value.addEventListener('canplay', onCanPlay, { once: true })
+
+  // Timeout fallback in case canplay doesn't fire
+  setTimeout(() => {
+    if (isLoading.value) {
+      isLoading.value = false
+      if (wasPlaying) {
+        videoRef.value?.play()
+      }
+    }
+  }, 5000)
 }
 
 const toggleMute = () => {
@@ -599,6 +697,212 @@ const setVolume = (value: number | number[]) => {
   }
 }
 
+// Check if quality switching is available (only for remux/transcode strategies)
+const canSwitchQuality = computed(() => {
+  return props.playbackStrategy === 'remux' || props.playbackStrategy === 'transcode'
+})
+
+// Check if audio track switching is available
+const canSwitchAudio = computed(() => {
+  return props.audioTracks && props.audioTracks.length > 1 && props.filePath
+})
+
+// Initialize audio track from props
+const initAudioTrack = () => {
+  if (props.audioTracks) {
+    const selected = props.audioTracks.find(t => t.selected)
+    if (selected) {
+      selectedAudioTrack.value = selected.streamIndex
+    }
+  }
+}
+
+// Start HLS session for quality/audio switching
+const startHlsSession = async (quality: QualityOption, audioTrack: number, startTime: number = 0) => {
+  if (!props.filePath) {
+    console.warn('Cannot start HLS session: no filePath provided')
+    return null
+  }
+
+  // Stop existing session if any
+  if (hlsSessionId.value) {
+    await stopHlsSession()
+  }
+
+  console.log(`Starting HLS session: quality=${quality}, audioTrack=${audioTrack}, startTime=${startTime}`)
+
+  const session = await mediaService.startHlsSession(props.filePath, {
+    quality,
+    audioTrack,
+    startTime: Math.floor(startTime)
+  })
+
+  if (session) {
+    hlsSessionId.value = session.sessionId
+    return session.playlistUrl
+  }
+
+  return null
+}
+
+// Stop current HLS session
+const stopHlsSession = async () => {
+  if (hlsSessionId.value) {
+    await mediaService.stopHlsSession(hlsSessionId.value)
+    hlsSessionId.value = null
+  }
+}
+
+// Switch video quality
+const switchQuality = async (quality: QualityOption) => {
+  if (!canSwitchQuality.value || quality === selectedQuality.value) return
+
+  const wasPlaying = isPlaying.value
+  const currentPos = currentTime.value
+  const currentPlaybackRate = videoRef.value?.playbackRate || 1
+
+  isLoading.value = true
+  selectedQuality.value = quality
+
+  console.log(`Switching quality to ${quality} at position ${currentPos}s`)
+
+  // For quality switching, we need to use HLS session
+  const playlistUrl = await startHlsSession(quality, selectedAudioTrack.value, currentPos)
+
+  if (playlistUrl && videoRef.value) {
+    // Cleanup existing HLS instance
+    if (hls.value) {
+      hls.value.destroy()
+      hls.value = null
+    }
+
+    // Initialize new HLS stream
+    if (Hls.isSupported()) {
+      hls.value = new Hls({
+        enableWorker: true,
+        lowLatencyMode: false,
+        backBufferLength: 90,
+        maxBufferLength: 60,
+      })
+
+      hls.value.loadSource(playlistUrl)
+      hls.value.attachMedia(videoRef.value)
+
+      hls.value.on(Hls.Events.MANIFEST_PARSED, () => {
+        isLoading.value = false
+        if (videoRef.value) {
+          videoRef.value.playbackRate = currentPlaybackRate
+          if (wasPlaying) {
+            videoRef.value.play()
+          }
+        }
+      })
+
+      hls.value.on(Hls.Events.ERROR, (_event, data) => {
+        console.error('HLS error during quality switch:', data)
+        if (data.fatal) {
+          hasError.value = true
+          errorMessage.value = 'Failed to switch quality'
+          isLoading.value = false
+        }
+      })
+    } else if (videoRef.value.canPlayType('application/vnd.apple.mpegurl')) {
+      // Safari native HLS
+      videoRef.value.src = playlistUrl
+      videoRef.value.addEventListener('loadedmetadata', () => {
+        isLoading.value = false
+        if (videoRef.value) {
+          videoRef.value.playbackRate = currentPlaybackRate
+          if (wasPlaying) {
+            videoRef.value.play()
+          }
+        }
+      }, { once: true })
+    }
+  } else {
+    // Fallback: reload stream with new quality parameter
+    console.warn('HLS session failed, using fallback method')
+    isLoading.value = false
+  }
+}
+
+// Switch audio track
+const switchAudioTrack = async (streamIndex: number) => {
+  if (!canSwitchAudio.value || streamIndex === selectedAudioTrack.value) return
+
+  const wasPlaying = isPlaying.value
+  const currentPos = currentTime.value
+  const currentPlaybackRate = videoRef.value?.playbackRate || 1
+
+  isLoading.value = true
+  selectedAudioTrack.value = streamIndex
+
+  console.log(`Switching audio track to stream ${streamIndex} at position ${currentPos}s`)
+
+  // For audio switching, we reload the transcode stream with new audio track
+  if (props.playbackStrategy === 'remux' || props.playbackStrategy === 'transcode') {
+    // Use HLS session for smooth audio switching
+    const playlistUrl = await startHlsSession(selectedQuality.value, streamIndex, currentPos)
+
+    if (playlistUrl && videoRef.value) {
+      // Cleanup existing HLS instance
+      if (hls.value) {
+        hls.value.destroy()
+        hls.value = null
+      }
+
+      // Initialize new HLS stream
+      if (Hls.isSupported()) {
+        hls.value = new Hls({
+          enableWorker: true,
+          lowLatencyMode: false,
+          backBufferLength: 90,
+          maxBufferLength: 60,
+        })
+
+        hls.value.loadSource(playlistUrl)
+        hls.value.attachMedia(videoRef.value)
+
+        hls.value.on(Hls.Events.MANIFEST_PARSED, () => {
+          isLoading.value = false
+          if (videoRef.value) {
+            videoRef.value.playbackRate = currentPlaybackRate
+            if (wasPlaying) {
+              videoRef.value.play()
+            }
+          }
+        })
+
+        hls.value.on(Hls.Events.ERROR, (_event, data) => {
+          console.error('HLS error during audio switch:', data)
+          if (data.fatal) {
+            isLoading.value = false
+          }
+        })
+      }
+    } else {
+      // Fallback: reload transcode stream with new audio track
+      const baseUrl = getBaseTranscodeUrl()
+      const url = new URL(baseUrl)
+      url.searchParams.set('start', Math.floor(currentPos).toString())
+      url.searchParams.set('audioTrack', streamIndex.toString())
+
+      videoRef.value!.src = url.toString()
+      videoRef.value!.load()
+
+      videoRef.value!.addEventListener('canplay', () => {
+        isLoading.value = false
+        if (videoRef.value) {
+          videoRef.value.playbackRate = currentPlaybackRate
+          if (wasPlaying) {
+            videoRef.value.play()
+          }
+        }
+      }, { once: true })
+    }
+  }
+}
+
 const toggleFullscreen = async () => {
   if (!containerRef.value) return
 
@@ -695,7 +999,11 @@ const handleFullscreenChange = () => {
 }
 
 // Cleanup
-const cleanup = () => {
+const cleanup = async () => {
+  // Stop HLS session on cleanup
+  if (hlsSessionId.value) {
+    await stopHlsSession()
+  }
   if (hls.value) {
     hls.value.destroy()
     hls.value = null
@@ -715,6 +1023,9 @@ onMounted(() => {
   if (props.duration && props.duration > 0) {
     videoDuration.value = props.duration / 1000 // Convert ms to seconds
   }
+
+  // Initialize audio track from props
+  initAudioTrack()
 
   initPlayer()
   document.addEventListener('fullscreenchange', handleFullscreenChange)
@@ -956,6 +1267,22 @@ defineExpose({
               >
                 <!-- Main Settings Tab -->
                 <div v-if="settingsTab === 'main'" class="p-4">
+                  <!-- Quality Selection (only for remux/transcode) -->
+                  <div v-if="canSwitchQuality" class="mb-4">
+                    <label class="text-gray-400 text-xs uppercase tracking-wide mb-2 block">Quality</label>
+                    <div class="flex flex-wrap gap-1">
+                      <button
+                        v-for="option in qualityOptions"
+                        :key="option.value"
+                        class="px-3 py-1.5 rounded text-sm transition-colors"
+                        :class="selectedQuality === option.value ? 'bg-red-600 text-white' : 'text-gray-300 hover:bg-zinc-700'"
+                        @click="switchQuality(option.value)"
+                      >
+                        {{ option.label }}
+                      </button>
+                    </div>
+                  </div>
+
                   <!-- Playback Speed -->
                   <div class="mb-4">
                     <label class="text-gray-400 text-xs uppercase tracking-wide mb-2 block">Speed</label>
@@ -972,8 +1299,24 @@ defineExpose({
                     </div>
                   </div>
 
+                  <!-- Audio Track Selection -->
+                  <div v-if="audioTracks && audioTracks.length > 1" class="mb-4">
+                    <label class="text-gray-400 text-xs uppercase tracking-wide mb-2 block">Audio</label>
+                    <div class="flex flex-col gap-1 max-h-32 overflow-y-auto">
+                      <button
+                        v-for="track in audioTracks"
+                        :key="track.id"
+                        class="text-left px-3 py-2 rounded text-sm transition-colors"
+                        :class="selectedAudioTrack === track.streamIndex ? 'bg-red-600 text-white' : 'text-gray-300 hover:bg-zinc-700'"
+                        @click="switchAudioTrack(track.streamIndex)"
+                      >
+                        {{ track.displayTitle }}
+                      </button>
+                    </div>
+                  </div>
+
                   <!-- Subtitle Selection -->
-                  <div v-if="subtitles && subtitles.length > 0" class="mb-4">
+                  <div v-if="subtitles && subtitles.length > 0">
                     <div class="flex items-center justify-between mb-2">
                       <label class="text-gray-400 text-xs uppercase tracking-wide">Subtitles</label>
                       <button
@@ -992,21 +1335,6 @@ defineExpose({
                         @click="selectedSubtitle = option.value"
                       >
                         {{ option.label }}
-                      </button>
-                    </div>
-                  </div>
-
-                  <!-- Audio Track Selection -->
-                  <div v-if="audioTracks && audioTracks.length > 1">
-                    <label class="text-gray-400 text-xs uppercase tracking-wide mb-2 block">Audio</label>
-                    <div class="flex flex-col gap-1 max-h-32 overflow-y-auto">
-                      <button
-                        v-for="track in audioTracks"
-                        :key="track.id"
-                        class="text-left px-3 py-2 rounded text-sm transition-colors"
-                        :class="track.selected ? 'bg-red-600 text-white' : 'text-gray-300 hover:bg-zinc-700'"
-                      >
-                        {{ track.displayTitle }}
                       </button>
                     </div>
                   </div>

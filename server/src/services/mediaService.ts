@@ -23,6 +23,9 @@ export interface AudioTrack {
   selected: boolean
 }
 
+// Playback strategy determines how to stream the content
+export type PlaybackStrategy = 'direct' | 'remux' | 'transcode'
+
 export interface PlaybackInfo {
   found: boolean
   title: string
@@ -37,14 +40,125 @@ export interface PlaybackInfo {
     audioCodec: string
     container: string
   }
-  needsTranscode: boolean // True if audio needs transcoding
+  needsTranscode: boolean // True if audio needs transcoding (legacy, kept for compatibility)
+  playbackStrategy: PlaybackStrategy // New: more granular playback decision
   streamUrl: string
+  directStreamUrl?: string // For remux: direct stream URL as fallback
+  hlsSupported: boolean // True if HLS streaming is available
   subtitles: SubtitleTrack[]
   audioTracks: AudioTrack[]
 }
 
-// Browser-compatible audio codecs
-const BROWSER_COMPATIBLE_AUDIO = ['aac', 'mp3', 'opus', 'vorbis', 'flac', 'pcm']
+// ============================================================================
+// BROWSER COMPATIBILITY DETECTION
+// Comprehensive codec/container detection for optimal playback strategy
+// ============================================================================
+
+// Video codecs that browsers can play natively (without transcoding)
+const BROWSER_COMPATIBLE_VIDEO: Record<string, string[]> = {
+  // H.264/AVC - universally supported
+  'h264': ['h264', 'avc', 'avc1', 'x264'],
+  // VP8/VP9 - Chrome, Firefox, Edge
+  'vp9': ['vp9', 'vp8'],
+  // AV1 - Modern browsers (Chrome 70+, Firefox 67+, Edge 79+)
+  'av1': ['av1'],
+  // HEVC/H.265 - Safari only (with hardware support), Edge on Windows with HEVC extension
+  'hevc': ['hevc', 'h265', 'x265'],
+}
+
+// Audio codecs that browsers can play natively
+const BROWSER_COMPATIBLE_AUDIO: Record<string, string[]> = {
+  'aac': ['aac', 'mp4a'],
+  'mp3': ['mp3', 'mpeg'],
+  'opus': ['opus'],
+  'vorbis': ['vorbis'],
+  'flac': ['flac'],
+  'pcm': ['pcm', 'wav'],
+  'ac3': ['ac3', 'eac3', 'ec3'], // Safari only with hardware decoder
+}
+
+// Containers that browsers can play natively
+const BROWSER_COMPATIBLE_CONTAINERS = ['mp4', 'webm', 'm4v', 'mov']
+
+// Audio codecs that REQUIRE transcoding (never direct play)
+const ALWAYS_TRANSCODE_AUDIO = ['dts', 'truehd', 'dtshd', 'dts-hd', 'mlp']
+
+/**
+ * Check if a video codec is browser-compatible
+ * Note: HEVC only works on Safari/Edge with hardware support
+ */
+function isVideoCompatible(videoCodec: string): boolean {
+  const codec = videoCodec.toLowerCase()
+
+  // HEVC is problematic - only Safari and Edge (with extension) support it
+  // For now, we'll treat HEVC as compatible and let the browser handle it
+  // The frontend can detect playback failure and fall back to transcode
+
+  for (const compatibleCodecs of Object.values(BROWSER_COMPATIBLE_VIDEO)) {
+    if (compatibleCodecs.some(c => codec.includes(c))) {
+      return true
+    }
+  }
+  return false
+}
+
+/**
+ * Check if an audio codec is browser-compatible
+ */
+function isAudioCompatible(audioCodec: string): boolean {
+  const codec = audioCodec.toLowerCase()
+
+  // These ALWAYS need transcoding
+  if (ALWAYS_TRANSCODE_AUDIO.some(c => codec.includes(c))) {
+    return false
+  }
+
+  for (const compatibleCodecs of Object.values(BROWSER_COMPATIBLE_AUDIO)) {
+    if (compatibleCodecs.some(c => codec.includes(c))) {
+      return true
+    }
+  }
+  return false
+}
+
+/**
+ * Check if container is browser-compatible
+ */
+function isContainerCompatible(container: string): boolean {
+  return BROWSER_COMPATIBLE_CONTAINERS.includes(container.toLowerCase())
+}
+
+/**
+ * Determine the optimal playback strategy based on media info
+ *
+ * @returns
+ * - 'direct': Stream file as-is (no processing)
+ * - 'remux': Copy video, transcode audio only (fast, minimal CPU)
+ * - 'transcode': Full transcode (video + audio, CPU/GPU intensive)
+ */
+function determinePlaybackStrategy(
+  videoCodec: string,
+  audioCodec: string,
+  container: string
+): PlaybackStrategy {
+  const videoOk = isVideoCompatible(videoCodec)
+  const audioOk = isAudioCompatible(audioCodec)
+  const containerOk = isContainerCompatible(container)
+
+  // Perfect case: everything is compatible
+  if (videoOk && audioOk && containerOk) {
+    return 'direct'
+  }
+
+  // Video is OK but audio or container needs work
+  // This is the most common case (MKV with DTS audio, MP4 with AC3)
+  if (videoOk) {
+    return 'remux' // Copy video, transcode audio, remux to MP4
+  }
+
+  // Video needs transcoding (HEVC on non-Safari, rare codecs)
+  return 'transcode'
+}
 
 // Language code to full name mapping
 const LANGUAGE_NAMES: Record<string, string> = {
@@ -221,28 +335,54 @@ class MediaService {
     const audioCodec = mediaInfo?.audioCodec || 'unknown'
     const audioChannels = mediaInfo?.audioChannels || 2
     const videoCodec = mediaInfo?.videoCodec || 'unknown'
+    const container = path.extname(filePath).slice(1) || 'mkv'
     const { width, height } = parseResolution(mediaInfo?.resolution || '')
     const duration = parseRuntime(mediaInfo?.runTime || '')
 
-    // Check if audio codec is browser-compatible
-    const needsTranscode = !BROWSER_COMPATIBLE_AUDIO.some(codec =>
-      audioCodec.toLowerCase().includes(codec)
-    )
+    // Determine optimal playback strategy
+    const playbackStrategy = determinePlaybackStrategy(videoCodec, audioCodec, container)
+
+    // Legacy compatibility
+    const needsTranscode = playbackStrategy !== 'direct'
 
     // Parse subtitles and audio tracks from Radarr info
     const subtitles = parseSubtitles(mediaInfo?.subtitles || '')
     const audioTracks = parseAudioTracks(mediaInfo?.audioLanguages || '', audioCodec, audioChannels)
 
-    // Build stream URL - encode the file path
+    // Build stream URLs based on strategy
     const encodedPath = encodeURIComponent(filePath)
-    const streamUrl = needsTranscode
-      ? `/api/media/transcode/${encodedPath}`
-      : `/api/media/stream/${encodedPath}`
+    let streamUrl: string
+    let directStreamUrl: string | undefined
+
+    switch (playbackStrategy) {
+      case 'direct':
+        // Stream file as-is
+        streamUrl = `/api/media/stream/${encodedPath}`
+        break
+      case 'remux':
+        // Transcode audio only (video copy)
+        streamUrl = `/api/media/transcode/${encodedPath}`
+        // Also provide direct URL in case browser can handle it
+        directStreamUrl = `/api/media/stream/${encodedPath}`
+        break
+      case 'transcode':
+        // Full transcode needed - use HLS for better experience
+        streamUrl = `/api/media/transcode/${encodedPath}`
+        break
+    }
+
+    const strategyLabel = {
+      'direct': 'Direct Play',
+      'remux': 'Remux (video copy + audio transcode)',
+      'transcode': 'Full Transcode'
+    }[playbackStrategy]
 
     console.log(`MediaService: ${movie.title}`)
     console.log(`  File: ${filePath}`)
+    console.log(`  Container: ${container}`)
     console.log(`  Video: ${videoCodec} ${width}x${height}`)
-    console.log(`  Audio: ${audioCodec} ${audioChannels}ch (${needsTranscode ? 'needs transcode' : 'direct play'})`)
+    console.log(`  Audio: ${audioCodec} ${audioChannels}ch`)
+    console.log(`  Strategy: ${strategyLabel}`)
     console.log(`  Subtitles: ${subtitles.length} tracks`)
 
     return {
@@ -257,10 +397,13 @@ class MediaService {
         height,
         videoCodec,
         audioCodec,
-        container: path.extname(filePath).slice(1) || 'mkv'
+        container
       },
       needsTranscode,
+      playbackStrategy,
       streamUrl,
+      directStreamUrl,
+      hlsSupported: true, // HLS is now always available
       subtitles,
       audioTracks
     }
@@ -312,30 +455,52 @@ class MediaService {
     const audioCodec = mediaInfo?.audioCodec || 'unknown'
     const audioChannels = mediaInfo?.audioChannels || 2
     const videoCodec = mediaInfo?.videoCodec || 'unknown'
+    const container = path.extname(filePath).slice(1) || 'mkv'
     const { width, height } = parseResolution(mediaInfo?.resolution || '')
     const duration = parseRuntime(mediaInfo?.runTime || '')
 
-    // Check if audio codec is browser-compatible
-    const needsTranscode = !BROWSER_COMPATIBLE_AUDIO.some(codec =>
-      audioCodec.toLowerCase().includes(codec)
-    )
+    // Determine optimal playback strategy
+    const playbackStrategy = determinePlaybackStrategy(videoCodec, audioCodec, container)
+
+    // Legacy compatibility
+    const needsTranscode = playbackStrategy !== 'direct'
 
     // Parse subtitles and audio tracks
     const subtitles = parseSubtitles(mediaInfo?.subtitles || '')
     const audioTracks = parseAudioTracks(mediaInfo?.audioLanguages || '', audioCodec, audioChannels)
 
-    // Build stream URL
+    // Build stream URLs based on strategy
     const encodedPath = encodeURIComponent(filePath)
-    const streamUrl = needsTranscode
-      ? `/api/media/transcode/${encodedPath}`
-      : `/api/media/stream/${encodedPath}`
+    let streamUrl: string
+    let directStreamUrl: string | undefined
+
+    switch (playbackStrategy) {
+      case 'direct':
+        streamUrl = `/api/media/stream/${encodedPath}`
+        break
+      case 'remux':
+        streamUrl = `/api/media/transcode/${encodedPath}`
+        directStreamUrl = `/api/media/stream/${encodedPath}`
+        break
+      case 'transcode':
+        streamUrl = `/api/media/transcode/${encodedPath}`
+        break
+    }
 
     const title = `${series.title} - S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')} - ${targetEpisode.title}`
 
+    const strategyLabel = {
+      'direct': 'Direct Play',
+      'remux': 'Remux (video copy + audio transcode)',
+      'transcode': 'Full Transcode'
+    }[playbackStrategy]
+
     console.log(`MediaService: ${title}`)
     console.log(`  File: ${filePath}`)
+    console.log(`  Container: ${container}`)
     console.log(`  Video: ${videoCodec} ${width}x${height}`)
-    console.log(`  Audio: ${audioCodec} ${audioChannels}ch (${needsTranscode ? 'needs transcode' : 'direct play'})`)
+    console.log(`  Audio: ${audioCodec} ${audioChannels}ch`)
+    console.log(`  Strategy: ${strategyLabel}`)
     console.log(`  Subtitles: ${subtitles.length} tracks`)
 
     return {
@@ -350,10 +515,13 @@ class MediaService {
         height,
         videoCodec,
         audioCodec,
-        container: path.extname(filePath).slice(1) || 'mkv'
+        container
       },
       needsTranscode,
+      playbackStrategy,
       streamUrl,
+      directStreamUrl,
+      hlsSupported: true,
       subtitles,
       audioTracks
     }
