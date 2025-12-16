@@ -257,20 +257,19 @@ router.get('/transcode/:filePath', async (req: Request, res: Response) => {
     res.setHeader('Transfer-Encoding', 'chunked')
 
     // Build ffmpeg arguments - FIXED audio sync for EAC3/DTS sources
+    // Audio is AHEAD of video, so we need to DELAY the audio
     const ffmpegArgs: string[] = [
-      // Input seeking (fast, seeks to keyframe)
+      // Input seeking (fast, seeks to keyframe) - BEFORE input for speed
       ...(startTime > 0 ? ['-ss', startTime.toString()] : []),
 
-      // Input file with format probing
-      '-probesize', '50M',                // Larger probe for accurate duration/sync info
-      '-analyzeduration', '100M',         // More analysis time for complex containers
+      // Input file
       '-i', filePath,
 
-      // Map streams explicitly with proper sync
+      // Map streams explicitly
       '-map', '0:v:0',                    // First video stream
       '-map', `0:a:${audioTrack}`,        // Selected audio stream
 
-      // Video: copy (no re-encoding)
+      // Video: copy (no re-encoding needed for remux)
       '-c:v', 'copy',
 
       // Audio: transcode to AAC
@@ -279,14 +278,13 @@ router.get('/transcode/:filePath', async (req: Request, res: Response) => {
       '-ac', '2',
       '-ar', '48000',
 
-      // SYNC FIX: Force audio to start at same PTS as video
-      '-af', 'asetpts=PTS-STARTPTS',      // Reset audio timestamps to start at 0
+      // AUDIO SYNC FIX: Delay audio by ~200ms to compensate for EAC3/Atmos priming
+      // The adelay filter adds delay in milliseconds to the audio stream
+      '-af', 'adelay=200|200',
 
       // Timestamp handling
       '-avoid_negative_ts', 'make_zero',
-      '-fflags', '+genpts+discardcorrupt',
-      '-max_muxing_queue_size', '2048',
-      '-shortest',                        // End when shortest stream ends
+      '-max_muxing_queue_size', '4096',
 
       // Output format for streaming
       '-movflags', 'frag_keyframe+empty_moov+default_base_moof',
