@@ -22,18 +22,6 @@ interface AudioTrack {
   selected: boolean
 }
 
-// Playback strategy from backend
-type PlaybackStrategy = 'direct' | 'remux' | 'transcode'
-
-// Quality options for transcoding
-type QualityOption = 'original' | '1080p' | '720p' | '480p'
-
-interface QualityOptionItem {
-  label: string
-  value: QualityOption
-  resolution?: string
-}
-
 const props = defineProps<{
   streamUrl: string
   title: string
@@ -41,14 +29,12 @@ const props = defineProps<{
   duration?: number // in milliseconds
   subtitles?: SubtitleTrack[]
   audioTracks?: AudioTrack[]
-  playbackStrategy?: PlaybackStrategy // New: determines how to handle seeking
-  filePath?: string // New: for HLS session management
+  filePath?: string
   onProgress?: (timeMs: number, state: 'playing' | 'paused' | 'stopped') => void
-  // Jellyfin-specific props
+  // Jellyfin fields
   jellyfinItemId?: string
   jellyfinMediaSourceId?: string
   jellyfinPlaySessionId?: string
-  streamingBackend?: 'native' | 'jellyfin'
 }>()
 
 const emit = defineEmits<{
@@ -91,18 +77,6 @@ const speedOptions = [
 
 // Buffering state
 const bufferedProgress = ref(0)
-
-// Quality selection state
-const qualityOptions: QualityOptionItem[] = [
-  { label: 'Original', value: 'original', resolution: 'Source' },
-  { label: '1080p', value: '1080p', resolution: '1920x1080' },
-  { label: '720p', value: '720p', resolution: '1280x720' },
-  { label: '480p', value: '480p', resolution: '854x480' }
-]
-const selectedQuality = ref<QualityOption>('original')
-
-// HLS session state
-const hlsSessionId = ref<string | null>(null)
 
 // Audio track state
 const selectedAudioTrack = ref<number>(0)
@@ -236,7 +210,7 @@ const timeDisplay = computed(() => {
   return `${formatTime(currentTime.value)} / ${formatTime(videoDuration.value)}`
 })
 
-// Initialize HLS or native video
+// Initialize HLS player (Jellyfin streams are always HLS)
 const initPlayer = () => {
   const video = videoRef.value
   if (!video || !props.streamUrl) return
@@ -244,53 +218,39 @@ const initPlayer = () => {
   isLoading.value = true
   hasError.value = false
 
-  // Check if it's an HLS stream
-  const isHls = props.streamUrl.includes('.m3u8')
+  console.log('Initializing Jellyfin HLS stream:', props.streamUrl.substring(0, 80) + '...')
 
-  if (isHls) {
-    // HLS stream - use HLS.js or native support
-    if (Hls.isSupported()) {
-      hls.value = new Hls({
-        enableWorker: true,
-        lowLatencyMode: false,
-        backBufferLength: 90,
-        maxBufferLength: 60,
-        maxMaxBufferLength: 120,
-        maxBufferSize: 120 * 1000000,
-      })
+  // Jellyfin streams are HLS - use HLS.js or native support
+  if (Hls.isSupported()) {
+    hls.value = new Hls({
+      enableWorker: true,
+      lowLatencyMode: false,
+      backBufferLength: 90,
+      maxBufferLength: 60,
+      maxMaxBufferLength: 120,
+      maxBufferSize: 120 * 1000000,
+    })
 
-      hls.value.loadSource(props.streamUrl)
-      hls.value.attachMedia(video)
+    hls.value.loadSource(props.streamUrl)
+    hls.value.attachMedia(video)
 
-      hls.value.on(Hls.Events.MANIFEST_PARSED, () => {
+    hls.value.on(Hls.Events.MANIFEST_PARSED, () => {
+      isLoading.value = false
+      checkResumePosition()
+    })
+
+    hls.value.on(Hls.Events.ERROR, (_event, data) => {
+      console.error('HLS error:', data)
+      if (data.fatal) {
+        hasError.value = true
+        errorMessage.value = 'Failed to load video stream'
         isLoading.value = false
-        checkResumePosition()
-      })
-
-      hls.value.on(Hls.Events.ERROR, (_event, data) => {
-        console.error('HLS error:', data)
-        if (data.fatal) {
-          hasError.value = true
-          errorMessage.value = 'Failed to load video stream'
-          isLoading.value = false
-        }
-      })
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      // Native HLS support (Safari)
-      video.src = props.streamUrl
-      video.addEventListener('loadedmetadata', () => {
-        isLoading.value = false
-        checkResumePosition()
-      }, { once: true })
-    }
-  } else {
-    // Direct file playback - native HTML5 video
-    // This is the preferred method for local/LAN streaming
-    console.log('Using direct file playback:', props.streamUrl)
+      }
+    })
+  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    // Native HLS support (Safari)
     video.src = props.streamUrl
-
     video.addEventListener('loadedmetadata', () => {
-      console.log('Video loaded:', video.duration, 'seconds')
       isLoading.value = false
       checkResumePosition()
     }, { once: true })
@@ -307,17 +267,11 @@ const initPlayer = () => {
   })
 
   video.addEventListener('timeupdate', () => {
-    // For transcoded streams, add the seek offset to get the actual position
-    if (isTranscodeStream.value) {
-      currentTime.value = transcodeSeekOffset.value + video.currentTime
-    } else {
-      currentTime.value = video.currentTime
-    }
+    currentTime.value = video.currentTime
   })
 
   video.addEventListener('durationchange', () => {
-    // Prefer duration from props (from Radarr/Sonarr) over video element duration
-    // This is important for transcoded streams where duration keeps updating
+    // Prefer duration from props (from Jellyfin) over video element duration
     if (props.duration && props.duration > 0) {
       videoDuration.value = props.duration / 1000 // Convert ms to seconds
     } else if (video.duration && isFinite(video.duration)) {
@@ -402,152 +356,21 @@ const pause = () => {
   videoRef.value?.pause()
 }
 
-// Track the current seek offset for transcoded streams
-const transcodeSeekOffset = ref(0)
-
-// Check if we're using a transcode URL
-const isTranscodeStream = computed(() => props.streamUrl.includes('/transcode/'))
-
-// Check if we're using an HLS stream (.m3u8)
-const isHlsStream = computed(() => props.streamUrl.includes('.m3u8'))
-
-// Check if we're using Jellyfin backend
-const isJellyfinStream = computed(() => props.streamingBackend === 'jellyfin')
-
-// Determine if we should use native seeking or stream reload
-// Direct play and remux (within buffered range) can use native seeking
-const canUseNativeSeeking = computed(() => {
-  // Direct play always supports native seeking
-  if (props.playbackStrategy === 'direct') return true
-
-  // HLS streams support seeking via HLS.js
-  if (isHlsStream.value) return true
-
-  // Non-transcode streams support native seeking
-  if (!isTranscodeStream.value) return true
-
-  return false
-})
-
-// Get the base transcode URL without any start parameter
-const getBaseTranscodeUrl = (): string => {
-  const url = new URL(props.streamUrl, window.location.origin)
-  url.searchParams.delete('start')
-  return url.toString()
-}
-
-// Debounced seek for smoother slider interaction
-let seekTimeout: ReturnType<typeof setTimeout> | null = null
-
 const seek = (value: number | number[]) => {
   const seekValue = Array.isArray(value) ? value[0] : value
   if (videoRef.value && videoDuration.value > 0) {
     const newTime = (seekValue / 100) * videoDuration.value
-
-    // Update visual feedback immediately
     currentTime.value = newTime
-
-    // Debounce the actual seek for transcoded streams
-    if (isTranscodeStream.value && !canUseNativeSeeking.value) {
-      if (seekTimeout) clearTimeout(seekTimeout)
-      seekTimeout = setTimeout(() => {
-        seekToTranscodePosition(newTime)
-      }, 300) // Wait 300ms after user stops dragging
-    } else {
-      // For direct/HLS streams, seek immediately
-      videoRef.value.currentTime = newTime
-    }
+    videoRef.value.currentTime = newTime
   }
 }
 
 const seekRelative = (seconds: number) => {
   if (videoRef.value) {
     const newTime = Math.max(0, Math.min(videoDuration.value, currentTime.value + seconds))
-
-    if (isTranscodeStream.value && !canUseNativeSeeking.value) {
-      // For transcode streams, check if we can seek within buffer
-      const buffered = videoRef.value.buffered
-      let canSeekInBuffer = false
-
-      for (let i = 0; i < buffered.length; i++) {
-        const actualNewTime = newTime - transcodeSeekOffset.value
-        if (actualNewTime >= buffered.start(i) && actualNewTime <= buffered.end(i)) {
-          canSeekInBuffer = true
-          break
-        }
-      }
-
-      if (canSeekInBuffer) {
-        // Seek within buffer - no reload needed
-        videoRef.value.currentTime = newTime - transcodeSeekOffset.value
-        currentTime.value = newTime
-      } else {
-        // Need to reload stream from new position
-        seekToTranscodePosition(newTime)
-      }
-    } else {
-      // Direct play or HLS - use native seeking
-      videoRef.value.currentTime = newTime
-      currentTime.value = newTime
-    }
+    videoRef.value.currentTime = newTime
+    currentTime.value = newTime
   }
-}
-
-// Seek in a transcoded stream by reloading with new start position
-// IMPROVED: Better handling to minimize audio sync issues
-const seekToTranscodePosition = (targetTime: number) => {
-  if (!videoRef.value) return
-
-  const wasPlaying = isPlaying.value
-  const currentPlaybackRate = videoRef.value.playbackRate
-
-  isLoading.value = true
-
-  // Update the offset and current time
-  transcodeSeekOffset.value = targetTime
-  currentTime.value = targetTime
-
-  // Build the new URL with start parameter
-  const baseUrl = getBaseTranscodeUrl()
-  const separator = baseUrl.includes('?') ? '&' : '?'
-  const newUrl = `${baseUrl}${separator}start=${Math.floor(targetTime)}`
-
-  console.log(`Seeking transcode stream to ${targetTime}s (strategy: ${props.playbackStrategy || 'unknown'})`)
-
-  // For non-HLS transcode streams, we need to reload
-  // But we DON'T destroy HLS for HLS streams - let HLS.js handle it
-  if (!isHlsStream.value && hls.value) {
-    hls.value.destroy()
-    hls.value = null
-  }
-
-  // Update video source
-  videoRef.value.src = newUrl
-  videoRef.value.load()
-
-  // Resume playback once loaded
-  const onCanPlay = () => {
-    isLoading.value = false
-    // Restore playback rate
-    if (videoRef.value) {
-      videoRef.value.playbackRate = currentPlaybackRate
-    }
-    if (wasPlaying) {
-      videoRef.value?.play()
-    }
-  }
-
-  videoRef.value.addEventListener('canplay', onCanPlay, { once: true })
-
-  // Timeout fallback in case canplay doesn't fire
-  setTimeout(() => {
-    if (isLoading.value) {
-      isLoading.value = false
-      if (wasPlaying) {
-        videoRef.value?.play()
-      }
-    }
-  }, 5000)
 }
 
 const toggleMute = () => {
@@ -705,14 +528,9 @@ const setVolume = (value: number | number[]) => {
   }
 }
 
-// Check if quality switching is available (only for remux/transcode strategies)
-const canSwitchQuality = computed(() => {
-  return props.playbackStrategy === 'remux' || props.playbackStrategy === 'transcode'
-})
-
 // Check if audio track switching is available
 const canSwitchAudio = computed(() => {
-  return props.audioTracks && props.audioTracks.length > 1 && props.filePath
+  return props.audioTracks && props.audioTracks.length > 1 && props.jellyfinItemId
 })
 
 // Initialize audio track from props
@@ -725,118 +543,10 @@ const initAudioTrack = () => {
   }
 }
 
-// Start HLS session for quality/audio switching
-const startHlsSession = async (quality: QualityOption, audioTrack: number, startTime: number = 0) => {
-  if (!props.filePath) {
-    console.warn('Cannot start HLS session: no filePath provided')
-    return null
-  }
-
-  // Stop existing session if any
-  if (hlsSessionId.value) {
-    await stopHlsSession()
-  }
-
-  console.log(`Starting HLS session: quality=${quality}, audioTrack=${audioTrack}, startTime=${startTime}`)
-
-  const session = await mediaService.startHlsSession(props.filePath, {
-    quality,
-    audioTrack,
-    startTime: Math.floor(startTime)
-  })
-
-  if (session) {
-    hlsSessionId.value = session.sessionId
-    return session.playlistUrl
-  }
-
-  return null
-}
-
-// Stop current HLS session
-const stopHlsSession = async () => {
-  if (hlsSessionId.value) {
-    await mediaService.stopHlsSession(hlsSessionId.value)
-    hlsSessionId.value = null
-  }
-}
-
-// Switch video quality
-const switchQuality = async (quality: QualityOption) => {
-  if (!canSwitchQuality.value || quality === selectedQuality.value) return
-
-  const wasPlaying = isPlaying.value
-  const currentPos = currentTime.value
-  const currentPlaybackRate = videoRef.value?.playbackRate || 1
-
-  isLoading.value = true
-  selectedQuality.value = quality
-
-  console.log(`Switching quality to ${quality} at position ${currentPos}s`)
-
-  // For quality switching, we need to use HLS session
-  const playlistUrl = await startHlsSession(quality, selectedAudioTrack.value, currentPos)
-
-  if (playlistUrl && videoRef.value) {
-    // Cleanup existing HLS instance
-    if (hls.value) {
-      hls.value.destroy()
-      hls.value = null
-    }
-
-    // Initialize new HLS stream
-    if (Hls.isSupported()) {
-      hls.value = new Hls({
-        enableWorker: true,
-        lowLatencyMode: false,
-        backBufferLength: 90,
-        maxBufferLength: 60,
-      })
-
-      hls.value.loadSource(playlistUrl)
-      hls.value.attachMedia(videoRef.value)
-
-      hls.value.on(Hls.Events.MANIFEST_PARSED, () => {
-        isLoading.value = false
-        if (videoRef.value) {
-          videoRef.value.playbackRate = currentPlaybackRate
-          if (wasPlaying) {
-            videoRef.value.play()
-          }
-        }
-      })
-
-      hls.value.on(Hls.Events.ERROR, (_event, data) => {
-        console.error('HLS error during quality switch:', data)
-        if (data.fatal) {
-          hasError.value = true
-          errorMessage.value = 'Failed to switch quality'
-          isLoading.value = false
-        }
-      })
-    } else if (videoRef.value.canPlayType('application/vnd.apple.mpegurl')) {
-      // Safari native HLS
-      videoRef.value.src = playlistUrl
-      videoRef.value.addEventListener('loadedmetadata', () => {
-        isLoading.value = false
-        if (videoRef.value) {
-          videoRef.value.playbackRate = currentPlaybackRate
-          if (wasPlaying) {
-            videoRef.value.play()
-          }
-        }
-      }, { once: true })
-    }
-  } else {
-    // Fallback: reload stream with new quality parameter
-    console.warn('HLS session failed, using fallback method')
-    isLoading.value = false
-  }
-}
-
-// Switch audio track
+// Switch audio track via Jellyfin
 const switchAudioTrack = async (streamIndex: number) => {
   if (!canSwitchAudio.value || streamIndex === selectedAudioTrack.value) return
+  if (!props.jellyfinItemId || !props.jellyfinMediaSourceId || !props.jellyfinPlaySessionId) return
 
   const wasPlaying = isPlaying.value
   const currentPos = currentTime.value
@@ -847,128 +557,57 @@ const switchAudioTrack = async (streamIndex: number) => {
 
   console.log(`Switching audio track to stream ${streamIndex} at position ${currentPos}s`)
 
-  // Jellyfin audio track switching
-  if (isJellyfinStream.value && props.jellyfinItemId && props.jellyfinMediaSourceId && props.jellyfinPlaySessionId) {
-    const newHlsUrl = await mediaService.getJellyfinAudioTrackUrl(
-      props.jellyfinItemId,
-      streamIndex,
-      props.jellyfinMediaSourceId,
-      props.jellyfinPlaySessionId
-    )
+  const newHlsUrl = await mediaService.getJellyfinAudioTrackUrl(
+    props.jellyfinItemId,
+    streamIndex,
+    props.jellyfinMediaSourceId,
+    props.jellyfinPlaySessionId
+  )
 
-    if (newHlsUrl && videoRef.value) {
-      // Cleanup existing HLS instance
-      if (hls.value) {
-        hls.value.destroy()
-        hls.value = null
-      }
-
-      // Initialize new HLS stream with different audio track
-      if (Hls.isSupported()) {
-        hls.value = new Hls({
-          enableWorker: true,
-          lowLatencyMode: false,
-          backBufferLength: 90,
-          maxBufferLength: 60,
-        })
-
-        hls.value.loadSource(newHlsUrl)
-        hls.value.attachMedia(videoRef.value)
-
-        hls.value.on(Hls.Events.MANIFEST_PARSED, () => {
-          isLoading.value = false
-          if (videoRef.value) {
-            // Seek to the position we were at
-            videoRef.value.currentTime = currentPos
-            videoRef.value.playbackRate = currentPlaybackRate
-            if (wasPlaying) {
-              videoRef.value.play()
-            }
-          }
-        })
-
-        hls.value.on(Hls.Events.ERROR, (_event, data) => {
-          console.error('HLS error during Jellyfin audio switch:', data)
-          if (data.fatal) {
-            isLoading.value = false
-          }
-        })
-      } else if (videoRef.value.canPlayType('application/vnd.apple.mpegurl')) {
-        // Safari native HLS
-        videoRef.value.src = newHlsUrl
-        videoRef.value.addEventListener('loadedmetadata', () => {
-          isLoading.value = false
-          if (videoRef.value) {
-            videoRef.value.currentTime = currentPos
-            videoRef.value.playbackRate = currentPlaybackRate
-            if (wasPlaying) {
-              videoRef.value.play()
-            }
-          }
-        }, { once: true })
-      }
-    } else {
-      console.error('Failed to get Jellyfin audio track URL')
-      isLoading.value = false
+  if (newHlsUrl && videoRef.value) {
+    // Cleanup existing HLS instance
+    if (hls.value) {
+      hls.value.destroy()
+      hls.value = null
     }
-    return
-  }
 
-  // Native audio switching (non-Jellyfin)
-  // For audio switching, we reload the transcode stream with new audio track
-  if (props.playbackStrategy === 'remux' || props.playbackStrategy === 'transcode') {
-    // Use HLS session for smooth audio switching
-    const playlistUrl = await startHlsSession(selectedQuality.value, streamIndex, currentPos)
+    // Initialize new HLS stream with different audio track
+    if (Hls.isSupported()) {
+      hls.value = new Hls({
+        enableWorker: true,
+        lowLatencyMode: false,
+        backBufferLength: 90,
+        maxBufferLength: 60,
+      })
 
-    if (playlistUrl && videoRef.value) {
-      // Cleanup existing HLS instance
-      if (hls.value) {
-        hls.value.destroy()
-        hls.value = null
-      }
+      hls.value.loadSource(newHlsUrl)
+      hls.value.attachMedia(videoRef.value)
 
-      // Initialize new HLS stream
-      if (Hls.isSupported()) {
-        hls.value = new Hls({
-          enableWorker: true,
-          lowLatencyMode: false,
-          backBufferLength: 90,
-          maxBufferLength: 60,
-        })
-
-        hls.value.loadSource(playlistUrl)
-        hls.value.attachMedia(videoRef.value)
-
-        hls.value.on(Hls.Events.MANIFEST_PARSED, () => {
-          isLoading.value = false
-          if (videoRef.value) {
-            videoRef.value.playbackRate = currentPlaybackRate
-            if (wasPlaying) {
-              videoRef.value.play()
-            }
-          }
-        })
-
-        hls.value.on(Hls.Events.ERROR, (_event, data) => {
-          console.error('HLS error during audio switch:', data)
-          if (data.fatal) {
-            isLoading.value = false
-          }
-        })
-      }
-    } else {
-      // Fallback: reload transcode stream with new audio track
-      const baseUrl = getBaseTranscodeUrl()
-      const url = new URL(baseUrl)
-      url.searchParams.set('start', Math.floor(currentPos).toString())
-      url.searchParams.set('audioTrack', streamIndex.toString())
-
-      videoRef.value!.src = url.toString()
-      videoRef.value!.load()
-
-      videoRef.value!.addEventListener('canplay', () => {
+      hls.value.on(Hls.Events.MANIFEST_PARSED, () => {
         isLoading.value = false
         if (videoRef.value) {
+          // Seek to the position we were at
+          videoRef.value.currentTime = currentPos
+          videoRef.value.playbackRate = currentPlaybackRate
+          if (wasPlaying) {
+            videoRef.value.play()
+          }
+        }
+      })
+
+      hls.value.on(Hls.Events.ERROR, (_event, data) => {
+        console.error('HLS error during audio switch:', data)
+        if (data.fatal) {
+          isLoading.value = false
+        }
+      })
+    } else if (videoRef.value.canPlayType('application/vnd.apple.mpegurl')) {
+      // Safari native HLS
+      videoRef.value.src = newHlsUrl
+      videoRef.value.addEventListener('loadedmetadata', () => {
+        isLoading.value = false
+        if (videoRef.value) {
+          videoRef.value.currentTime = currentPos
           videoRef.value.playbackRate = currentPlaybackRate
           if (wasPlaying) {
             videoRef.value.play()
@@ -976,6 +615,9 @@ const switchAudioTrack = async (streamIndex: number) => {
         }
       }, { once: true })
     }
+  } else {
+    console.error('Failed to get Jellyfin audio track URL')
+    isLoading.value = false
   }
 }
 
@@ -1004,8 +646,8 @@ const reportProgress = (state: 'playing' | 'paused' | 'stopped') => {
     props.onProgress(positionMs, state)
   }
 
-  // Report to Jellyfin if using Jellyfin backend
-  if (isJellyfinStream.value && props.jellyfinItemId) {
+  // Report to Jellyfin
+  if (props.jellyfinItemId) {
     if (state === 'stopped') {
       mediaService.reportJellyfinStopped(props.jellyfinItemId, positionMs)
     } else {
@@ -1088,10 +730,6 @@ const handleFullscreenChange = () => {
 
 // Cleanup
 const cleanup = async () => {
-  // Stop HLS session on cleanup
-  if (hlsSessionId.value) {
-    await stopHlsSession()
-  }
   if (hls.value) {
     hls.value.destroy()
     hls.value = null
@@ -1107,7 +745,7 @@ const cleanup = async () => {
 
 // Lifecycle
 onMounted(() => {
-  // Set initial duration from props if available (important for transcoded streams)
+  // Set initial duration from props if available
   if (props.duration && props.duration > 0) {
     videoDuration.value = props.duration / 1000 // Convert ms to seconds
   }
@@ -1335,7 +973,7 @@ defineExpose({
           </div>
 
           <div class="flex items-center gap-2">
-            <!-- Settings (Quality & Subtitles) -->
+            <!-- Settings -->
             <div class="relative">
               <Button
                 icon="pi pi-cog"
@@ -1355,22 +993,6 @@ defineExpose({
               >
                 <!-- Main Settings Tab -->
                 <div v-if="settingsTab === 'main'" class="p-4">
-                  <!-- Quality Selection (only for remux/transcode) -->
-                  <div v-if="canSwitchQuality" class="mb-4">
-                    <label class="text-gray-400 text-xs uppercase tracking-wide mb-2 block">Quality</label>
-                    <div class="flex flex-wrap gap-1">
-                      <button
-                        v-for="option in qualityOptions"
-                        :key="option.value"
-                        class="px-3 py-1.5 rounded text-sm transition-colors"
-                        :class="selectedQuality === option.value ? 'bg-red-600 text-white' : 'text-gray-300 hover:bg-zinc-700'"
-                        @click="switchQuality(option.value)"
-                      >
-                        {{ option.label }}
-                      </button>
-                    </div>
-                  </div>
-
                   <!-- Playback Speed -->
                   <div class="mb-4">
                     <label class="text-gray-400 text-xs uppercase tracking-wide mb-2 block">Speed</label>

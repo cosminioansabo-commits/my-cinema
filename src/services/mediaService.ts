@@ -2,7 +2,6 @@ import axios from 'axios'
 import { setupAuthInterceptor } from '@/composables/useAuthInterceptor'
 
 const API_BASE = import.meta.env.VITE_TORRENT_API_URL || 'http://localhost:3001'
-const TOKEN_KEY = 'my-cinema-auth-token'
 
 const api = axios.create({
   baseURL: `${API_BASE}/api/media`,
@@ -11,11 +10,6 @@ const api = axios.create({
 
 // Setup auth interceptor
 setupAuthInterceptor(api)
-
-// Helper to get auth token for stream URLs
-const getAuthToken = (): string | null => {
-  return localStorage.getItem(TOKEN_KEY)
-}
 
 export interface MediaInfo {
   width: number
@@ -46,9 +40,6 @@ export interface AudioTrack {
   selected: boolean
 }
 
-// Playback strategy determines optimal streaming method
-export type PlaybackStrategy = 'direct' | 'remux' | 'transcode'
-
 export interface PlaybackInfo {
   found: boolean
   title?: string
@@ -57,29 +48,22 @@ export interface PlaybackInfo {
   fileSize?: number
   duration?: number
   mediaInfo?: MediaInfo
-  needsTranscode?: boolean // Legacy: kept for compatibility
-  playbackStrategy?: PlaybackStrategy // New: more granular
   streamUrl?: string
-  directStreamUrl?: string // Fallback URL for direct streaming
-  hlsSupported?: boolean // True if HLS streaming is available
   subtitles?: SubtitleTrack[]
   audioTracks?: AudioTrack[]
-  // Jellyfin-specific fields
+  // Jellyfin fields
   jellyfinItemId?: string
   jellyfinMediaSourceId?: string
   jellyfinPlaySessionId?: string
-  streamingBackend?: 'native' | 'jellyfin'
-}
-
-// HLS Session management
-export interface HlsSession {
-  sessionId: string
-  playlistUrl: string
 }
 
 export interface MediaStatus {
   enabled: boolean
   connected: boolean
+  jellyfin?: {
+    enabled: boolean
+    connected: boolean
+  }
 }
 
 export const mediaService = {
@@ -97,72 +81,8 @@ export const mediaService = {
   },
 
   /**
-   * Start an HLS streaming session for better seeking and quality control
-   */
-  async startHlsSession(
-    filePath: string,
-    options: {
-      audioTrack?: number
-      quality?: 'original' | '1080p' | '720p' | '480p'
-      startTime?: number
-    } = {}
-  ): Promise<HlsSession | null> {
-    try {
-      const token = getAuthToken()
-      const response = await api.post('/hls/start', {
-        filePath,
-        audioTrack: options.audioTrack ?? 0,
-        quality: options.quality ?? 'original',
-        startTime: options.startTime ?? 0
-      })
-
-      const session = response.data as HlsSession
-
-      // Add auth token to playlist URL
-      if (session.playlistUrl) {
-        const authParam = token ? `?token=${encodeURIComponent(token)}` : ''
-        session.playlistUrl = `${API_BASE}${session.playlistUrl}${authParam}`
-      }
-
-      return session
-    } catch (error) {
-      console.error('Error starting HLS session:', error)
-      return null
-    }
-  },
-
-  /**
-   * Seek within an active HLS session
-   */
-  async seekHlsSession(sessionId: string, position: number): Promise<boolean> {
-    try {
-      const token = getAuthToken()
-      await api.post(`/hls/${sessionId}/seek`, { position }, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
-      })
-      return true
-    } catch (error) {
-      console.error('Error seeking HLS session:', error)
-      return false
-    }
-  },
-
-  /**
-   * Stop an HLS session and cleanup resources
-   */
-  async stopHlsSession(sessionId: string): Promise<void> {
-    try {
-      const token = getAuthToken()
-      await api.delete(`/hls/${sessionId}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
-      })
-    } catch (error) {
-      console.error('Error stopping HLS session:', error)
-    }
-  },
-
-  /**
    * Get playback info for a movie by TMDB ID
+   * Returns Jellyfin streaming URLs
    */
   async getMoviePlayback(tmdbId: number): Promise<PlaybackInfo | null> {
     try {
@@ -172,36 +92,7 @@ export const mediaService = {
         return null
       }
 
-      // Check if using Jellyfin backend
-      const isJellyfin = response.data.streamingBackend === 'jellyfin'
-
-      // Jellyfin URLs are already absolute, native URLs need to be prefixed
-      const token = getAuthToken()
-      const authParam = token ? `?token=${encodeURIComponent(token)}` : ''
-
-      if (!isJellyfin) {
-        // Native streaming - prepend API base URL to relative URLs
-        if (response.data.streamUrl && response.data.streamUrl.startsWith('/')) {
-          response.data.streamUrl = `${API_BASE}${response.data.streamUrl}${authParam}`
-        }
-
-        if (response.data.directStreamUrl && response.data.directStreamUrl.startsWith('/')) {
-          response.data.directStreamUrl = `${API_BASE}${response.data.directStreamUrl}${authParam}`
-        }
-
-        // Native subtitle URLs
-        if (response.data.subtitles) {
-          response.data.subtitles = response.data.subtitles.map((sub: SubtitleTrack) => ({
-            ...sub,
-            url: `/api/media/subtitle/${encodeURIComponent(`${sub.streamIndex}:${response.data.filePath}`)}`,
-          })).map((sub: SubtitleTrack) => ({
-            ...sub,
-            url: sub.url?.startsWith('/') ? `${API_BASE}${sub.url}${authParam}` : sub.url
-          }))
-        }
-      }
-      // Jellyfin URLs (streamUrl, directStreamUrl, subtitle urls) are already absolute
-
+      // Jellyfin URLs are already absolute - no transformation needed
       return response.data
     } catch (error) {
       console.error('Error fetching movie playback:', error)
@@ -211,6 +102,7 @@ export const mediaService = {
 
   /**
    * Get playback info for a TV episode
+   * Returns Jellyfin streaming URLs
    */
   async getEpisodePlayback(
     showTmdbId: number,
@@ -224,36 +116,7 @@ export const mediaService = {
         return null
       }
 
-      // Check if using Jellyfin backend
-      const isJellyfin = response.data.streamingBackend === 'jellyfin'
-
-      // Jellyfin URLs are already absolute, native URLs need to be prefixed
-      const token = getAuthToken()
-      const authParam = token ? `?token=${encodeURIComponent(token)}` : ''
-
-      if (!isJellyfin) {
-        // Native streaming - prepend API base URL to relative URLs
-        if (response.data.streamUrl && response.data.streamUrl.startsWith('/')) {
-          response.data.streamUrl = `${API_BASE}${response.data.streamUrl}${authParam}`
-        }
-
-        if (response.data.directStreamUrl && response.data.directStreamUrl.startsWith('/')) {
-          response.data.directStreamUrl = `${API_BASE}${response.data.directStreamUrl}${authParam}`
-        }
-
-        // Native subtitle URLs
-        if (response.data.subtitles) {
-          response.data.subtitles = response.data.subtitles.map((sub: SubtitleTrack) => ({
-            ...sub,
-            url: `/api/media/subtitle/${encodeURIComponent(`${sub.streamIndex}:${response.data.filePath}`)}`,
-          })).map((sub: SubtitleTrack) => ({
-            ...sub,
-            url: sub.url?.startsWith('/') ? `${API_BASE}${sub.url}${authParam}` : sub.url
-          }))
-        }
-      }
-      // Jellyfin URLs (streamUrl, directStreamUrl, subtitle urls) are already absolute
-
+      // Jellyfin URLs are already absolute - no transformation needed
       return response.data
     } catch (error) {
       console.error('Error fetching episode playback:', error)
@@ -300,6 +163,17 @@ export const mediaService = {
       await api.post('/jellyfin/stopped', { itemId, positionMs })
     } catch (error) {
       // Ignore stop reporting errors
+    }
+  },
+
+  /**
+   * Trigger Jellyfin library refresh
+   */
+  async refreshJellyfinLibrary(): Promise<void> {
+    try {
+      await api.post('/jellyfin/refresh')
+    } catch (error) {
+      console.error('Error refreshing Jellyfin library:', error)
     }
   }
 }

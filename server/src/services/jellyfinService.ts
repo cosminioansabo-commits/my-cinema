@@ -119,9 +119,13 @@ class JellyfinService {
 
   /**
    * Search for a movie by file path (from Radarr)
+   * Uses filename matching since paths may differ between Radarr and Jellyfin
    */
   async findMovieByPath(filePath: string): Promise<JellyfinItem | null> {
     try {
+      // Extract filename for matching (more reliable than full path)
+      const filename = filePath.split('/').pop() || filePath
+
       const response = await this.client.get('/Items', {
         params: {
           Recursive: true,
@@ -131,15 +135,28 @@ class JellyfinService {
       })
 
       const items = response.data.Items as JellyfinItem[]
-      // Match by path - Jellyfin stores the path in MediaSources[0].Path
-      const found = items.find(item => {
+
+      // Try exact path match first
+      let found = items.find(item => {
         if (item.Path === filePath) return true
         if (item.MediaSources?.[0]?.Path === filePath) return true
         return false
       })
 
+      // Fall back to filename matching
+      if (!found) {
+        found = items.find(item => {
+          const itemFilename = item.Path?.split('/').pop() || ''
+          const mediaSourceFilename = item.MediaSources?.[0]?.Path?.split('/').pop() || ''
+          return itemFilename === filename || mediaSourceFilename === filename
+        })
+      }
+
       if (found) {
         console.log(`Jellyfin: Found movie "${found.Name}" for path ${filePath}`)
+      } else {
+        console.log(`Jellyfin: Movie not found for path ${filePath} (filename: ${filename})`)
+        console.log(`Jellyfin: Searched ${items.length} movies`)
       }
       return found || null
     } catch (error) {
@@ -150,9 +167,13 @@ class JellyfinService {
 
   /**
    * Search for an episode by file path (from Sonarr)
+   * Uses filename matching since paths may differ between Sonarr and Jellyfin
    */
   async findEpisodeByPath(filePath: string): Promise<JellyfinItem | null> {
     try {
+      // Extract filename for matching (more reliable than full path)
+      const filename = filePath.split('/').pop() || filePath
+
       const response = await this.client.get('/Items', {
         params: {
           Recursive: true,
@@ -162,14 +183,28 @@ class JellyfinService {
       })
 
       const items = response.data.Items as JellyfinItem[]
-      const found = items.find(item => {
+
+      // Try exact path match first
+      let found = items.find(item => {
         if (item.Path === filePath) return true
         if (item.MediaSources?.[0]?.Path === filePath) return true
         return false
       })
 
+      // Fall back to filename matching
+      if (!found) {
+        found = items.find(item => {
+          const itemFilename = item.Path?.split('/').pop() || ''
+          const mediaSourceFilename = item.MediaSources?.[0]?.Path?.split('/').pop() || ''
+          return itemFilename === filename || mediaSourceFilename === filename
+        })
+      }
+
       if (found) {
         console.log(`Jellyfin: Found episode "${found.Name}" for path ${filePath}`)
+      } else {
+        console.log(`Jellyfin: Episode not found for path ${filePath} (filename: ${filename})`)
+        console.log(`Jellyfin: Searched ${items.length} episodes`)
       }
       return found || null
     } catch (error) {
