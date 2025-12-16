@@ -86,6 +86,7 @@ export interface JellyfinPlaybackInfo {
 
 class JellyfinService {
   private client: AxiosInstance
+  private userId: string | null = null
 
   constructor() {
     this.client = axios.create({
@@ -103,6 +104,34 @@ class JellyfinService {
 
   isEnabled(): boolean {
     return config.jellyfin.enabled
+  }
+
+  /**
+   * Get the first admin user ID (cached after first call)
+   */
+  private async getUserId(): Promise<string | null> {
+    if (this.userId) return this.userId
+
+    try {
+      const response = await this.client.get('/Users')
+      const users = response.data as Array<{ Id: string; Name: string; Policy?: { IsAdministrator?: boolean } }>
+
+      // Prefer admin user, fallback to first user
+      const adminUser = users.find(u => u.Policy?.IsAdministrator)
+      const user = adminUser || users[0]
+
+      if (user) {
+        this.userId = user.Id
+        console.log(`Jellyfin: Using user "${user.Name}" (${user.Id})`)
+        return this.userId
+      }
+
+      console.error('Jellyfin: No users found')
+      return null
+    } catch (error) {
+      console.error('Jellyfin: Failed to get user ID:', error)
+      return null
+    }
   }
 
   async testConnection(): Promise<boolean> {
@@ -223,14 +252,27 @@ class JellyfinService {
     startTimeTicks?: number
   } = {}): Promise<JellyfinPlaybackInfo | null> {
     try {
-      // Create a playback session
-      const response = await this.client.post<PlaybackInfoResponse>(`/Items/${itemId}/PlaybackInfo`, {
-        DeviceProfile: this.getDeviceProfile(),
-        MaxStreamingBitrate: options.maxStreamingBitrate || 100000000, // 100 Mbps default
-        AudioStreamIndex: options.audioStreamIndex,
-        SubtitleStreamIndex: options.subtitleStreamIndex,
-        StartTimeTicks: options.startTimeTicks
-      })
+      // Get user ID (required for PlaybackInfo)
+      const userId = await this.getUserId()
+      if (!userId) {
+        console.error('Jellyfin: Cannot get playback info without user ID')
+        return null
+      }
+
+      // Create a playback session with userId as query parameter
+      const response = await this.client.post<PlaybackInfoResponse>(
+        `/Items/${itemId}/PlaybackInfo`,
+        {
+          DeviceProfile: this.getDeviceProfile(),
+          MaxStreamingBitrate: options.maxStreamingBitrate || 100000000, // 100 Mbps default
+          AudioStreamIndex: options.audioStreamIndex,
+          SubtitleStreamIndex: options.subtitleStreamIndex,
+          StartTimeTicks: options.startTimeTicks
+        },
+        {
+          params: { userId }
+        }
+      )
 
       const mediaSource = response.data.MediaSources[0]
       if (!mediaSource) {
