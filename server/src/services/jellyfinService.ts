@@ -284,7 +284,7 @@ class JellyfinService {
       // Use external URL for browser-accessible stream URLs
       const baseUrl = config.jellyfin.externalUrl
 
-      // Build HLS transcoding URL
+      // Build HLS transcoding URL - use proxy endpoint to bypass Private Network Access
       const hlsParams = new URLSearchParams({
         api_key: config.jellyfin.apiKey,
         MediaSourceId: mediaSource.Id,
@@ -306,7 +306,9 @@ class JellyfinService {
         hlsParams.set('StartTimeTicks', String(options.startTimeTicks))
       }
 
-      const hlsUrl = `${baseUrl}/Videos/${itemId}/master.m3u8?${hlsParams.toString()}`
+      // Use proxy URL to bypass browser Private Network Access restrictions
+      // The backend will proxy the HLS stream from Jellyfin
+      const hlsUrl = `/api/media/proxy/hls/${itemId}/master.m3u8?${hlsParams.toString()}`
 
       // Build direct stream URL (if compatible)
       const directParams = new URLSearchParams({
@@ -330,19 +332,12 @@ class JellyfinService {
           selected: s.IsDefault || idx === 0
         }))
 
-      // Extract subtitles
+      // Extract subtitles - use proxy URLs to bypass Private Network Access restrictions
       const subtitles = mediaSource.MediaStreams
         .filter(s => s.Type === 'Subtitle')
         .map((s, idx) => {
-          // Build subtitle URL
-          let subtitleUrl: string
-          if (s.IsExternal && s.Path) {
-            subtitleUrl = s.Path
-          } else if (s.DeliveryUrl) {
-            subtitleUrl = `${baseUrl}${s.DeliveryUrl}`
-          } else {
-            subtitleUrl = `${baseUrl}/Videos/${itemId}/${mediaSource.Id}/Subtitles/${s.Index}/Stream.vtt?api_key=${config.jellyfin.apiKey}`
-          }
+          // Build subtitle URL using proxy endpoint
+          const subtitleUrl = `/api/media/proxy/subtitles/${itemId}/${mediaSource.Id}/${s.Index}/Stream.vtt`
 
           return {
             id: idx,
@@ -387,7 +382,6 @@ class JellyfinService {
    * Get a new HLS URL with different audio track
    */
   getHlsUrlWithAudioTrack(itemId: string, mediaSourceId: string, playSessionId: string, audioStreamIndex: number): string {
-    const baseUrl = config.jellyfin.externalUrl
     const params = new URLSearchParams({
       api_key: config.jellyfin.apiKey,
       MediaSourceId: mediaSourceId,
@@ -403,7 +397,8 @@ class JellyfinService {
       VideoCodec: 'h264',
       AudioCodec: 'aac'
     })
-    return `${baseUrl}/Videos/${itemId}/master.m3u8?${params.toString()}`
+    // Use proxy URL to bypass browser Private Network Access restrictions
+    return `/api/media/proxy/hls/${itemId}/master.m3u8?${params.toString()}`
   }
 
   /**
