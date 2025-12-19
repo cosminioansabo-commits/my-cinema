@@ -71,7 +71,7 @@ const hasReportedStarted = ref(false)
 // Subtitle search state
 const subtitleSearchEnabled = ref(false)
 const subtitleLanguages = ref<SubtitleLanguage[]>([])
-const selectedSearchLanguage = ref('en')
+const selectedSearchLanguage = ref('ro')
 const subtitleSearchResults = ref<SubtitleSearchResult[]>([])
 const isSearchingSubtitles = ref(false)
 const isDownloadingSubtitle = ref(false)
@@ -518,8 +518,8 @@ const initSubtitleSearch = async () => {
 
 // Search for subtitles
 const searchSubtitles = async () => {
-  if (!props.tmdbId) {
-    subtitleSearchError.value = 'Cannot search subtitles without media ID'
+  if (!props.title) {
+    subtitleSearchError.value = 'Cannot search subtitles without media title'
     return
   }
 
@@ -529,7 +529,7 @@ const searchSubtitles = async () => {
 
   try {
     const results = await subtitleService.searchSubtitles({
-      tmdbId: String(props.tmdbId),
+      query: props.title,
       language: selectedSearchLanguage.value,
       type: props.mediaType,
       season: props.seasonNumber,
@@ -1118,7 +1118,7 @@ defineExpose({
                       <label class="text-gray-400 text-xs uppercase tracking-wide">Subtitles</label>
                       <div class="flex items-center gap-2">
                         <button
-                          v-if="subtitleSearchEnabled && tmdbId"
+                          v-if="subtitleSearchEnabled"
                           class="text-xs text-blue-400 hover:text-blue-300 transition-colors"
                           @click="openSubtitleSearch"
                         >

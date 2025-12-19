@@ -63,6 +63,10 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - APP_PASSWORD_HASH=${APP_PASSWORD_HASH}
       - TOKEN_EXPIRY=7d
+      # OpenSubtitles (optional)
+      - OPENSUBTITLES_API_KEY=${OPENSUBTITLES_API_KEY:-}
+      - OPENSUBTITLES_USERNAME=${OPENSUBTITLES_USERNAME:-}
+      - OPENSUBTITLES_PASSWORD=${OPENSUBTITLES_PASSWORD:-}
     volumes:
       - /volume1/data:/data
     devices:

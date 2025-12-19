@@ -192,6 +192,7 @@ class OpenSubtitlesService {
    */
   getLanguages(): SubtitleLanguage[] {
     return [
+      { code: 'ro', name: 'Romanian' },
       { code: 'en', name: 'English' },
       { code: 'es', name: 'Spanish' },
       { code: 'fr', name: 'French' },
@@ -218,7 +219,6 @@ class OpenSubtitlesService {
       { code: 'he', name: 'Hebrew' },
       { code: 'hu', name: 'Hungarian' },
       { code: 'id', name: 'Indonesian' },
-      { code: 'ro', name: 'Romanian' },
       { code: 'th', name: 'Thai' },
       { code: 'uk', name: 'Ukrainian' },
       { code: 'vi', name: 'Vietnamese' },
