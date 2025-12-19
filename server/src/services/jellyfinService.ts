@@ -37,6 +37,12 @@ interface MediaStream {
   Height?: number
   RealFrameRate?: number
   AverageFrameRate?: number
+  BitDepth?: number
+  ColorSpace?: string
+  ColorTransfer?: string
+  ColorPrimaries?: string
+  VideoRange?: string
+  VideoRangeType?: string
   // Audio specific
   Channels?: number
   // Subtitle specific
@@ -292,6 +298,18 @@ class JellyfinService {
       const isHEVC = videoStream?.Codec?.toLowerCase() === 'hevc' || videoStream?.Codec?.toLowerCase() === 'h265'
       const is4K = (videoStream?.Width || 0) >= 3840
 
+      // Detect HDR content for proper tone mapping
+      const videoRangeType = videoStream?.VideoRangeType || videoStream?.VideoRange || 'SDR'
+      const isHDR = ['HDR', 'HDR10', 'HDR10Plus', 'HLG', 'DOVI', 'DOVIWithHDR10', 'DOVIWithHDR10Plus'].some(
+        type => videoRangeType.toUpperCase().includes(type.toUpperCase())
+      )
+      const colorTransfer = videoStream?.ColorTransfer || ''
+      const isHDRByTransfer = colorTransfer.toLowerCase().includes('smpte2084') ||
+                              colorTransfer.toLowerCase().includes('arib-std-b67') ||
+                              colorTransfer.toLowerCase().includes('bt2020')
+
+      console.log(`Jellyfin: Video range type: ${videoRangeType}, isHDR: ${isHDR || isHDRByTransfer}, colorTransfer: ${colorTransfer}`)
+
       // Build HLS transcoding URL - use proxy endpoint to bypass Private Network Access
       // Match Jellyfin web client settings for best quality
       const videoBitrate = is4K ? 139616000 : 40000000 // 140 Mbps for 4K, 40 Mbps for 1080p
@@ -325,6 +343,20 @@ class JellyfinService {
         'h264-deinterlace': 'true',
         TranscodeReasons: 'ContainerNotSupported,VideoCodecNotSupported,AudioCodecNotSupported'
       })
+
+      // Add HDR to SDR tone mapping parameters if content is HDR
+      // This tells Jellyfin to apply proper tone mapping during transcode
+      if (isHDR || isHDRByTransfer) {
+        // Add VideoRangeType to trigger tone mapping in Jellyfin
+        hlsParams.set('TranscodeReasons', 'ContainerNotSupported,VideoCodecNotSupported,AudioCodecNotSupported,VideoRangeTypeNotSupported')
+
+        // HEVC HDR settings that Jellyfin web client uses
+        hlsParams.set('hevc-rangetype', 'SDR,HDR10,HDR10Plus,HLG')
+        hlsParams.set('hevc-videobitdepth', '10')
+        hlsParams.set('hevc-profile', 'main10')
+        hlsParams.set('hevc-level', '150')
+        hlsParams.set('hevc-deinterlace', 'true')
+      }
 
       if (options.startTimeTicks) {
         hlsParams.set('StartTimeTicks', String(options.startTimeTicks))
