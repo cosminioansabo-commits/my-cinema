@@ -315,6 +315,11 @@ class JellyfinService {
       const videoBitrate = is4K ? 139616000 : 40000000 // 140 Mbps for 4K, 40 Mbps for 1080p
       const audioBitrate = 384000 // 384 kbps AAC
 
+      // Build transcoding reasons - always include VideoRangeTypeNotSupported for proper tone mapping
+      const transcodeReasons = (isHDR || isHDRByTransfer)
+        ? 'ContainerNotSupported,VideoCodecNotSupported,AudioCodecNotSupported,VideoRangeTypeNotSupported'
+        : 'ContainerNotSupported,VideoCodecNotSupported,AudioCodecNotSupported'
+
       const hlsParams = new URLSearchParams({
         api_key: config.jellyfin.apiKey,
         MediaSourceId: mediaSource.Id,
@@ -326,37 +331,37 @@ class JellyfinService {
         VideoBitrate: String(options.maxStreamingBitrate || videoBitrate),
         AudioBitrate: String(audioBitrate),
         MaxFramerate: String(videoStream?.RealFrameRate || 23.976),
-        TranscodingMaxAudioChannels: '6',
+        // Match Jellyfin web client - uses 2 channels for stereo output
+        TranscodingMaxAudioChannels: '2',
         // Use fMP4 segments for better quality (like Jellyfin web)
         SegmentContainer: 'mp4',
         MinSegments: '2',
         BreakOnNonKeyFrames: 'True',
-        // H.264 with detailed profile settings
-        VideoCodec: 'h264',
+        // Match Jellyfin web client: multiple video codecs with H.264 as final fallback
+        // This allows Jellyfin to choose the best transcoding path for HDR content
+        VideoCodec: 'av1,hevc,h264,vp9',
         AudioCodec: 'aac',
         RequireAvc: 'false',
         EnableAudioVbrEncoding: 'true',
-        // H.264 profile settings for quality
+        TranscodeReasons: transcodeReasons,
+        // H.264 profile settings
         'h264-profile': 'high,main,baseline,constrainedbaseline,high10',
         'h264-rangetype': 'SDR',
         'h264-level': '52',
         'h264-deinterlace': 'true',
-        TranscodeReasons: 'ContainerNotSupported,VideoCodecNotSupported,AudioCodecNotSupported'
+        // HEVC profile settings for HDR content (intermediate codec)
+        'hevc-rangetype': 'SDR,HDR10,HDR10Plus,HLG',
+        'hevc-videobitdepth': '10',
+        'hevc-profile': 'main10',
+        'hevc-level': '150',
+        'hevc-deinterlace': 'true',
+        // AV1 profile settings (like Jellyfin web client)
+        'av1-profile': 'main',
+        'av1-rangetype': 'SDR,HDR10,HLG',
+        'av1-level': '19',
+        // VP9 profile settings (like Jellyfin web client)
+        'vp9-rangetype': 'SDR,HDR10,HLG'
       })
-
-      // Add HDR to SDR tone mapping parameters if content is HDR
-      // This tells Jellyfin to apply proper tone mapping during transcode
-      if (isHDR || isHDRByTransfer) {
-        // Add VideoRangeType to trigger tone mapping in Jellyfin
-        hlsParams.set('TranscodeReasons', 'ContainerNotSupported,VideoCodecNotSupported,AudioCodecNotSupported,VideoRangeTypeNotSupported')
-
-        // HEVC HDR settings that Jellyfin web client uses
-        hlsParams.set('hevc-rangetype', 'SDR,HDR10,HDR10Plus,HLG')
-        hlsParams.set('hevc-videobitdepth', '10')
-        hlsParams.set('hevc-profile', 'main10')
-        hlsParams.set('hevc-level', '150')
-        hlsParams.set('hevc-deinterlace', 'true')
-      }
 
       if (options.startTimeTicks) {
         hlsParams.set('StartTimeTicks', String(options.startTimeTicks))
@@ -448,19 +453,35 @@ class JellyfinService {
       SubtitleMethod: 'Encode',
       VideoBitrate: '139616000', // 140 Mbps for quality
       AudioBitrate: '384000',
-      TranscodingMaxAudioChannels: '6',
+      // Match Jellyfin web client - uses 2 channels for stereo output
+      TranscodingMaxAudioChannels: '2',
       SegmentContainer: 'mp4',
       MinSegments: '2',
       BreakOnNonKeyFrames: 'True',
-      VideoCodec: 'h264',
+      // Match Jellyfin web client: multiple video codecs
+      VideoCodec: 'av1,hevc,h264,vp9',
       AudioCodec: 'aac',
       RequireAvc: 'false',
       EnableAudioVbrEncoding: 'true',
+      // Include VideoRangeTypeNotSupported for HDR content tone mapping
+      TranscodeReasons: 'ContainerNotSupported,VideoCodecNotSupported,AudioCodecNotSupported,VideoRangeTypeNotSupported',
+      // H.264 profile settings
       'h264-profile': 'high,main,baseline,constrainedbaseline,high10',
       'h264-rangetype': 'SDR',
       'h264-level': '52',
       'h264-deinterlace': 'true',
-      TranscodeReasons: 'ContainerNotSupported,VideoCodecNotSupported,AudioCodecNotSupported'
+      // HEVC profile settings
+      'hevc-rangetype': 'SDR,HDR10,HDR10Plus,HLG',
+      'hevc-videobitdepth': '10',
+      'hevc-profile': 'main10',
+      'hevc-level': '150',
+      'hevc-deinterlace': 'true',
+      // AV1 profile settings
+      'av1-profile': 'main',
+      'av1-rangetype': 'SDR,HDR10,HLG',
+      'av1-level': '19',
+      // VP9 profile settings
+      'vp9-rangetype': 'SDR,HDR10,HLG'
     })
     // Use proxy URL to bypass browser Private Network Access restrictions
     const backendUrl = config.externalUrl.replace(/\/$/, '')
