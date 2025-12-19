@@ -47,31 +47,62 @@ class ProgressService {
     const completed = durationMs > 0 && positionMs / durationMs >= 0.95
 
     try {
-      const stmt = db.prepare(`
-        INSERT INTO watch_progress (
-          user_id, media_type, tmdb_id, season_number, episode_number,
-          position_ms, duration_ms, completed, updated_at
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        ON CONFLICT(user_id, media_type, tmdb_id, season_number, episode_number)
-        DO UPDATE SET
-          position_ms = excluded.position_ms,
-          duration_ms = excluded.duration_ms,
-          completed = excluded.completed,
-          updated_at = CURRENT_TIMESTAMP
-        RETURNING *
-      `)
+      // SQLite UNIQUE constraint doesn't work with NULL values (NULL != NULL)
+      // So we need to handle movies (where season/episode are NULL) differently
 
-      const result = stmt.get(
-        userId,
-        mediaType,
-        tmdbId,
-        seasonNumber,
-        episodeNumber,
-        positionMs,
-        durationMs,
-        completed ? 1 : 0
-      ) as any
+      // First, check if record exists
+      let existingId: number | null = null
+      if (seasonNumber === null || episodeNumber === null) {
+        // For movies: find by user, type, tmdb where season/episode are NULL
+        const findStmt = db.prepare(`
+          SELECT id FROM watch_progress
+          WHERE user_id = ? AND media_type = ? AND tmdb_id = ?
+            AND season_number IS NULL AND episode_number IS NULL
+        `)
+        const existing = findStmt.get(userId, mediaType, tmdbId) as { id: number } | undefined
+        existingId = existing?.id ?? null
+      } else {
+        // For episodes: find by all fields
+        const findStmt = db.prepare(`
+          SELECT id FROM watch_progress
+          WHERE user_id = ? AND media_type = ? AND tmdb_id = ?
+            AND season_number = ? AND episode_number = ?
+        `)
+        const existing = findStmt.get(userId, mediaType, tmdbId, seasonNumber, episodeNumber) as { id: number } | undefined
+        existingId = existing?.id ?? null
+      }
+
+      let result: any
+      if (existingId) {
+        // Update existing record
+        const updateStmt = db.prepare(`
+          UPDATE watch_progress
+          SET position_ms = ?, duration_ms = ?, completed = ?, updated_at = CURRENT_TIMESTAMP
+          WHERE id = ?
+          RETURNING *
+        `)
+        result = updateStmt.get(positionMs, durationMs, completed ? 1 : 0, existingId)
+      } else {
+        // Insert new record
+        const insertStmt = db.prepare(`
+          INSERT INTO watch_progress (
+            user_id, media_type, tmdb_id, season_number, episode_number,
+            position_ms, duration_ms, completed, updated_at
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+          RETURNING *
+        `)
+        result = insertStmt.get(
+          userId,
+          mediaType,
+          tmdbId,
+          seasonNumber,
+          episodeNumber,
+          positionMs,
+          durationMs,
+          completed ? 1 : 0
+        )
+      }
 
       if (result) {
         return this.mapRowToProgress(result)
