@@ -1,6 +1,9 @@
 import './assets/main.css'
 import 'primeicons/primeicons.css'
 
+// Initialize PWA install prompt handler early
+import '@/composables/usePWAInstall'
+
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import PrimeVue from 'primevue/config'
