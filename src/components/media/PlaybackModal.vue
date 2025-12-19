@@ -189,8 +189,8 @@ const handleProgress = async (timeMs: number, state: 'playing' | 'paused' | 'sto
       effectiveTmdbId.value,
       timeMs,
       durationMs,
-      props.seasonNumber,
-      props.episodeNumber
+      currentSeasonNumber.value,
+      currentEpisodeNumber.value
     )
     console.log(`Progress saved: ${timeMs}ms / ${durationMs}ms (${state})`)
   }

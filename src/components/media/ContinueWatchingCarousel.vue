@@ -88,12 +88,13 @@ const handleItemClick = (item: ContinueWatchingItem) => {
   showPlayback.value = true
 }
 
-// Handle playback modal close
-const handlePlaybackClose = () => {
-  showPlayback.value = false
-  playbackItem.value = null
-  // Refresh the continue watching list after playback
-  emit('refresh')
+// Handle playback modal visibility change
+const handlePlaybackVisibilityChange = (visible: boolean) => {
+  if (!visible) {
+    // Modal closed - refresh the continue watching list
+    playbackItem.value = null
+    emit('refresh')
+  }
 }
 
 // Get poster URL
@@ -251,7 +252,7 @@ onUnmounted(() => {
       :season-number="playbackItem.seasonNumber ?? undefined"
       :episode-number="playbackItem.episodeNumber ?? undefined"
       :title="playbackItem.title || 'Continue Watching'"
-      @update:visible="handlePlaybackClose"
+      @update:visible="handlePlaybackVisibilityChange"
     />
   </section>
 </template>

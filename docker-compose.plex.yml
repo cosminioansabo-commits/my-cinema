@@ -1,0 +1,42 @@
+# =============================================================================
+# PLEX MEDIA SERVER
+# =============================================================================
+# Backup media server for TV playback
+# Uses host network mode for better discovery and remote access
+#
+# Usage:
+#   docker-compose -f docker-compose.plex.yml up -d
+#
+# Access: http://NAS_IP:32400/web
+#
+# Initial Setup:
+#   1. Access http://NAS_IP:32400/web and sign in with Plex account
+#   2. Add libraries:
+#      - Movies: /data/media/movies
+#      - TV Shows: /data/media/tv
+#   3. Enable hardware transcoding (Plex Pass required):
+#      Settings → Transcoder → Use hardware acceleration
+#
+# Note: Uses network_mode: host for Plex discovery and DLNA
+# =============================================================================
+
+services:
+  plex:
+    image: linuxserver/plex:latest
+    container_name: plex
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ:-Europe/Bucharest}
+      - VERSION=docker
+    volumes:
+      # Config on SSD for performance
+      - /volume2/docker/plex/config:/config
+      - /volume2/docker/plex/transcode:/transcode
+      # Media on HDD
+      - /volume1/data:/data
+    devices:
+      # Intel QuickSync for hardware transcoding
+      - /dev/dri:/dev/dri
