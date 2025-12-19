@@ -489,6 +489,24 @@ class JellyfinService {
   }
 
   /**
+   * Report playback started to Jellyfin
+   * Must be called before reportProgress for Jellyfin to track the session
+   */
+  async reportStarted(itemId: string, mediaSourceId: string, playSessionId: string): Promise<void> {
+    try {
+      await this.client.post('/Sessions/Playing', {
+        ItemId: itemId,
+        MediaSourceId: mediaSourceId,
+        PlaySessionId: playSessionId,
+        PlayMethod: 'Transcode',
+        CanSeek: true
+      })
+    } catch (error) {
+      console.error('Error reporting playback started to Jellyfin:', error)
+    }
+  }
+
+  /**
    * Report playback progress to Jellyfin
    */
   async reportProgress(itemId: string, positionTicks: number, isPaused: boolean): Promise<void> {

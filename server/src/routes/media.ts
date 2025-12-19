@@ -52,6 +52,19 @@ router.get('/jellyfin/audio/:itemId/:audioIndex', async (req: Request, res: Resp
   res.json({ hlsUrl })
 })
 
+// Report playback started to Jellyfin (must be called before progress updates)
+router.post('/jellyfin/started', async (req: Request, res: Response) => {
+  const { itemId, mediaSourceId, playSessionId } = req.body
+
+  if (!jellyfinService.isEnabled()) {
+    res.status(503).json({ error: 'Jellyfin not enabled' })
+    return
+  }
+
+  await jellyfinService.reportStarted(itemId, mediaSourceId, playSessionId)
+  res.json({ success: true })
+})
+
 // Report playback progress to Jellyfin
 router.post('/jellyfin/progress', async (req: Request, res: Response) => {
   const { itemId, positionMs, isPaused } = req.body

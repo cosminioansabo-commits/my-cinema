@@ -60,6 +60,7 @@ const errorMessage = ref('')
 const showResumePrompt = ref(false)
 const showSettings = ref(false)
 const settingsTab = ref<'main' | 'subtitleStyle'>('main')
+const hasReportedStarted = ref(false)
 
 // Subtitle state
 const selectedSubtitle = ref<number | null>(null)
@@ -638,7 +639,7 @@ const toggleFullscreen = async () => {
 }
 
 // Report progress to parent and Jellyfin
-const reportProgress = (state: 'playing' | 'paused' | 'stopped') => {
+const reportProgress = async (state: 'playing' | 'paused' | 'stopped') => {
   const positionMs = Math.floor(currentTime.value * 1000)
 
   // Report to parent callback
@@ -647,7 +648,17 @@ const reportProgress = (state: 'playing' | 'paused' | 'stopped') => {
   }
 
   // Report to Jellyfin
-  if (props.jellyfinItemId) {
+  if (props.jellyfinItemId && props.jellyfinMediaSourceId && props.jellyfinPlaySessionId) {
+    // Report playback started once (required before progress updates work)
+    if (!hasReportedStarted.value) {
+      await mediaService.reportJellyfinStarted(
+        props.jellyfinItemId,
+        props.jellyfinMediaSourceId,
+        props.jellyfinPlaySessionId
+      )
+      hasReportedStarted.value = true
+    }
+
     if (state === 'stopped') {
       mediaService.reportJellyfinStopped(props.jellyfinItemId, positionMs)
     } else {

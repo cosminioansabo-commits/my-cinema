@@ -145,6 +145,17 @@ export const mediaService = {
   },
 
   /**
+   * Report playback started to Jellyfin (must be called before progress updates)
+   */
+  async reportJellyfinStarted(itemId: string, mediaSourceId: string, playSessionId: string): Promise<void> {
+    try {
+      await api.post('/jellyfin/started', { itemId, mediaSourceId, playSessionId })
+    } catch (error) {
+      console.error('Error reporting playback started to Jellyfin:', error)
+    }
+  },
+
+  /**
    * Report playback progress to Jellyfin
    */
   async reportJellyfinProgress(itemId: string, positionMs: number, isPaused: boolean): Promise<void> {
