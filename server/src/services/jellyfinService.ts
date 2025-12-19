@@ -511,53 +511,91 @@ class JellyfinService {
 
   /**
    * Device profile for browser playback
-   * Tells Jellyfin what codecs the browser supports
+   * Matches Jellyfin web client profile for proper transcoding and HDR handling
    */
   private getDeviceProfile() {
     return {
-      MaxStreamingBitrate: 100000000,
-      MaxStaticBitrate: 100000000,
-      MusicStreamingTranscodingBitrate: 192000,
+      MaxStreamingBitrate: 140000000, // 140 Mbps for 4K
+      MaxStaticBitrate: 140000000,
+      MusicStreamingTranscodingBitrate: 384000,
       DirectPlayProfiles: [
-        // Browser can direct play these
-        { Container: 'mp4', Type: 'Video', VideoCodec: 'h264', AudioCodec: 'aac,mp3' },
-        { Container: 'webm', Type: 'Video', VideoCodec: 'vp8,vp9', AudioCodec: 'vorbis,opus' }
+        // Browser can direct play these (H.264 SDR only)
+        { Container: 'mp4,m4v', Type: 'Video', VideoCodec: 'h264', AudioCodec: 'aac,mp3,ac3' },
+        { Container: 'webm', Type: 'Video', VideoCodec: 'vp8,vp9', AudioCodec: 'vorbis,opus' },
+        { Container: 'mp3', Type: 'Audio' },
+        { Container: 'aac', Type: 'Audio' }
       ],
       TranscodingProfiles: [
-        // Transcode to HLS with H.264 + AAC
+        // Transcode to HLS with fMP4 segments (better quality than TS)
         {
-          Container: 'ts',
+          Container: 'mp4',
           Type: 'Video',
           VideoCodec: 'h264',
           AudioCodec: 'aac',
           Context: 'Streaming',
           Protocol: 'hls',
-          MaxAudioChannels: '2',
-          MinSegments: 1,
-          BreakOnNonKeyFrames: true
+          MaxAudioChannels: '6', // 5.1 surround
+          MinSegments: 2,
+          BreakOnNonKeyFrames: true,
+          // Key settings for HDR to SDR conversion
+          EnableSubtitlesInManifest: true,
+          SegmentLength: 6
+        },
+        // Audio-only transcoding
+        {
+          Container: 'mp4',
+          Type: 'Audio',
+          AudioCodec: 'aac',
+          Context: 'Streaming',
+          Protocol: 'hls',
+          MaxAudioChannels: '6'
         }
       ],
       ContainerProfiles: [],
       CodecProfiles: [
+        // H.264 profile - allow up to 4K but SDR only
         {
           Type: 'Video',
           Codec: 'h264',
           Conditions: [
-            { Condition: 'LessThanEqual', Property: 'Width', Value: '1920' },
-            { Condition: 'LessThanEqual', Property: 'Height', Value: '1080' },
-            { Condition: 'LessThanEqual', Property: 'VideoLevel', Value: '51' }
+            { Condition: 'LessThanEqual', Property: 'Width', Value: '3840' },
+            { Condition: 'LessThanEqual', Property: 'Height', Value: '2160' },
+            { Condition: 'LessThanEqual', Property: 'VideoLevel', Value: '52' },
+            // Only SDR - HDR will trigger transcode with tone mapping
+            { Condition: 'EqualsAny', Property: 'VideoRangeType', Value: 'SDR' }
+          ]
+        },
+        // AAC profile
+        {
+          Type: 'Audio',
+          Codec: 'aac',
+          Conditions: [
+            { Condition: 'LessThanEqual', Property: 'AudioChannels', Value: '6' }
           ]
         }
       ],
       SubtitleProfiles: [
         { Format: 'vtt', Method: 'External' },
         { Format: 'srt', Method: 'External' },
+        { Format: 'subrip', Method: 'External' },
         { Format: 'ass', Method: 'Encode' },
         { Format: 'ssa', Method: 'Encode' },
         { Format: 'pgs', Method: 'Encode' },
         { Format: 'pgssub', Method: 'Encode' },
-        { Format: 'sub', Method: 'Encode' },
-        { Format: 'subrip', Method: 'External' }
+        { Format: 'dvdsub', Method: 'Encode' },
+        { Format: 'dvbsub', Method: 'Encode' },
+        { Format: 'sub', Method: 'Encode' }
+      ],
+      // Tell Jellyfin this device doesn't support HDR
+      // This triggers tone mapping for HDR content
+      ResponseProfiles: [
+        {
+          Type: 'Video',
+          Container: 'mp4,m4v',
+          Conditions: [
+            { Condition: 'EqualsAny', Property: 'VideoRangeType', Value: 'SDR' }
+          ]
+        }
       ]
     }
   }
