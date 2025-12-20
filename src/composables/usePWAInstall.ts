@@ -29,10 +29,17 @@ const checkIfInstalled = () => {
   return false
 }
 
-// Set up event listeners immediately when module loads
-if (typeof window !== 'undefined') {
+// Initialize PWA install handling
+const initPWAInstall = () => {
+  if (typeof window === 'undefined') return
+
   // Check if already installed
-  checkIfInstalled()
+  if (checkIfInstalled()) {
+    console.log('PWA: Already installed')
+    return
+  }
+
+  console.log('PWA: Initializing install handler')
 
   // Listen for the beforeinstallprompt event
   window.addEventListener('beforeinstallprompt', (e: Event) => {
@@ -41,7 +48,7 @@ if (typeof window !== 'undefined') {
     // Store the event so it can be triggered later
     deferredPrompt.value = e as BeforeInstallPromptEvent
     canInstall.value = true
-    console.log('PWA install prompt available')
+    console.log('PWA: Install prompt available')
   })
 
   // Listen for successful installation
@@ -49,9 +56,26 @@ if (typeof window !== 'undefined') {
     deferredPrompt.value = null
     canInstall.value = false
     isInstalled.value = true
-    console.log('PWA installed successfully')
+    console.log('PWA: Installed successfully')
   })
+
+  // Check if getInstalledRelatedApps is available (Chrome 80+)
+  if ('getInstalledRelatedApps' in navigator) {
+    (navigator as { getInstalledRelatedApps: () => Promise<{ platform: string }[]> })
+      .getInstalledRelatedApps()
+      .then((apps) => {
+        if (apps.length > 0) {
+          isInstalled.value = true
+          canInstall.value = false
+          console.log('PWA: Found installed related apps', apps)
+        }
+      })
+      .catch(() => {})
+  }
 }
+
+// Run initialization
+initPWAInstall()
 
 export function usePWAInstall() {
   const installPWA = async () => {
