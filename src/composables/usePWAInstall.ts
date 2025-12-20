@@ -9,6 +9,7 @@ interface BeforeInstallPromptEvent extends Event {
 const deferredPrompt = ref<BeforeInstallPromptEvent | null>(null)
 const canInstall = ref(false)
 const isInstalled = ref(false)
+const showInstallButton = ref(false) // Show button even before prompt is ready
 
 // Check if already installed
 const checkIfInstalled = () => {
@@ -29,6 +30,16 @@ const checkIfInstalled = () => {
   return false
 }
 
+// Check if browser supports PWA installation
+const isPWASupported = () => {
+  if (typeof window === 'undefined') return false
+  // Chrome, Edge, Opera, Samsung Internet support beforeinstallprompt
+  const isChromium = 'chrome' in window || /Chrome|Chromium|Edg|OPR|Samsung/i.test(navigator.userAgent)
+  // Also check for standalone display mode support
+  const supportsStandalone = window.matchMedia('(display-mode: standalone)').media !== 'not all'
+  return isChromium && supportsStandalone
+}
+
 // Initialize PWA install handling
 const initPWAInstall = () => {
   if (typeof window === 'undefined') return
@@ -37,6 +48,12 @@ const initPWAInstall = () => {
   if (checkIfInstalled()) {
     console.log('PWA: Already installed')
     return
+  }
+
+  // Show install button if browser supports PWA (even before prompt fires)
+  if (isPWASupported()) {
+    showInstallButton.value = true
+    console.log('PWA: Browser supports installation')
   }
 
   console.log('PWA: Initializing install handler')
@@ -78,10 +95,11 @@ const initPWAInstall = () => {
 initPWAInstall()
 
 export function usePWAInstall() {
-  const installPWA = async () => {
+  const installPWA = async (): Promise<boolean | 'manual'> => {
     if (!deferredPrompt.value) {
-      console.log('No install prompt available')
-      return false
+      console.log('PWA: No install prompt available yet, user needs manual install')
+      // Return 'manual' to indicate manual installation is needed
+      return 'manual'
     }
 
     // Show the install prompt
@@ -100,6 +118,7 @@ export function usePWAInstall() {
 
   return {
     canInstall,
+    showInstallButton,
     isInstalled,
     installPWA
   }

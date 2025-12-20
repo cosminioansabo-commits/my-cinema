@@ -1,14 +1,29 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { useToast } from 'primevue/usetoast'
 import DownloadManager from '@/components/torrents/DownloadManager.vue'
 import { useAuthStore } from '@/stores/authStore'
 import { usePWAInstall } from '@/composables/usePWAInstall'
 
 const route = useRoute()
 const router = useRouter()
+const toast = useToast()
 const authStore = useAuthStore()
-const { canInstall, installPWA } = usePWAInstall()
+const { canInstall, showInstallButton, installPWA } = usePWAInstall()
+
+const handleInstallClick = async () => {
+  const result = await installPWA()
+  if (result === 'manual') {
+    // Show instructions for manual installation
+    toast.add({
+      severity: 'info',
+      summary: 'Install App',
+      detail: 'Click the browser menu (⋮) and select "Install App" or "Add to Home Screen"',
+      life: 5000
+    })
+  }
+}
 
 const handleLogout = () => {
   authStore.logout()
@@ -111,8 +126,8 @@ onUnmounted(() => {
 
         <!-- PWA Install button -->
         <button
-          v-if="canInstall"
-          @click="installPWA"
+          v-if="showInstallButton || canInstall"
+          @click="handleInstallClick"
           class="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
           title="Install App"
         >
