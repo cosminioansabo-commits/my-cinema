@@ -78,7 +78,7 @@ const hasMore = () => {
       }"
     >
       <template #header>
-        <h2 class="text-base sm:text-lg font-semibold">Filters</h2>
+        <h2 class="text-base sm:text-lg font-semibold px-4">Filters</h2>
       </template>
       <MediaFilters />
     </Drawer>

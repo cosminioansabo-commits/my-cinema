@@ -52,9 +52,9 @@ const ratingRange = computed({
 </script>
 
 <template>
-  <div class="space-y-7">
+  <div class="space-y-7 p-4 sm:p-0">
     <!-- Header -->
-    <div class="flex items-center justify-between pb-4 border-b border-zinc-700/50">
+    <div class="hidden sm:flex items-center justify-between pb-4 border-b border-zinc-700/50">
       <div class="flex items-center gap-3">
         <div class="w-10 h-10 rounded-xl bg-[#e50914]/10 flex items-center justify-center">
           <i class="pi pi-filter text-[#e50914]"></i>
