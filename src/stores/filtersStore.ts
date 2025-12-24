@@ -6,6 +6,18 @@ import { getAllGenres } from '@/services/tmdbService'
 
 const currentYear = new Date().getFullYear()
 
+// Static sort options - defined outside store to avoid recreation
+const SORT_OPTIONS = [
+  { value: 'popularity.desc', label: 'Most Popular' },
+  { value: 'popularity.asc', label: 'Least Popular' },
+  { value: 'vote_average.desc', label: 'Highest Rated' },
+  { value: 'vote_average.asc', label: 'Lowest Rated' },
+  { value: 'release_date.desc', label: 'Newest First' },
+  { value: 'release_date.asc', label: 'Oldest First' },
+  { value: 'title.asc', label: 'Title A-Z' },
+  { value: 'title.desc', label: 'Title Z-A' },
+] as const
+
 const DEFAULT_FILTERS: FilterOptions = {
   mediaType: 'all',
   genres: [],
@@ -22,6 +34,10 @@ export const useFiltersStore = defineStore('filters', () => {
   const movieGenres = ref<Genre[]>([])
   const tvGenres = ref<Genre[]>([])
   const genresLoaded = ref(false)
+
+  // Genre lookup Maps for O(1) access
+  const movieGenreMap = ref<Map<number, Genre>>(new Map())
+  const tvGenreMap = ref<Map<number, Genre>>(new Map())
 
   // Getters
   const hasActiveFilters = computed(() => {
@@ -53,26 +69,22 @@ export const useFiltersStore = defineStore('filters', () => {
   const availableGenres = computed(() => {
     if (filters.value.mediaType === 'movie') return movieGenres.value
     if (filters.value.mediaType === 'tv') return tvGenres.value
-    // Combine and dedupe for 'all'
-    const allGenres = [...movieGenres.value, ...tvGenres.value]
-    const uniqueGenres = allGenres.filter(
-      (genre, index, self) => index === self.findIndex(g => g.id === genre.id)
-    )
-    return uniqueGenres.sort((a, b) => a.name.localeCompare(b.name))
+    // Combine and dedupe for 'all' using Map for O(1) lookup
+    const combined = new Map<number, Genre>()
+    for (const genre of movieGenres.value) {
+      combined.set(genre.id, genre)
+    }
+    for (const genre of tvGenres.value) {
+      if (!combined.has(genre.id)) {
+        combined.set(genre.id, genre)
+      }
+    }
+    return Array.from(combined.values()).sort((a, b) => a.name.localeCompare(b.name))
   })
 
-  const streamingPlatforms = computed(() => STREAMING_PLATFORMS)
-
-  const sortOptions = computed(() => [
-    { value: 'popularity.desc', label: 'Most Popular' },
-    { value: 'popularity.asc', label: 'Least Popular' },
-    { value: 'vote_average.desc', label: 'Highest Rated' },
-    { value: 'vote_average.asc', label: 'Lowest Rated' },
-    { value: 'release_date.desc', label: 'Newest First' },
-    { value: 'release_date.asc', label: 'Oldest First' },
-    { value: 'title.asc', label: 'Title A-Z' },
-    { value: 'title.desc', label: 'Title Z-A' },
-  ])
+  // Use static arrays directly instead of computed for constants
+  const streamingPlatforms = STREAMING_PLATFORMS
+  const sortOptions = SORT_OPTIONS
 
   // Actions
   async function loadGenres() {
@@ -82,10 +94,22 @@ export const useFiltersStore = defineStore('filters', () => {
       const genres = await getAllGenres()
       movieGenres.value = genres.movie
       tvGenres.value = genres.tv
+
+      // Populate lookup Maps for O(1) access
+      movieGenreMap.value = new Map(genres.movie.map(g => [g.id, g]))
+      tvGenreMap.value = new Map(genres.tv.map(g => [g.id, g]))
+
       genresLoaded.value = true
     } catch (error) {
       console.error('Failed to load genres:', error)
     }
+  }
+
+  // O(1) genre lookup by ID
+  function getGenreById(id: number, mediaType?: 'movie' | 'tv'): Genre | undefined {
+    if (mediaType === 'movie') return movieGenreMap.value.get(id)
+    if (mediaType === 'tv') return tvGenreMap.value.get(id)
+    return movieGenreMap.value.get(id) || tvGenreMap.value.get(id)
   }
 
   function setMediaType(mediaType: MediaType | 'all') {
@@ -180,6 +204,7 @@ export const useFiltersStore = defineStore('filters', () => {
     sortOptions,
     // Actions
     loadGenres,
+    getGenreById,
     setMediaType,
     toggleGenre,
     setGenres,

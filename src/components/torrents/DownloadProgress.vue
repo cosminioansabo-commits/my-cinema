@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import ProgressBar from 'primevue/progressbar'
 import Button from 'primevue/button'
 import type { Download } from '@/types/torrent'
+import { formatSpeed, formatSize, formatEta } from '@/utils/formatters'
 
 const props = defineProps<{
   download: Download
@@ -44,28 +45,6 @@ const statusClass = computed(() => {
     default: return 'text-blue-400'
   }
 })
-
-function formatSpeed(bytesPerSec: number): string {
-  if (bytesPerSec < 1024) return `${bytesPerSec} B/s`
-  if (bytesPerSec < 1024 * 1024) return `${(bytesPerSec / 1024).toFixed(1)} KB/s`
-  return `${(bytesPerSec / (1024 * 1024)).toFixed(1)} MB/s`
-}
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
-}
-
-function formatEta(seconds?: number): string {
-  if (!seconds || seconds === Infinity) return '--'
-  if (seconds < 60) return `${seconds}s`
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`
-  const hours = Math.floor(seconds / 3600)
-  const mins = Math.floor((seconds % 3600) / 60)
-  return `${hours}h ${mins}m`
-}
 </script>
 
 <template>

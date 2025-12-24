@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import Dialog from 'primevue/dialog'
 import type { Video } from '@/types'
+import { useModalState } from '@/composables/useModalState'
 
 const props = defineProps<{
   visible: boolean
@@ -13,10 +14,7 @@ const emit = defineEmits<{
   'update:visible': [value: boolean]
 }>()
 
-const isOpen = computed({
-  get: () => props.visible,
-  set: (value) => emit('update:visible', value)
-})
+const isOpen = useModalState(props, emit)
 
 const youtubeUrl = computed(() => {
   if (!props.video?.key) return ''

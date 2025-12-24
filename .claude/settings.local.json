@@ -37,7 +37,10 @@
       "Bash(node /Users/sabocosmin/workspace/my-cinema/scripts/generate-pwa-icons.mjs:*)",
       "Bash(ls:*)",
       "Bash(gh run view:*)",
-      "Bash(npm ls:*)"
+      "Bash(npm ls:*)",
+      "Bash(wc:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

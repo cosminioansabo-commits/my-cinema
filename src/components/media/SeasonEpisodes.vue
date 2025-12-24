@@ -3,6 +3,7 @@ import { ref, watch, onMounted, computed } from 'vue'
 import type { Season, SeasonDetails, Episode } from '@/types'
 import { getTVSeasonDetails, getImageUrl } from '@/services/tmdbService'
 import { libraryService, type SonarrEpisode, type SonarrSeasonStats } from '@/services/libraryService'
+import { useLanguage } from '@/composables/useLanguage'
 import Accordion from 'primevue/accordion'
 import AccordionPanel from 'primevue/accordionpanel'
 import AccordionHeader from 'primevue/accordionheader'
@@ -11,6 +12,8 @@ import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
 import Tag from 'primevue/tag'
 import PlaybackModal from './PlaybackModal.vue'
+
+const { t, locale } = useLanguage()
 
 const props = defineProps<{
   tvId: number
@@ -254,8 +257,9 @@ const isSeasonLoading = (seasonNumber: number): boolean => {
 }
 
 const formatDate = (dateStr: string | null): string => {
-  if (!dateStr) return 'TBA'
-  return new Date(dateStr).toLocaleDateString('en-US', {
+  if (!dateStr) return t('media.tba')
+  const localeCode = locale.value === 'ro' ? 'ro-RO' : 'en-US'
+  return new Date(dateStr).toLocaleDateString(localeCode, {
     month: 'short',
     day: 'numeric',
     year: 'numeric'
@@ -288,7 +292,7 @@ const isEpisodeAired = (airDate: string | null): boolean => {
     <!-- Loading state for Sonarr data -->
     <div v-if="loadingSonarrData" class="flex items-center gap-3 py-4 text-gray-400">
       <ProgressSpinner style="width: 24px; height: 24px" strokeWidth="4" />
-      <span class="text-sm">Loading season data...</span>
+      <span class="text-sm">{{ t('media.loadingSeasonData') }}</span>
     </div>
 
     <Accordion v-else v-model:value="expandedSeasons" multiple class="seasons-accordion">
@@ -327,7 +331,7 @@ const isEpisodeAired = (airDate: string | null): boolean => {
                 </Tag>
               </div>
               <div class="flex items-center gap-3 text-sm text-gray-400">
-                <span>{{ season.episodeCount }} episodes</span>
+                <span>{{ t('media.episodeCount', { n: season.episodeCount }) }}</span>
                 <span v-if="season.airDate">{{ formatDate(season.airDate) }}</span>
               </div>
             </div>
@@ -335,13 +339,14 @@ const isEpisodeAired = (airDate: string | null): boolean => {
             <!-- Search season torrent button (only show if not fully downloaded) -->
             <Button
               v-if="!isSeasonFullyDownloaded(season.seasonNumber)"
+              class="mr-4"
               icon="pi pi-download"
               severity="help"
               size="small"
               rounded
               text
               @click.stop="searchSeasonTorrent(season)"
-              v-tooltip.top="'Find season torrent'"
+              v-tooltip.top="t('media.findSeasonTorrent')"
             />
           </div>
         </AccordionHeader>
@@ -380,7 +385,7 @@ const isEpisodeAired = (airDate: string | null): boolean => {
                   <div
                     v-if="isEpisodeDownloaded(episode.seasonNumber, episode.episodeNumber)"
                     class="absolute top-1 right-1 bg-green-500 w-5 h-5 rounded-full flex items-center justify-center shadow-lg"
-                    v-tooltip.top="'Downloaded'"
+                    v-tooltip.top="t('media.downloaded')"
                   >
                     <i class="pi pi-check text-white text-xs"></i>
                   </div>
@@ -414,21 +419,22 @@ const isEpisodeAired = (airDate: string | null): boolean => {
                         rounded
                         text
                         @click="playEpisode(episode)"
-                        v-tooltip.left="'Play'"
+                        v-tooltip.left="t('media.play')"
                       />
                       <!-- Search episode torrent button (only show if not downloaded) -->
                       <Button
                         v-if="isEpisodeAired(episode.airDate) && !isEpisodeDownloaded(episode.seasonNumber, episode.episodeNumber)"
                         icon="pi pi-download"
+                        class="mr-4"
                         severity="help"
                         size="small"
                         rounded
                         text
                         @click="searchEpisodeTorrent(episode)"
-                        v-tooltip.left="'Find torrent'"
+                        v-tooltip.left="t('media.findTorrent')"
                       />
                       <span v-if="!isEpisodeAired(episode.airDate)" class="text-xs text-gray-500 px-2 py-1 bg-zinc-800 rounded">
-                        Not aired
+                        {{ t('media.notAired') }}
                       </span>
                     </div>
                   </div>
@@ -442,7 +448,7 @@ const isEpisodeAired = (airDate: string | null): boolean => {
 
             <!-- Empty state -->
             <div v-if="getSeasonEpisodes(season.seasonNumber).length === 0 && !isSeasonLoading(season.seasonNumber)" class="py-8 text-center text-gray-500">
-              No episodes available
+              {{ t('media.noEpisodesAvailable') }}
             </div>
           </div>
         </AccordionContent>

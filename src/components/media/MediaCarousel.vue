@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import type { Media } from '@/types'
 import MediaCard from './MediaCard.vue'
+import { useCarouselScroll } from '@/composables/useCarouselScroll'
 
 const props = withDefaults(defineProps<{
   title: string
@@ -14,54 +14,8 @@ const props = withDefaults(defineProps<{
   cardWidth: 180,
 })
 
-const trackRef = ref<HTMLElement>()
-const canScrollLeft = ref(false)
-const canScrollRight = ref(true)
-const isMobile = ref(false)
-
-const cardStyle = computed(() => ({
-  width: isMobile.value ? '130px' : `${props.cardWidth}px`,
-}))
-
-const updateScrollButtons = () => {
-  if (!trackRef.value) return
-
-  const { scrollLeft, scrollWidth, clientWidth } = trackRef.value
-  canScrollLeft.value = scrollLeft > 0
-  canScrollRight.value = scrollLeft + clientWidth < scrollWidth - 10
-}
-
-const scroll = (direction: 'left' | 'right') => {
-  if (!trackRef.value) return
-
-  const scrollAmount = props.cardWidth * 4
-  const newPosition = direction === 'left'
-    ? trackRef.value.scrollLeft - scrollAmount
-    : trackRef.value.scrollLeft + scrollAmount
-
-  trackRef.value.scrollTo({
-    left: newPosition,
-    behavior: 'smooth',
-  })
-}
-
-onMounted(() => {
-  if (trackRef.value) {
-    trackRef.value.addEventListener('scroll', updateScrollButtons)
-    updateScrollButtons()
-  }
-  // Check for mobile
-  const checkMobile = () => {
-    isMobile.value = window.innerWidth < 640
-  }
-  checkMobile()
-  window.addEventListener('resize', checkMobile)
-})
-
-onUnmounted(() => {
-  if (trackRef.value) {
-    trackRef.value.removeEventListener('scroll', updateScrollButtons)
-  }
+const { trackRef, canScrollLeft, canScrollRight, cardStyle, scroll } = useCarouselScroll({
+  cardWidth: props.cardWidth,
 })
 </script>
 

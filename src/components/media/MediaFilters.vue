@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { useFiltersStore } from '@/stores/filtersStore'
+import { useLanguage } from '@/composables/useLanguage'
 import { getImageUrl } from '@/services/tmdbService'
 import Select from 'primevue/select'
 import MultiSelect from 'primevue/multiselect'
@@ -10,6 +11,7 @@ import Chip from 'primevue/chip'
 import ToggleSwitch from 'primevue/toggleswitch'
 
 const filtersStore = useFiltersStore()
+const { t } = useLanguage()
 
 onMounted(() => {
   filtersStore.loadGenres()
@@ -17,11 +19,11 @@ onMounted(() => {
 
 const currentYear = new Date().getFullYear()
 
-const mediaTypeOptions = [
-  { value: 'all', label: 'All' },
-  { value: 'movie', label: 'Movies' },
-  { value: 'tv', label: 'TV Shows' },
-]
+const mediaTypeOptions = computed(() => [
+  { value: 'all', label: t('browse.all') },
+  { value: 'movie', label: t('browse.movies') },
+  { value: 'tv', label: t('browse.tvShows') },
+])
 
 const platformsWithLogos = computed(() =>
   filtersStore.streamingPlatforms.map(p => ({
@@ -59,11 +61,11 @@ const ratingRange = computed({
         <div class="w-10 h-10 rounded-xl bg-[#e50914]/10 flex items-center justify-center">
           <i class="pi pi-filter text-[#e50914]"></i>
         </div>
-        <h2 class="text-xl font-bold text-white">Filters</h2>
+        <h2 class="text-xl font-bold text-white">{{ t('browse.filters') }}</h2>
       </div>
       <Button
         v-if="filtersStore.hasActiveFilters"
-        label="Clear All"
+        :label="t('browse.clearAll')"
         text
         size="small"
         class="text-gray-400 hover:text-white"
@@ -75,28 +77,28 @@ const ratingRange = computed({
     <div v-if="filtersStore.hasActiveFilters" class="flex flex-wrap gap-2">
       <Chip
         v-if="filtersStore.filters.mediaType !== 'all'"
-        :label="filtersStore.filters.mediaType === 'movie' ? 'Movies' : 'TV Shows'"
+        :label="filtersStore.filters.mediaType === 'movie' ? t('browse.movies') : t('browse.tvShows')"
         removable
         class="bg-[#e50914]/20 border border-[#e50914]/30"
         @remove="filtersStore.resetFilter('mediaType')"
       />
       <Chip
         v-if="filtersStore.filters.genres.length > 0"
-        :label="`${filtersStore.filters.genres.length} genre(s)`"
+        :label="t('browse.nGenres', { n: filtersStore.filters.genres.length })"
         removable
         class="bg-purple-500/20 border border-purple-500/30"
         @remove="filtersStore.resetFilter('genres')"
       />
       <Chip
         v-if="filtersStore.filters.platforms.length > 0"
-        :label="`${filtersStore.filters.platforms.length} platform(s)`"
+        :label="t('browse.nPlatforms', { n: filtersStore.filters.platforms.length })"
         removable
         class="bg-blue-500/20 border border-blue-500/30"
         @remove="filtersStore.resetFilter('platforms')"
       />
       <Chip
         v-if="filtersStore.filters.animeOnly"
-        label="Anime"
+        :label="t('home.anime')"
         removable
         class="bg-pink-500/20 border border-pink-500/30"
         @remove="filtersStore.resetFilter('animeOnly')"
@@ -107,7 +109,7 @@ const ratingRange = computed({
     <div class="filter-section">
       <label class="filter-label">
         <i class="pi pi-video text-xs"></i>
-        Type
+        {{ t('browse.type') }}
       </label>
       <div class="grid grid-cols-3 gap-2">
         <button
@@ -131,7 +133,7 @@ const ratingRange = computed({
       <div class="flex items-center justify-between">
         <label class="filter-label mb-0 flex items-center gap-2">
           <span class="anime-icon" :class="{ 'anime-icon-active': filtersStore.filters.animeOnly }">アニメ</span>
-          Anime Only
+          {{ t('browse.animeOnly') }}
         </label>
         <ToggleSwitch
           :modelValue="filtersStore.filters.animeOnly"
@@ -142,21 +144,21 @@ const ratingRange = computed({
           }"
         />
       </div>
-      <p class="text-xs text-gray-500 mt-2">Filter to show only Japanese animation</p>
+      <p class="text-xs text-gray-500 mt-2">{{ t('browse.animeOnlyHint') }}</p>
     </div>
 
     <!-- Genres -->
     <div class="filter-section">
       <label class="filter-label">
         <i class="pi pi-tag text-xs"></i>
-        Genres
+        {{ t('browse.genres') }}
       </label>
       <MultiSelect
         v-model="selectedGenres"
         :options="filtersStore.availableGenres"
         optionLabel="name"
         optionValue="id"
-        placeholder="Select genres"
+        :placeholder="t('browse.selectGenres')"
         display="chip"
         :maxSelectedLabels="3"
         class="w-full filter-input"
@@ -167,14 +169,14 @@ const ratingRange = computed({
     <div class="filter-section">
       <label class="filter-label">
         <i class="pi pi-desktop text-xs"></i>
-        Streaming On
+        {{ t('browse.streamingOn') }}
       </label>
       <MultiSelect
         v-model="selectedPlatforms"
         :options="platformsWithLogos"
         optionLabel="name"
         optionValue="id"
-        placeholder="Select platforms"
+        :placeholder="t('browse.selectPlatforms')"
         display="chip"
         :maxSelectedLabels="2"
         class="w-full filter-input"
@@ -193,7 +195,7 @@ const ratingRange = computed({
       <div class="flex items-center justify-between mb-3">
         <label class="filter-label mb-0">
           <i class="pi pi-calendar text-xs"></i>
-          Year
+          {{ t('browse.year') }}
         </label>
         <span class="text-sm font-medium text-white bg-zinc-800 px-3 py-1 rounded-lg">
           {{ yearRange[0] }} - {{ yearRange[1] }}
@@ -215,7 +217,7 @@ const ratingRange = computed({
       <div class="flex items-center justify-between mb-3">
         <label class="filter-label mb-0">
           <i class="pi pi-star text-xs"></i>
-          Rating
+          {{ t('browse.rating') }}
         </label>
         <span class="text-sm font-medium text-white bg-zinc-800 px-3 py-1 rounded-lg flex items-center gap-1">
           <i class="pi pi-star-fill text-[#f5c518] text-xs"></i>
@@ -238,7 +240,7 @@ const ratingRange = computed({
     <div class="filter-section">
       <label class="filter-label">
         <i class="pi pi-sort-alt text-xs"></i>
-        Sort By
+        {{ t('browse.sortBy') }}
       </label>
       <Select
         v-model="filtersStore.filters.sortBy"

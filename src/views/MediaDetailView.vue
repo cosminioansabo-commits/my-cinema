@@ -2,6 +2,7 @@
 import { computed, onMounted, watch, ref } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useMediaStore } from '@/stores/mediaStore'
+import { useLanguage } from '@/composables/useLanguage'
 import type { MediaType, Video, CollectionDetails } from '@/types'
 import { getImageUrl, getBackdropUrl, getCollectionDetails } from '@/services/tmdbService'
 import { libraryService } from '@/services/libraryService'
@@ -20,6 +21,7 @@ const route = useRoute()
 const router = useRouter()
 const mediaStore = useMediaStore()
 const toast = useToast()
+const { languageChangeCounter, t } = useLanguage()
 
 const showTorrentModal = ref(false)
 const showTrailerModal = ref(false)
@@ -252,8 +254,8 @@ const toggleLibrary = async () => {
         libraryStatus.value = { ...libraryStatus.value, inLibrary: false, id: undefined }
         toast.add({
           severity: 'info',
-          summary: 'Removed from Library',
-          detail: `${media.value.title} has been removed from your library`,
+          summary: t('media.removedFromLibrary'),
+          detail: t('media.hasBeenRemoved', { title: media.value.title }),
           life: 3000
         })
       }
@@ -269,8 +271,8 @@ const toggleLibrary = async () => {
           libraryStatus.value = { inLibrary: true, enabled: true, id: movie.id }
           toast.add({
             severity: 'success',
-            summary: 'Added to Library',
-            detail: `${media.value.title} has been added to Radarr`,
+            summary: t('media.addedToLibrary'),
+            detail: t('media.hasBeenAddedTo', { title: media.value.title, service: 'Radarr' }),
             life: 3000
           })
         }
@@ -283,16 +285,16 @@ const toggleLibrary = async () => {
             libraryStatus.value = { inLibrary: true, enabled: true, id: series.id }
             toast.add({
               severity: 'success',
-              summary: 'Added to Library',
-              detail: `${media.value.title} has been added to Sonarr`,
+              summary: t('media.addedToLibrary'),
+              detail: t('media.hasBeenAddedTo', { title: media.value.title, service: 'Sonarr' }),
               life: 3000
             })
           }
         } else {
           toast.add({
             severity: 'error',
-            summary: 'Not Found',
-            detail: 'Could not find this series in Sonarr database',
+            summary: t('errors.notFound'),
+            detail: t('media.notFoundInSonarr'),
             life: 3000
           })
         }
@@ -301,8 +303,8 @@ const toggleLibrary = async () => {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to update library',
+      summary: t('common.error'),
+      detail: t('media.failedToUpdateLibrary'),
       life: 3000
     })
   } finally {
@@ -328,12 +330,15 @@ watch([mediaType, mediaId], ([newType, newId]) => {
 })
 
 // Check library status, fetch collection, external ratings, and progress when media loads
+// Run all independent fetches in parallel for better performance
 watch(media, (newMedia) => {
   if (newMedia) {
-    checkLibraryStatus()
-    fetchCollection()
-    fetchExternalRatings()
-    fetchMovieProgress()
+    Promise.all([
+      checkLibraryStatus(),
+      fetchCollection(),
+      fetchExternalRatings(),
+      fetchMovieProgress(),
+    ])
   }
 })
 
@@ -344,8 +349,13 @@ watch(libraryStatus, (newStatus) => {
   }
 })
 
+// Refetch media details when language changes
+watch(languageChangeCounter, () => {
+  mediaStore.fetchMediaDetails(mediaType.value, mediaId.value)
+})
+
 const posterUrl = computed(() => media.value ? getImageUrl(media.value.posterPath, 'w500') : '')
-const backdropUrl = computed(() => media.value ? getBackdropUrl(media.value.backdropPath, 'original') : '')
+const backdropUrl = computed(() => media.value ? getBackdropUrl(media.value.backdropPath, 'w1280') : '')
 
 const runtime = computed(() => {
   if (!media.value?.runtime) return ''
@@ -488,7 +498,7 @@ const goBack = () => {
       </div>
 
       <!-- Main content -->
-      <div class="relative z-10 -mt-32 sm:-mt-48 px-3 sm:px-4 md:px-10">
+      <div class="relative z-10 px-3 sm:px-4 md:px-10">
         <div class="max-w-6xl mx-auto">
           <div class="flex flex-col md:flex-row gap-4 sm:gap-6 md:gap-8">
             <!-- Poster -->
@@ -509,11 +519,11 @@ const goBack = () => {
 
               <!-- Meta info -->
               <div class="flex flex-wrap items-center gap-2 sm:gap-3 mb-3 sm:mb-4 text-sm sm:text-base">
-                <span :class="[ratingColor, 'font-bold']">{{ ratingPercent }}% Match</span>
+                <span :class="[ratingColor, 'font-bold']">{{ ratingPercent }}% {{ t('media.match') }}</span>
                 <span class="text-gray-400">{{ year }}</span>
                 <span v-if="runtime" class="text-gray-400">{{ runtime }}</span>
                 <span v-if="media.numberOfSeasons" class="text-gray-400">
-                  {{ media.numberOfSeasons }} Season{{ media.numberOfSeasons > 1 ? 's' : '' }}
+                  {{ media.numberOfSeasons }} {{ media.numberOfSeasons > 1 ? t('media.seasons') : t('media.season') }}
                 </span>
               </div>
 
@@ -533,7 +543,7 @@ const goBack = () => {
                 <!-- Play/Resume Button (for movies with file) -->
                 <Button
                   v-if="mediaType === 'movie' && libraryStatus.inLibrary && libraryStatus.hasFile"
-                  :label="hasResumeProgress ? 'Resume' : 'Play'"
+                  :label="hasResumeProgress ? t('media.resume') : t('media.play')"
                   icon="pi pi-play"
                   class="play-btn !text-xs sm:!text-sm !py-2 sm:!py-2.5 !px-3 sm:!px-4 !border-0"
                   @click="showPlaybackModal = true"
@@ -541,7 +551,7 @@ const goBack = () => {
                 <!-- Play/Resume Button (for TV shows with downloaded episodes) -->
                 <Button
                   v-if="mediaType === 'tv' && nextTvEpisode"
-                  :label="nextTvEpisode.hasProgress ? 'Resume' : 'Play'"
+                  :label="nextTvEpisode.hasProgress ? t('media.resume') : t('media.play')"
                   icon="pi pi-play"
                   class="play-btn !text-xs sm:!text-sm !py-2 sm:!py-2.5 !px-3 sm:!px-4 !border-0"
                   @click="playTvShow"
@@ -549,14 +559,14 @@ const goBack = () => {
                 />
                 <Button
                   v-if="trailer"
-                  label="Trailer"
+                  :label="t('media.trailer')"
                   icon="pi pi-youtube"
                   class="trailer-btn !text-xs sm:!text-sm !py-2 sm:!py-2.5 !px-3 sm:!px-4 !border-0"
                   @click="showTrailerModal = true"
                 />
                 <Button
                   v-if="libraryStatus.enabled"
-                  :label="libraryStatus.inLibrary ? 'In Library' : 'Add to Library'"
+                  :label="libraryStatus.inLibrary ? t('media.inLibrary') : t('media.addToLibrary')"
                   :icon="isAddingToLibrary ? 'pi pi-spin pi-spinner' : (libraryStatus.inLibrary ? 'pi pi-check' : 'pi pi-plus')"
                   :severity="libraryStatus.inLibrary ? 'success' : 'secondary'"
                   :disabled="isAddingToLibrary"
@@ -566,11 +576,11 @@ const goBack = () => {
                 <!-- Torrent button: hidden if movie already has file -->
                 <Button
                   v-if="libraryStatus.enabled && !(mediaType === 'movie' && libraryStatus.hasFile)"
-                  label="Torrent"
+                  :label="t('media.findTorrent')"
                   icon="pi pi-download"
                   severity="help"
                   :disabled="!libraryStatus.inLibrary"
-                  :title="!libraryStatus.inLibrary ? 'Add to library first to download' : 'Search for torrents'"
+                  :title="!libraryStatus.inLibrary ? t('media.addToLibraryFirst') : t('torrent.searchTitle')"
                   class="!text-xs sm:!text-sm !py-2 sm:!py-2.5 !px-3 sm:!px-4"
                   @click="handleMainTorrentSearch"
                 />
@@ -585,7 +595,7 @@ const goBack = () => {
 
               <!-- Overview -->
               <div class="mb-4 sm:mb-6">
-                <h3 class="text-white text-base sm:text-lg font-semibold mb-2 sm:mb-3">Overview</h3>
+                <h3 class="text-white text-base sm:text-lg font-semibold mb-2 sm:mb-3">{{ t('media.overview') }}</h3>
                 <p class="text-gray-200 text-sm sm:text-base leading-relaxed">
                   {{ media.overview }}
                 </p>
@@ -593,7 +603,7 @@ const goBack = () => {
 
               <!-- Director/Creator -->
               <div v-if="directors.length > 0" class="mb-4">
-                <span class="text-gray-400">{{ mediaType === 'movie' ? 'Director' : 'Creator' }}: </span>
+                <span class="text-gray-400">{{ mediaType === 'movie' ? t('media.director') : t('media.creator') }}: </span>
                 <template v-for="(director, index) in directors" :key="director.id">
                   <RouterLink
                     :to="`/actor/${director.id}`"
@@ -608,15 +618,15 @@ const goBack = () => {
               <!-- Box Office (Movies only) -->
               <div v-if="hasBoxOffice" class="mb-4 flex flex-wrap gap-x-6 gap-y-2 text-sm">
                 <div v-if="budget">
-                  <span class="text-gray-400">Budget: </span>
+                  <span class="text-gray-400">{{ t('media.budget') }}: </span>
                   <span class="text-white">{{ budget }}</span>
                 </div>
                 <div v-if="revenue">
-                  <span class="text-gray-400">Revenue: </span>
+                  <span class="text-gray-400">{{ t('media.revenue') }}: </span>
                   <span class="text-white">{{ revenue }}</span>
                 </div>
                 <div v-if="profit">
-                  <span class="text-gray-400">Profit: </span>
+                  <span class="text-gray-400">{{ t('media.profit') }}: </span>
                   <span :class="profitIsPositive ? 'text-green-400' : 'text-red-400'">{{ profit }}</span>
                 </div>
               </div>
@@ -682,7 +692,7 @@ const goBack = () => {
 
         <!-- Seasons & Episodes Section (TV Shows only) -->
         <section v-if="mediaType === 'tv' && seasons.length > 0" class="mt-8 sm:mt-12 md:mt-16 max-w-6xl mx-auto">
-          <h2 class="row-title text-lg sm:text-xl mb-4 sm:mb-6">Seasons & Episodes</h2>
+          <h2 class="row-title text-lg sm:text-xl mb-4 sm:mb-6">{{ t('media.seasonsAndEpisodes') }}</h2>
           <SeasonEpisodes
             :tv-id="media.id"
             :seasons="seasons"
@@ -694,15 +704,15 @@ const goBack = () => {
 
         <!-- Cast Section -->
         <section v-if="cast.length > 0" class="mt-8 sm:mt-12 md:mt-16 max-w-6xl mx-auto">
-          <h2 class="row-title text-lg sm:text-xl mb-4 sm:mb-6">Cast</h2>
+          <h2 class="row-title text-lg sm:text-xl mb-4 sm:mb-6">{{ t('media.cast') }}</h2>
           <div class="flex gap-3 sm:gap-5 overflow-x-auto pb-4 sm:pb-6 hide-scrollbar">
             <router-link
               v-for="member in cast"
               :key="member.id"
               :to="`/actor/${member.id}`"
-              class="flex-shrink-0 w-24 sm:w-36 text-center group cursor-pointer"
+              class="flex-shrink-0 w-24 sm:w-30 text-center group cursor-pointer"
             >
-              <div class="aspect-square rounded-xl sm:rounded-2xl overflow-hidden bg-zinc-800 mb-2 sm:mb-3 mx-auto w-20 sm:w-28 shadow-lg shadow-black/30 border border-zinc-700/50 group-hover:border-purple-500/50 transition-all duration-200">
+              <div class="aspect-square rounded-xl sm:rounded-2xl overflow-hidden bg-zinc-800 mb-2 sm:mb-3 mx-auto w-24 sm:w-30 shadow-lg shadow-black/30 border border-zinc-700/50 group-hover:border-purple-500/50 transition-all duration-200">
                 <img
                   v-if="member.profilePath"
                   :src="getImageUrl(member.profilePath, 'w200')"
@@ -752,7 +762,7 @@ const goBack = () => {
 
         <!-- Recommendations Section -->
         <section v-if="recommendations.length > 0" class="mt-8 sm:mt-12 md:mt-16 max-w-6xl mx-auto">
-          <h2 class="row-title text-lg sm:text-xl mb-4 sm:mb-6">More Like This</h2>
+          <h2 class="row-title text-lg sm:text-xl mb-4 sm:mb-6">{{ t('media.moreLikeThis') }}</h2>
           <div class="flex gap-3 sm:gap-4 overflow-x-auto pb-4 hide-scrollbar">
             <router-link
               v-for="item in recommendations"

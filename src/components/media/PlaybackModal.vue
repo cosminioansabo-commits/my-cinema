@@ -1,19 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted } from 'vue'
 import Dialog from 'primevue/dialog'
-import Button from 'primevue/button'
 import VideoPlayer from './VideoPlayer.vue'
+import NextEpisodeCountdown from './player/NextEpisodeCountdown.vue'
 import { mediaService, type PlaybackInfo } from '@/services/mediaService'
 import { progressService } from '@/services/progressService'
-import { getTVSeasonDetails, getMediaDetails } from '@/services/tmdbService'
-
-interface NextEpisodeInfo {
-  seasonNumber: number
-  episodeNumber: number
-  name: string
-  overview: string
-  stillPath: string | null
-}
+import { useNextEpisode } from '@/composables/useNextEpisode'
+import { useModalState } from '@/composables/useModalState'
 
 const props = defineProps<{
   visible: boolean
@@ -31,10 +24,7 @@ const emit = defineEmits<{
   'update:visible': [value: boolean]
 }>()
 
-const isOpen = computed({
-  get: () => props.visible,
-  set: (value) => emit('update:visible', value)
-})
+const isOpen = useModalState(props, emit)
 
 const isLoading = ref(false)
 const hasError = ref(false)
@@ -42,11 +32,16 @@ const errorMessage = ref('')
 const playbackInfo = ref<PlaybackInfo | null>(null)
 const resumePosition = ref(0)
 
-// Next episode auto-play state
-const nextEpisode = ref<NextEpisodeInfo | null>(null)
-const showNextEpisodeCountdown = ref(false)
-const countdownSeconds = ref(10)
-let countdownInterval: ReturnType<typeof setInterval> | null = null
+// Next episode composable
+const {
+  nextEpisode,
+  showNextEpisodeCountdown,
+  countdownSeconds,
+  fetchNextEpisode: fetchNextEpisodeFromComposable,
+  startCountdown,
+  cancelCountdown: cancelCountdownFromComposable,
+  reset: resetNextEpisode
+} = useNextEpisode()
 
 // Current episode state for auto-play
 const currentSeasonNumber = ref(props.seasonNumber)
@@ -58,62 +53,11 @@ const effectiveTmdbId = computed(() => {
 })
 
 // Fetch next episode info for TV shows
-const fetchNextEpisode = async () => {
+const fetchNextEpisodeInfo = async () => {
   if (props.mediaType !== 'tv' || !props.showTmdbId || !currentSeasonNumber.value || !currentEpisodeNumber.value) {
-    nextEpisode.value = null
     return
   }
-
-  try {
-    // Get current season details
-    const seasonDetails = await getTVSeasonDetails(props.showTmdbId, currentSeasonNumber.value)
-    if (!seasonDetails?.episodes) {
-      nextEpisode.value = null
-      return
-    }
-
-    // Check if there's a next episode in current season
-    const nextEpInSeason = seasonDetails.episodes.find(
-      ep => ep.episodeNumber === (currentEpisodeNumber.value ?? 0) + 1
-    )
-
-    if (nextEpInSeason) {
-      nextEpisode.value = {
-        seasonNumber: currentSeasonNumber.value,
-        episodeNumber: nextEpInSeason.episodeNumber,
-        name: nextEpInSeason.name,
-        overview: nextEpInSeason.overview,
-        stillPath: nextEpInSeason.stillPath,
-      }
-      return
-    }
-
-    // Check if there's a next season
-    const showDetails = await getMediaDetails('tv', props.showTmdbId)
-    if (!showDetails?.numberOfSeasons || currentSeasonNumber.value >= showDetails.numberOfSeasons) {
-      nextEpisode.value = null
-      return
-    }
-
-    // Get first episode of next season
-    const nextSeasonDetails = await getTVSeasonDetails(props.showTmdbId, currentSeasonNumber.value + 1)
-    if (!nextSeasonDetails?.episodes || nextSeasonDetails.episodes.length === 0) {
-      nextEpisode.value = null
-      return
-    }
-
-    const firstEpNextSeason = nextSeasonDetails.episodes[0]
-    nextEpisode.value = {
-      seasonNumber: currentSeasonNumber.value + 1,
-      episodeNumber: firstEpNextSeason.episodeNumber,
-      name: firstEpNextSeason.name,
-      overview: firstEpNextSeason.overview,
-      stillPath: firstEpNextSeason.stillPath,
-    }
-  } catch (error) {
-    console.error('Error fetching next episode:', error)
-    nextEpisode.value = null
-  }
+  await fetchNextEpisodeFromComposable(props.showTmdbId, currentSeasonNumber.value, currentEpisodeNumber.value)
 }
 
 // Fetch playback info and saved progress when modal opens
@@ -124,8 +68,7 @@ const fetchPlaybackInfo = async () => {
   hasError.value = false
   playbackInfo.value = null
   resumePosition.value = 0
-  showNextEpisodeCountdown.value = false
-  nextEpisode.value = null
+  resetNextEpisode()
 
   try {
     console.log('Fetching playback info:', { mediaType: props.mediaType, tmdbId: props.tmdbId, showTmdbId: props.showTmdbId, season: currentSeasonNumber.value, episode: currentEpisodeNumber.value })
@@ -161,7 +104,7 @@ const fetchPlaybackInfo = async () => {
       errorMessage.value = 'Media not found. Make sure Radarr/Sonarr has the file.'
     } else {
       // Fetch next episode info for TV shows
-      fetchNextEpisode()
+      fetchNextEpisodeInfo()
     }
   } catch (error) {
     console.error('Error fetching playback info:', error)
@@ -197,36 +140,14 @@ const handleClose = () => {
   isOpen.value = false
 }
 
-// Start countdown to next episode
-const startNextEpisodeCountdown = () => {
-  countdownSeconds.value = 10
-  showNextEpisodeCountdown.value = true
-
-  countdownInterval = setInterval(() => {
-    countdownSeconds.value--
-    if (countdownSeconds.value <= 0) {
-      playNextEpisode()
-    }
-  }, 1000)
-}
-
 // Cancel countdown and close
 const cancelCountdown = () => {
-  if (countdownInterval) {
-    clearInterval(countdownInterval)
-    countdownInterval = null
-  }
-  showNextEpisodeCountdown.value = false
+  cancelCountdownFromComposable()
   isOpen.value = false
 }
 
 // Play next episode
 const playNextEpisode = async () => {
-  if (countdownInterval) {
-    clearInterval(countdownInterval)
-    countdownInterval = null
-  }
-
   if (!nextEpisode.value || !props.showTmdbId) {
     cancelCountdown()
     return
@@ -238,8 +159,8 @@ const playNextEpisode = async () => {
 
   console.log(`Playing next episode: S${currentSeasonNumber.value}E${currentEpisodeNumber.value}`)
 
-  // Refetch playback info for next episode
-  showNextEpisodeCountdown.value = false
+  // Reset and refetch playback info for next episode
+  resetNextEpisode()
   await fetchPlaybackInfo()
 }
 
@@ -260,7 +181,7 @@ const handleEnded = async () => {
 
   // For TV shows with a next episode, show countdown
   if (props.mediaType === 'tv' && nextEpisode.value) {
-    startNextEpisodeCountdown()
+    startCountdown(playNextEpisode)
   } else {
     // For movies or shows without next episode, close after a delay
     setTimeout(() => {
@@ -279,22 +200,14 @@ watch(() => props.visible, (newValue) => {
     fetchPlaybackInfo()
   } else {
     // Cleanup when closing
-    if (countdownInterval) {
-      clearInterval(countdownInterval)
-      countdownInterval = null
-    }
-    showNextEpisodeCountdown.value = false
+    resetNextEpisode()
     playbackInfo.value = null
-    nextEpisode.value = null
   }
 }, { immediate: true })
 
 // Cleanup on unmount
 onUnmounted(() => {
-  if (countdownInterval) {
-    clearInterval(countdownInterval)
-    countdownInterval = null
-  }
+  resetNextEpisode()
   playbackInfo.value = null
 })
 
@@ -359,63 +272,16 @@ const displayTitle = computed(() => {
 
       <!-- Next Episode Countdown Overlay -->
       <Transition name="fade">
-        <div
+        <NextEpisodeCountdown
           v-if="showNextEpisodeCountdown && nextEpisode"
-          class="absolute inset-0 bg-black/90 flex items-center justify-center z-50"
-        >
-          <div class="text-center max-w-lg px-6">
-            <p class="text-gray-400 text-sm uppercase tracking-wide mb-2">Up Next</p>
-            <h3 class="text-white text-2xl font-bold mb-2">
-              S{{ nextEpisode.seasonNumber }}:E{{ nextEpisode.episodeNumber }} - {{ nextEpisode.name }}
-            </h3>
-            <p v-if="nextEpisode.overview" class="text-gray-400 text-sm line-clamp-2 mb-6">
-              {{ nextEpisode.overview }}
-            </p>
-
-            <!-- Countdown ring -->
-            <div class="relative w-24 h-24 mx-auto mb-6">
-              <svg class="w-full h-full transform -rotate-90">
-                <circle
-                  cx="48"
-                  cy="48"
-                  r="44"
-                  fill="none"
-                  stroke="#333"
-                  stroke-width="4"
-                />
-                <circle
-                  cx="48"
-                  cy="48"
-                  r="44"
-                  fill="none"
-                  stroke="#e50914"
-                  stroke-width="4"
-                  stroke-linecap="round"
-                  :stroke-dasharray="276.46"
-                  :stroke-dashoffset="276.46 * (1 - countdownSeconds / 10)"
-                  class="transition-all duration-1000"
-                />
-              </svg>
-              <span class="absolute inset-0 flex items-center justify-center text-white text-3xl font-bold">
-                {{ countdownSeconds }}
-              </span>
-            </div>
-
-            <div class="flex gap-4 justify-center">
-              <Button
-                label="Cancel"
-                severity="secondary"
-                class="!bg-zinc-700 !border-0 hover:!bg-zinc-600"
-                @click="cancelCountdown"
-              />
-              <Button
-                label="Play Now"
-                class="!bg-[#e50914] !border-0 hover:!bg-[#f40612]"
-                @click="playNextEpisode"
-              />
-            </div>
-          </div>
-        </div>
+          :season-number="nextEpisode.seasonNumber"
+          :episode-number="nextEpisode.episodeNumber"
+          :name="nextEpisode.name"
+          :overview="nextEpisode.overview"
+          :countdown-seconds="countdownSeconds"
+          @cancel="cancelCountdown"
+          @play-now="playNextEpisode"
+        />
       </Transition>
     </div>
 

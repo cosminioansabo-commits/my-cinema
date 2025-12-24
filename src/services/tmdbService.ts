@@ -18,12 +18,75 @@ import type {
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3'
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p'
 
+// Language mapping from our app locales to TMDB language codes
+const LOCALE_TO_TMDB: Record<string, string> = {
+  en: 'en-US',
+  ro: 'ro-RO',
+}
+
+// Current language for API requests
+let currentLanguage = LOCALE_TO_TMDB[localStorage.getItem('my-cinema-locale') || 'en'] || 'en-US'
+
+// Set the language for TMDB API requests
+export function setTmdbLanguage(locale: string): void {
+  const newLanguage = LOCALE_TO_TMDB[locale] || 'en-US'
+  if (newLanguage !== currentLanguage) {
+    currentLanguage = newLanguage
+    // Clear cache when language changes
+    clearTmdbCache()
+  }
+}
+
+// Get current TMDB language
+export function getTmdbLanguage(): string {
+  return currentLanguage
+}
+
 const api = axios.create({
   baseURL: TMDB_BASE_URL,
   params: {
     api_key: import.meta.env.VITE_TMDB_API_KEY,
   },
 })
+
+// Add language to every request
+api.interceptors.request.use((config) => {
+  config.params = {
+    ...config.params,
+    language: currentLanguage,
+  }
+  return config
+})
+
+// ============ REQUEST CACHING ============
+interface CacheEntry<T> {
+  data: T
+  timestamp: number
+}
+
+const cache = new Map<string, CacheEntry<unknown>>()
+const CACHE_TTL = 1000 * 60 * 30 // 30 minutes for list data
+const CACHE_TTL_DETAILS = 1000 * 60 * 60 // 1 hour for detail data
+
+function getCached<T>(key: string, ttl: number = CACHE_TTL): T | null {
+  const entry = cache.get(key)
+  if (entry && Date.now() - entry.timestamp < ttl) {
+    return entry.data as T
+  }
+  if (entry) {
+    cache.delete(key) // Clean up expired entry
+  }
+  return null
+}
+
+function setCache<T>(key: string, data: T): void {
+  cache.set(key, { data, timestamp: Date.now() })
+}
+
+// Clear cache (useful for forcing refresh)
+export function clearTmdbCache(): void {
+  cache.clear()
+}
 
 // Image URL helpers
 export const getImageUrl = (path: string | null, size: 'w200' | 'w300' | 'w500' | 'w780' | 'original' = 'w500'): string => {
@@ -34,6 +97,25 @@ export const getImageUrl = (path: string | null, size: 'w200' | 'w300' | 'w500' 
 export const getBackdropUrl = (path: string | null, size: 'w780' | 'w1280' | 'original' = 'w1280'): string => {
   if (!path) return ''
   return `${TMDB_IMAGE_BASE}/${size}${path}`
+}
+
+// Generate srcset for responsive poster images
+export const getPosterSrcset = (path: string | null): string => {
+  if (!path) return ''
+  return [
+    `${TMDB_IMAGE_BASE}/w200${path} 200w`,
+    `${TMDB_IMAGE_BASE}/w300${path} 300w`,
+    `${TMDB_IMAGE_BASE}/w500${path} 500w`,
+  ].join(', ')
+}
+
+// Generate srcset for responsive backdrop images
+export const getBackdropSrcset = (path: string | null): string => {
+  if (!path) return ''
+  return [
+    `${TMDB_IMAGE_BASE}/w780${path} 780w`,
+    `${TMDB_IMAGE_BASE}/w1280${path} 1280w`,
+  ].join(', ')
 }
 
 // Get just the poster path for a movie or TV show (lightweight fetch)
@@ -590,6 +672,11 @@ export async function getEnhancedRecommendations(
 }
 
 export async function getMediaDetails(mediaType: MediaType, id: number): Promise<MediaDetails> {
+  // Check cache first
+  const cacheKey = `details-${mediaType}-${id}`
+  const cached = getCached<MediaDetails>(cacheKey, CACHE_TTL_DETAILS)
+  if (cached) return cached
+
   const [detailsResponse, watchProvidersResponse, creditsResponse, videosResponse, externalIdsResponse] = await Promise.all([
     api.get(`/${mediaType}/${id}`),
     api.get<WatchProviders>(`/${mediaType}/${id}/watch/providers`),
@@ -697,7 +784,7 @@ export async function getMediaDetails(mediaType: MediaType, id: number): Promise
     backdropPath: details.belongs_to_collection.backdrop_path,
   } : undefined
 
-  return {
+  const result: MediaDetails = {
     id: details.id,
     title: details.title || details.name,
     originalTitle: details.original_title || details.original_name,
@@ -733,19 +820,34 @@ export async function getMediaDetails(mediaType: MediaType, id: number): Promise
     // External IDs
     imdbId: externalIds.imdb_id || undefined,
   }
+
+  // Cache the result
+  setCache(cacheKey, result)
+  return result
 }
 
 export async function getGenres(mediaType: MediaType): Promise<Genre[]> {
+  const cacheKey = `genres-${mediaType}`
+  const cached = getCached<Genre[]>(cacheKey, CACHE_TTL_DETAILS)
+  if (cached) return cached
+
   const { data } = await api.get<{ genres: Genre[] }>(`/genre/${mediaType}/list`)
+  setCache(cacheKey, data.genres)
   return data.genres
 }
 
 export async function getAllGenres(): Promise<{ movie: Genre[]; tv: Genre[] }> {
+  const cacheKey = 'genres-all'
+  const cached = getCached<{ movie: Genre[]; tv: Genre[] }>(cacheKey, CACHE_TTL_DETAILS)
+  if (cached) return cached
+
   const [movieGenres, tvGenres] = await Promise.all([
     getGenres('movie'),
     getGenres('tv'),
   ])
-  return { movie: movieGenres, tv: tvGenres }
+  const result = { movie: movieGenres, tv: tvGenres }
+  setCache(cacheKey, result)
+  return result
 }
 
 // Get a featured/hero item with backdrop
@@ -809,10 +911,15 @@ export async function findTVByExternalId(externalId: string | number, source: 'i
 
 // Get TV show season details with episodes
 export async function getTVSeasonDetails(tvId: number, seasonNumber: number): Promise<SeasonDetails | null> {
+  // Check cache first
+  const cacheKey = `season-${tvId}-${seasonNumber}`
+  const cached = getCached<SeasonDetails>(cacheKey, CACHE_TTL_DETAILS)
+  if (cached) return cached
+
   try {
     const { data } = await api.get(`/tv/${tvId}/season/${seasonNumber}`)
 
-    return {
+    const result: SeasonDetails = {
       id: data.id,
       seasonNumber: data.season_number,
       name: data.name,
@@ -842,6 +949,10 @@ export async function getTVSeasonDetails(tvId: number, seasonNumber: number): Pr
         runtime: ep.runtime,
       })),
     }
+
+    // Cache the result
+    setCache(cacheKey, result)
+    return result
   } catch (error) {
     console.error('Error fetching season details:', error)
     return null

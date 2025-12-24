@@ -1,288 +1,63 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { onMounted, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
-import type { Media } from '@/types'
-import {
-  getFeaturedContent,
-  getTrending,
-  getPopularMovies,
-  getPopularTV,
-  getTopRatedMovies,
-  getTopRatedTV,
-  getNowPlayingMovies,
-  getUpcomingMovies,
-  getOnTheAirTV,
-  getCriticallyAcclaimed,
-  getHiddenGems,
-  getNewReleases,
-  getAnime,
-  getActionAdventure,
-  getSciFiFantasy,
-  getCrimeThriller,
-  getComedy,
-  getHorror,
-  getDocumentaries,
-  getKoreanDramas,
-  getBackdropUrl,
-  findByExternalId,
-  getMediaDetails,
-} from '@/services/tmdbService'
-import { libraryService, type RadarrMovie, type SonarrSeries } from '@/services/libraryService'
-import { progressService } from '@/services/progressService'
+import { useHomeContent } from '@/composables/useHomeContent'
+import { useLanguage } from '@/composables/useLanguage'
 import MediaCarousel from '@/components/media/MediaCarousel.vue'
-import ContinueWatchingCarousel, { type ContinueWatchingItem as CarouselItem } from '@/components/media/ContinueWatchingCarousel.vue'
+import ContinueWatchingCarousel from '@/components/media/ContinueWatchingCarousel.vue'
 import Button from 'primevue/button'
 import Skeleton from 'primevue/skeleton'
 
-// State
-const featuredItem = ref<Media | null>(null)
-const trendingAll = ref<Media[]>([])
-const popularMovies = ref<Media[]>([])
-const popularTV = ref<Media[]>([])
-const topRatedMovies = ref<Media[]>([])
-const topRatedTV = ref<Media[]>([])
-const nowPlaying = ref<Media[]>([])
-const libraryItems = ref<Media[]>([])
-const continueWatchingItems = ref<CarouselItem[]>([])
-
-// New Netflix-style categories
-const upcomingMovies = ref<Media[]>([])
-const onTheAirTV = ref<Media[]>([])
-const criticallyAcclaimedMovies = ref<Media[]>([])
-const hiddenGemsMovies = ref<Media[]>([])
-const newReleasesMovies = ref<Media[]>([])
-const animeTV = ref<Media[]>([])
-const actionMovies = ref<Media[]>([])
-const sciFiMovies = ref<Media[]>([])
-const crimeTV = ref<Media[]>([])
-const comedyMovies = ref<Media[]>([])
-const horrorMovies = ref<Media[]>([])
-const documentaries = ref<Media[]>([])
-const kDramas = ref<Media[]>([])
-
-const isLoadingHero = ref(true)
-const isLoadingContent = ref(true)
-const isLoadingMoreContent = ref(true)
-const isLoadingContinueWatching = ref(false)
-
 const authStore = useAuthStore()
+const { languageChangeCounter, t } = useLanguage()
 
-// Computed
-const heroBackdrop = computed(() => {
-  if (!featuredItem.value?.backdropPath) return ''
-  return getBackdropUrl(featuredItem.value.backdropPath, 'original')
+const {
+  // Hero
+  featuredItem,
+  isLoadingHero,
+  heroBackdrop,
+  heroYear,
+  heroRating,
+  // Primary content
+  trendingAll,
+  popularMovies,
+  popularTV,
+  topRatedMovies,
+  topRatedTV,
+  nowPlaying,
+  isLoadingContent,
+  // Secondary content
+  upcomingMovies,
+  onTheAirTV,
+  criticallyAcclaimedMovies,
+  hiddenGemsMovies,
+  newReleasesMovies,
+  animeTV,
+  actionMovies,
+  sciFiMovies,
+  crimeTV,
+  comedyMovies,
+  horrorMovies,
+  documentaries,
+  kDramas,
+  isLoadingMoreContent,
+  // Library
+  libraryItems,
+  continueWatchingItems,
+  isLoadingContinueWatching,
+  // Methods
+  loadContinueWatching,
+  loadAllContent,
+} = useHomeContent()
+
+onMounted(() => {
+  loadAllContent(authStore.isAuthenticated)
 })
 
-const heroYear = computed(() => {
-  if (!featuredItem.value?.releaseDate) return ''
-  return new Date(featuredItem.value.releaseDate).getFullYear()
-})
-
-const heroRating = computed(() => {
-  if (!featuredItem.value) return '0'
-  return Math.round(featuredItem.value.voteAverage * 10)
-})
-
-// Fetch continue watching items and enrich with TMDB data
-const loadContinueWatching = async () => {
-  try {
-    isLoadingContinueWatching.value = true
-    const items = await progressService.getContinueWatching(10)
-
-    // Enrich each item with TMDB data
-    const enrichedItems: CarouselItem[] = await Promise.all(
-      items.map(async (item) => {
-        try {
-          if (item.mediaType === 'movie') {
-            const movieDetails = await getMediaDetails('movie', item.tmdbId)
-            return {
-              ...item,
-              title: movieDetails?.title || 'Unknown Movie',
-              posterPath: movieDetails?.posterPath || null,
-            }
-          } else {
-            // For episodes, get the TV show details
-            const showDetails = await getMediaDetails('tv', item.tmdbId)
-            return {
-              ...item,
-              title: showDetails?.title || 'Unknown Show',
-              posterPath: showDetails?.posterPath || null,
-              episodeTitle: item.seasonNumber && item.episodeNumber
-                ? `S${item.seasonNumber}:E${item.episodeNumber}`
-                : undefined,
-            }
-          }
-        } catch {
-          return {
-            ...item,
-            title: 'Unknown',
-            posterPath: null,
-          }
-        }
-      })
-    )
-
-    continueWatchingItems.value = enrichedItems
-  } catch (error) {
-    console.error('Failed to load continue watching:', error)
-    continueWatchingItems.value = []
-  } finally {
-    isLoadingContinueWatching.value = false
-  }
-}
-
-// Fetch library items and convert to Media format
-const loadLibraryItems = async () => {
-  try {
-    const [movies, series] = await Promise.all([
-      libraryService.getMovies(),
-      libraryService.getSeries(),
-    ])
-
-    // Convert Radarr movies to Media format
-    const movieMedia = await Promise.all(
-      movies.slice(0, 10).map(async (movie: RadarrMovie) => {
-        const tmdb = await findByExternalId(movie.tmdbId, 'imdb_id').catch(() => null)
-        return {
-          id: movie.tmdbId,
-          title: movie.title,
-          posterPath: tmdb?.posterPath || movie.images?.find((i: { coverType: string }) => i.coverType === 'poster')?.remoteUrl || null,
-          releaseDate: movie.year ? `${movie.year}-01-01` : '',
-          voteAverage: movie.ratings?.tmdb?.value || 0,
-          mediaType: 'movie' as const,
-          overview: movie.overview || '',
-          backdropPath: null,
-          voteCount: 0,
-          genreIds: [],
-          popularity: 0,
-        }
-      })
-    )
-
-    // Convert Sonarr series to Media format
-    const seriesMedia = await Promise.all(
-      series.slice(0, 10).map(async (s: SonarrSeries) => {
-        const tmdb = await findByExternalId(s.tvdbId, 'tvdb_id').catch(() => null)
-        return {
-          id: tmdb?.id || s.tvdbId,
-          title: s.title,
-          posterPath: tmdb?.posterPath || s.images?.find((i: { coverType: string }) => i.coverType === 'poster')?.remoteUrl || null,
-          releaseDate: s.year ? `${s.year}-01-01` : '',
-          voteAverage: s.ratings?.value || 0,
-          mediaType: 'tv' as const,
-          overview: s.overview || '',
-          backdropPath: null,
-          voteCount: 0,
-          genreIds: [],
-          popularity: 0,
-        }
-      })
-    )
-
-    libraryItems.value = [...movieMedia, ...seriesMedia].slice(0, 20)
-  } catch (error) {
-    console.error('Failed to load library items:', error)
-  }
-}
-
-// Load data
-onMounted(async () => {
-  // Load hero content first
-  try {
-    featuredItem.value = await getFeaturedContent()
-  } catch (error) {
-    console.error('Failed to load featured content:', error)
-  } finally {
-    isLoadingHero.value = false
-  }
-
-  // Load continue watching and library items in background (only if authenticated)
-  if (authStore.isAuthenticated) {
-    loadContinueWatching()
-    loadLibraryItems()
-  }
-
-  // Load primary carousels in parallel (most important ones first)
-  try {
-    const [
-      trending,
-      movies,
-      tv,
-      topMovies,
-      topTV,
-      playing,
-    ] = await Promise.all([
-      getTrending('all', 'week'),
-      getPopularMovies(),
-      getPopularTV(),
-      getTopRatedMovies(),
-      getTopRatedTV(),
-      getNowPlayingMovies(),
-    ])
-
-    trendingAll.value = trending
-    popularMovies.value = movies
-    popularTV.value = tv
-    topRatedMovies.value = topMovies
-    topRatedTV.value = topTV
-    nowPlaying.value = playing
-  } catch (error) {
-    console.error('Failed to load content:', error)
-  } finally {
-    isLoadingContent.value = false
-  }
-
-  // Load additional Netflix-style categories (secondary load)
-  try {
-    const [
-      upcoming,
-      onAir,
-      acclaimed,
-      hidden,
-      newReleases,
-      anime,
-      action,
-      sciFi,
-      crime,
-      comedy,
-      horror,
-      docs,
-      korean,
-    ] = await Promise.all([
-      getUpcomingMovies(),
-      getOnTheAirTV(),
-      getCriticallyAcclaimed('movie'),
-      getHiddenGems('movie'),
-      getNewReleases('movie'),
-      getAnime('tv'),
-      getActionAdventure('movie'),
-      getSciFiFantasy('movie'),
-      getCrimeThriller('tv'),
-      getComedy('movie'),
-      getHorror('movie'),
-      getDocumentaries('movie'),
-      getKoreanDramas(),
-    ])
-
-    upcomingMovies.value = upcoming
-    onTheAirTV.value = onAir
-    criticallyAcclaimedMovies.value = acclaimed
-    hiddenGemsMovies.value = hidden
-    newReleasesMovies.value = newReleases
-    animeTV.value = anime
-    actionMovies.value = action
-    sciFiMovies.value = sciFi
-    crimeTV.value = crime
-    comedyMovies.value = comedy
-    horrorMovies.value = horror
-    documentaries.value = docs
-    kDramas.value = korean
-  } catch (error) {
-    console.error('Failed to load additional content:', error)
-  } finally {
-    isLoadingMoreContent.value = false
-  }
+// Refetch content when language changes
+watch(languageChangeCounter, () => {
+  loadAllContent(authStore.isAuthenticated)
 })
 </script>
 
@@ -346,7 +121,7 @@ onMounted(async () => {
             <div class="flex flex-wrap gap-2 sm:gap-3">
               <RouterLink :to="`/media/${featuredItem.mediaType}/${featuredItem.id}`">
                 <Button
-                  label="More Info"
+                  :label="t('media.moreInfo')"
                   icon="pi pi-info-circle"
                   class="!bg-white/30 !border-0 hover:!bg-white/20 !text-white font-semibold !text-xs sm:!text-sm !py-2 sm:!py-2.5 !px-3 sm:!px-4"
                 />
@@ -362,7 +137,7 @@ onMounted(async () => {
       <!-- Continue Watching (if has items) -->
       <ContinueWatchingCarousel
         v-if="continueWatchingItems.length > 0 || isLoadingContinueWatching"
-        title="Continue Watching"
+        :title="t('home.continueWatching')"
         :items="continueWatchingItems"
         :loading="isLoadingContinueWatching"
         @refresh="loadContinueWatching"
@@ -371,14 +146,14 @@ onMounted(async () => {
       <!-- My Library (if has items) -->
       <MediaCarousel
         v-if="libraryItems.length > 0"
-        title="My Library"
+        :title="t('home.myLibrary')"
         :items="libraryItems"
         see-all-link="/my-library"
       />
 
       <!-- Trending Now -->
       <MediaCarousel
-        title="Trending Now"
+        :title="t('home.trending')"
         :items="trendingAll"
         :loading="isLoadingContent"
         see-all-link="/browse"
@@ -387,14 +162,14 @@ onMounted(async () => {
       <!-- New Releases -->
       <MediaCarousel
         v-if="newReleasesMovies.length > 0 || isLoadingMoreContent"
-        title="New Releases"
+        :title="t('home.newReleases')"
         :items="newReleasesMovies"
         :loading="isLoadingMoreContent"
       />
 
       <!-- Popular Movies -->
       <MediaCarousel
-        title="Popular Movies"
+        :title="t('home.popularMovies')"
         :items="popularMovies"
         :loading="isLoadingContent"
         see-all-link="/browse?type=movie"
@@ -402,7 +177,7 @@ onMounted(async () => {
 
       <!-- Popular TV Shows -->
       <MediaCarousel
-        title="Popular TV Shows"
+        :title="t('home.popularTV')"
         :items="popularTV"
         :loading="isLoadingContent"
         see-all-link="/browse?type=tv"
@@ -411,14 +186,14 @@ onMounted(async () => {
       <!-- Critically Acclaimed -->
       <MediaCarousel
         v-if="criticallyAcclaimedMovies.length > 0 || isLoadingMoreContent"
-        title="Critically Acclaimed"
+        :title="t('home.criticallyAcclaimed')"
         :items="criticallyAcclaimedMovies"
         :loading="isLoadingMoreContent"
       />
 
       <!-- Now Playing in Theaters -->
       <MediaCarousel
-        title="Now Playing in Theaters"
+        :title="t('home.nowPlaying')"
         :items="nowPlaying"
         :loading="isLoadingContent"
       />
@@ -426,7 +201,7 @@ onMounted(async () => {
       <!-- Coming Soon -->
       <MediaCarousel
         v-if="upcomingMovies.length > 0 || isLoadingMoreContent"
-        title="Coming Soon"
+        :title="t('home.comingSoon')"
         :items="upcomingMovies"
         :loading="isLoadingMoreContent"
       />
@@ -434,7 +209,7 @@ onMounted(async () => {
       <!-- Currently Airing TV -->
       <MediaCarousel
         v-if="onTheAirTV.length > 0 || isLoadingMoreContent"
-        title="Currently Airing TV Shows"
+        :title="t('home.currentlyAiring')"
         :items="onTheAirTV"
         :loading="isLoadingMoreContent"
       />
@@ -442,7 +217,7 @@ onMounted(async () => {
       <!-- Action & Adventure -->
       <MediaCarousel
         v-if="actionMovies.length > 0 || isLoadingMoreContent"
-        title="Action & Adventure"
+        :title="t('home.actionAdventure')"
         :items="actionMovies"
         :loading="isLoadingMoreContent"
       />
@@ -450,7 +225,7 @@ onMounted(async () => {
       <!-- Sci-Fi & Fantasy -->
       <MediaCarousel
         v-if="sciFiMovies.length > 0 || isLoadingMoreContent"
-        title="Sci-Fi & Fantasy"
+        :title="t('home.sciFiFantasy')"
         :items="sciFiMovies"
         :loading="isLoadingMoreContent"
       />
@@ -458,7 +233,7 @@ onMounted(async () => {
       <!-- Crime & Thriller TV -->
       <MediaCarousel
         v-if="crimeTV.length > 0 || isLoadingMoreContent"
-        title="Crime & Thriller Series"
+        :title="t('home.crimeThriller')"
         :items="crimeTV"
         :loading="isLoadingMoreContent"
       />
@@ -466,7 +241,7 @@ onMounted(async () => {
       <!-- Comedy -->
       <MediaCarousel
         v-if="comedyMovies.length > 0 || isLoadingMoreContent"
-        title="Comedy"
+        :title="t('home.comedy')"
         :items="comedyMovies"
         :loading="isLoadingMoreContent"
       />
@@ -474,7 +249,7 @@ onMounted(async () => {
       <!-- Horror -->
       <MediaCarousel
         v-if="horrorMovies.length > 0 || isLoadingMoreContent"
-        title="Horror"
+        :title="t('home.horror')"
         :items="horrorMovies"
         :loading="isLoadingMoreContent"
       />
@@ -482,7 +257,7 @@ onMounted(async () => {
       <!-- Anime -->
       <MediaCarousel
         v-if="animeTV.length > 0 || isLoadingMoreContent"
-        title="Anime"
+        :title="t('home.anime')"
         :items="animeTV"
         :loading="isLoadingMoreContent"
       />
@@ -490,21 +265,21 @@ onMounted(async () => {
       <!-- K-Dramas -->
       <MediaCarousel
         v-if="kDramas.length > 0 || isLoadingMoreContent"
-        title="K-Dramas"
+        :title="t('home.kDramas')"
         :items="kDramas"
         :loading="isLoadingMoreContent"
       />
 
       <!-- Top Rated Movies -->
       <MediaCarousel
-        title="Top Rated Movies"
+        :title="t('home.topRatedMovies')"
         :items="topRatedMovies"
         :loading="isLoadingContent"
       />
 
       <!-- Top Rated TV Shows -->
       <MediaCarousel
-        title="Top Rated TV Shows"
+        :title="t('home.topRatedTV')"
         :items="topRatedTV"
         :loading="isLoadingContent"
       />
@@ -512,7 +287,7 @@ onMounted(async () => {
       <!-- Hidden Gems -->
       <MediaCarousel
         v-if="hiddenGemsMovies.length > 0 || isLoadingMoreContent"
-        title="Hidden Gems"
+        :title="t('home.hiddenGems')"
         :items="hiddenGemsMovies"
         :loading="isLoadingMoreContent"
       />
@@ -520,7 +295,7 @@ onMounted(async () => {
       <!-- Documentaries -->
       <MediaCarousel
         v-if="documentaries.length > 0 || isLoadingMoreContent"
-        title="Documentaries"
+        :title="t('home.documentaries')"
         :items="documentaries"
         :loading="isLoadingMoreContent"
       />

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { RouterLink, useRoute } from 'vue-router'
 import Drawer from 'primevue/drawer'
+import LanguageSelector from '@/components/common/LanguageSelector.vue'
+import { useLanguage } from '@/composables/useLanguage'
 
 const props = defineProps<{
   visible: boolean
@@ -11,14 +13,15 @@ const emit = defineEmits<{
 }>()
 
 const route = useRoute()
+const { t } = useLanguage()
 
 const navLinks = [
-  { path: '/', label: 'Home', icon: 'pi-home' },
-  { path: '/browse', label: 'Browse', icon: 'pi-compass' },
-  { path: '/search', label: 'Search', icon: 'pi-search' },
-  { path: '/my-library', label: 'My Library', icon: 'pi-database' },
-  { path: '/calendar', label: 'Calendar', icon: 'pi-calendar' },
-  { path: '/downloads', label: 'Downloads', icon: 'pi-download' },
+  { path: '/', labelKey: 'nav.home', icon: 'pi-home' },
+  { path: '/browse', labelKey: 'nav.browse', icon: 'pi-compass' },
+  { path: '/search', labelKey: 'nav.search', icon: 'pi-search' },
+  { path: '/my-library', labelKey: 'nav.myLibrary', icon: 'pi-database' },
+  { path: '/calendar', labelKey: 'nav.calendar', icon: 'pi-calendar' },
+  { path: '/downloads', labelKey: 'nav.downloads', icon: 'pi-download' },
 ]
 
 const isActiveRoute = (path: string) => {
@@ -69,9 +72,20 @@ const closeSidebar = () => {
           @click="closeSidebar"
         >
           <i :class="['pi', link.icon, 'text-lg']"></i>
-          <span class="font-medium">{{ link.label }}</span>
+          <span class="font-medium">{{ t(link.labelKey) }}</span>
         </RouterLink>
       </nav>
+
+      <!-- Language Selector -->
+      <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-zinc-700">
+        <div class="flex items-center gap-3">
+          <i class="pi pi-globe text-gray-400"></i>
+          <span class="text-gray-400 text-sm">{{ t('settings.language') }}</span>
+          <div class="ml-auto">
+            <LanguageSelector />
+          </div>
+        </div>
+      </div>
 
   </Drawer>
 </template>

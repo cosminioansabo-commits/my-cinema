@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import DownloadManager from '@/components/torrents/DownloadManager.vue'
+import LanguageSelector from '@/components/common/LanguageSelector.vue'
 import { useAuthStore } from '@/stores/authStore'
+import { useLanguage } from '@/composables/useLanguage'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const { t } = useLanguage()
 
 const handleLogout = () => {
   authStore.logout()
@@ -17,10 +20,10 @@ const emit = defineEmits<{
 }>()
 
 const navLinks = [
-  { path: '/', label: 'Home', icon: 'pi-home' },
-  { path: '/browse', label: 'Browse', icon: 'pi-compass' },
-  { path: '/my-library', label: 'My Library', icon: 'pi-database' },
-  { path: '/calendar', label: 'Calendar', icon: 'pi-calendar' },
+  { path: '/', labelKey: 'nav.home', icon: 'pi-home' },
+  { path: '/browse', labelKey: 'nav.browse', icon: 'pi-compass' },
+  { path: '/my-library', labelKey: 'nav.myLibrary', icon: 'pi-database' },
+  { path: '/calendar', labelKey: 'nav.calendar', icon: 'pi-calendar' },
 ]
 
 const isActiveRoute = (path: string) => {
@@ -31,7 +34,7 @@ const isActiveRoute = (path: string) => {
 
 <template>
   <header
-    class="fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-[#141414]">
+    class="fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-[#141414] shadow-lg shadow-black/30">
     <div class="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 h-14 flex items-center justify-between gap-2 sm:gap-4">
       <!-- Logo & Mobile Menu -->
       <div class="flex items-center gap-3 sm:gap-6">
@@ -60,7 +63,7 @@ const isActiveRoute = (path: string) => {
                 : 'text-gray-300 hover:text-white hover:bg-white/5'
             ]"
           >
-            <span class="relative z-10">{{ link.label }}</span>
+            <span class="relative z-10">{{ t(link.labelKey) }}</span>
             <!-- Active indicator -->
             <span
               v-if="isActiveRoute(link.path)"
@@ -72,6 +75,11 @@ const isActiveRoute = (path: string) => {
 
       <!-- Right side -->
       <div class="flex items-center gap-2 sm:gap-4">
+        <!-- Language Selector (Desktop only) -->
+        <div class="hidden lg:block">
+          <LanguageSelector />
+        </div>
+
         <!-- Search icon -->
         <RouterLink
           to="/search"

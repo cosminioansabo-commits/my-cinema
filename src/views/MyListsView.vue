@@ -3,9 +3,11 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { libraryService, type RadarrMovie, type SonarrSeries } from '@/services/libraryService'
 import { findByExternalId, getImageUrl, getPosterPath } from '@/services/tmdbService'
+import { useLanguage } from '@/composables/useLanguage'
 import ProgressSpinner from 'primevue/progressspinner'
 
 const router = useRouter()
+const { t } = useLanguage()
 
 // Library state
 const libraryMovies = ref<RadarrMovie[]>([])
@@ -113,7 +115,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto">
+  <div class="max-w-7xl mx-auto pt-6">
     <!-- Page Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6 mb-6 sm:mb-10">
       <div>
@@ -122,10 +124,10 @@ onMounted(() => {
             <i class="pi pi-database text-lg sm:text-2xl text-white"></i>
           </div>
           <h1 class="text-2xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
-            My Library
+            {{ t('library.title') }}
           </h1>
         </div>
-        <p class="text-gray-400 text-sm sm:text-lg ml-0 sm:ml-[4.5rem]">Movies and TV shows in your Radarr/Sonarr library</p>
+        <p class="text-gray-400 text-sm sm:text-lg ml-0 sm:ml-[4.5rem]">{{ t('library.subtitle') }}</p>
       </div>
     </div>
 
@@ -134,21 +136,21 @@ onMounted(() => {
       <div class="bg-zinc-900/60 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-5 border border-zinc-800/50">
         <div class="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
           <i class="pi pi-database text-amber-500 text-xs sm:text-sm"></i>
-          <span class="text-gray-400 text-[10px] sm:text-sm">Total</span>
+          <span class="text-gray-400 text-[10px] sm:text-sm">{{ t('library.total') }}</span>
         </div>
         <p class="text-xl sm:text-3xl font-bold text-white">{{ totalLibraryItems }}</p>
       </div>
       <div class="bg-zinc-900/60 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-5 border border-zinc-800/50">
         <div class="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
           <i class="pi pi-video text-blue-400 text-xs sm:text-sm"></i>
-          <span class="text-gray-400 text-[10px] sm:text-sm">Movies</span>
+          <span class="text-gray-400 text-[10px] sm:text-sm">{{ t('library.movies') }}</span>
         </div>
         <p class="text-xl sm:text-3xl font-bold text-white">{{ downloadedMovies }}<span class="text-gray-500 text-sm">/{{ libraryMovies.length }}</span></p>
       </div>
       <div class="bg-zinc-900/60 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-5 border border-zinc-800/50">
         <div class="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
           <i class="pi pi-desktop text-purple-400 text-xs sm:text-sm"></i>
-          <span class="text-gray-400 text-[10px] sm:text-sm">TV Shows</span>
+          <span class="text-gray-400 text-[10px] sm:text-sm">{{ t('library.tvShows') }}</span>
         </div>
         <p class="text-xl sm:text-3xl font-bold text-white">{{ downloadedSeries }}<span class="text-gray-500 text-sm">/{{ librarySeries.length }}</span></p>
       </div>
@@ -165,7 +167,7 @@ onMounted(() => {
       <section v-if="libraryMovies.length > 0" class="mb-8 sm:mb-12">
         <div class="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
           <div class="w-1 h-6 sm:h-8 bg-blue-500 rounded-full"></div>
-          <h2 class="text-lg sm:text-2xl font-bold text-white">Movies</h2>
+          <h2 class="text-lg sm:text-2xl font-bold text-white">{{ t('library.movies') }}</h2>
           <span class="text-gray-500 text-xs sm:text-sm">({{ libraryMovies.length }})</span>
         </div>
         <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2.5 sm:gap-4">
@@ -203,7 +205,7 @@ onMounted(() => {
       <section v-if="librarySeries.length > 0" class="mb-8 sm:mb-12">
         <div class="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
           <div class="w-1 h-6 sm:h-8 bg-purple-500 rounded-full"></div>
-          <h2 class="text-lg sm:text-2xl font-bold text-white">TV Shows</h2>
+          <h2 class="text-lg sm:text-2xl font-bold text-white">{{ t('library.tvShows') }}</h2>
           <span class="text-gray-500 text-xs sm:text-sm">({{ librarySeries.length }})</span>
         </div>
         <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2.5 sm:gap-4">
@@ -235,7 +237,7 @@ onMounted(() => {
               </div>
             </div>
             <p class="text-xs sm:text-sm text-white truncate">{{ series.title }}</p>
-            <p class="text-[10px] sm:text-xs text-gray-500">{{ series.year }} • {{ series.statistics?.seasonCount || 0 }} seasons</p>
+            <p class="text-[10px] sm:text-xs text-gray-500">{{ series.year }} • {{ series.statistics?.seasonCount || 0 }} {{ t('library.seasons') }}</p>
           </div>
         </div>
       </section>
@@ -245,9 +247,9 @@ onMounted(() => {
         <div class="w-16 h-16 sm:w-24 sm:h-24 rounded-2xl sm:rounded-3xl bg-zinc-800/80 flex items-center justify-center mb-4 sm:mb-8 mx-auto">
           <i class="pi pi-database text-3xl sm:text-5xl text-gray-500"></i>
         </div>
-        <h3 class="text-lg sm:text-2xl font-bold text-white mb-2 sm:mb-3">Your library is empty</h3>
+        <h3 class="text-lg sm:text-2xl font-bold text-white mb-2 sm:mb-3">{{ t('library.empty') }}</h3>
         <p class="text-gray-400 max-w-md mx-auto text-sm sm:text-lg">
-          Add movies and TV shows to your library from their detail pages
+          {{ t('library.addContent') }}
         </p>
       </div>
     </template>
@@ -257,9 +259,9 @@ onMounted(() => {
       <div class="w-16 h-16 sm:w-24 sm:h-24 rounded-2xl sm:rounded-3xl bg-zinc-800/80 flex items-center justify-center mb-4 sm:mb-8 mx-auto">
         <i class="pi pi-cog text-3xl sm:text-5xl text-gray-500"></i>
       </div>
-      <h3 class="text-lg sm:text-2xl font-bold text-white mb-2 sm:mb-3">Library not configured</h3>
+      <h3 class="text-lg sm:text-2xl font-bold text-white mb-2 sm:mb-3">{{ t('library.notConfigured') }}</h3>
       <p class="text-gray-400 max-w-md mx-auto text-sm sm:text-lg">
-        Connect Radarr and/or Sonarr to manage your media library
+        {{ t('library.connectServices') }}
       </p>
     </div>
   </div>

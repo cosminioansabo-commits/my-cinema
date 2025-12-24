@@ -5,6 +5,10 @@ import Button from 'primevue/button'
 import Slider from 'primevue/slider'
 import { mediaService } from '@/services/mediaService'
 import { subtitleService, type SubtitleSearchResult, type SubtitleLanguage } from '@/services/subtitleService'
+import { formatTime } from '@/utils/formatters'
+import { useSubtitleStyle, fontSizeOptions, fontColorOptions, bgOpacityOptions } from '@/composables/useSubtitleStyle'
+import { PLAYBACK_SPEEDS, type PlaybackSpeed } from '@/config/keyboardShortcuts'
+import { useTouchGestures } from '@/composables/useTouchGestures'
 
 interface SubtitleTrack {
   id: number
@@ -86,100 +90,13 @@ const bufferedProgress = ref(0)
 // Audio track state
 const selectedAudioTrack = ref<number>(0)
 
-// Subtitle styling
-interface SubtitleStyle {
-  fontSize: 'small' | 'medium' | 'large' | 'xlarge'
-  fontColor: string
-  backgroundColor: string
-  backgroundOpacity: number
-}
+// Playback speed state
+const playbackSpeed = ref<PlaybackSpeed>(1)
+const showSpeedIndicator = ref(false)
+let speedIndicatorTimeout: ReturnType<typeof setTimeout> | null = null
 
-const defaultSubtitleStyle: SubtitleStyle = {
-  fontSize: 'medium',
-  fontColor: '#ffffff',
-  backgroundColor: '#000000',
-  backgroundOpacity: 0.75
-}
-
-// Load subtitle style from localStorage
-const loadSubtitleStyle = (): SubtitleStyle => {
-  try {
-    const stored = localStorage.getItem('my-cinema-subtitle-style')
-    if (stored) return JSON.parse(stored)
-  } catch (e) {
-    console.error('Failed to load subtitle style:', e)
-  }
-  return defaultSubtitleStyle
-}
-
-const subtitleStyle = ref<SubtitleStyle>(loadSubtitleStyle())
-
-// Save subtitle style to localStorage
-const saveSubtitleStyle = () => {
-  localStorage.setItem('my-cinema-subtitle-style', JSON.stringify(subtitleStyle.value))
-  applySubtitleStyle()
-}
-
-// Font size options
-const fontSizeOptions = [
-  { label: 'Small', value: 'small' as const },
-  { label: 'Medium', value: 'medium' as const },
-  { label: 'Large', value: 'large' as const },
-  { label: 'X-Large', value: 'xlarge' as const }
-]
-
-// Font color options
-const fontColorOptions = [
-  { label: 'White', value: '#ffffff' },
-  { label: 'Yellow', value: '#ffff00' },
-  { label: 'Green', value: '#00ff00' },
-  { label: 'Cyan', value: '#00ffff' }
-]
-
-// Background opacity options
-const bgOpacityOptions = [
-  { label: 'None', value: 0 },
-  { label: '50%', value: 0.5 },
-  { label: '75%', value: 0.75 },
-  { label: '100%', value: 1 }
-]
-
-// Apply subtitle style to video element
-const applySubtitleStyle = () => {
-  const video = videoRef.value
-  if (!video) return
-
-  // Calculate font size in pixels
-  const fontSizes: Record<string, string> = {
-    small: '16px',
-    medium: '22px',
-    large: '28px',
-    xlarge: '36px'
-  }
-
-  // Create style element for ::cue
-  let styleEl = document.getElementById('subtitle-style')
-  if (!styleEl) {
-    styleEl = document.createElement('style')
-    styleEl.id = 'subtitle-style'
-    document.head.appendChild(styleEl)
-  }
-
-  const bgColor = subtitleStyle.value.backgroundColor
-  const bgOpacity = subtitleStyle.value.backgroundOpacity
-  const r = parseInt(bgColor.slice(1, 3), 16)
-  const g = parseInt(bgColor.slice(3, 5), 16)
-  const b = parseInt(bgColor.slice(5, 7), 16)
-
-  styleEl.textContent = `
-    video::cue {
-      font-size: ${fontSizes[subtitleStyle.value.fontSize]};
-      color: ${subtitleStyle.value.fontColor};
-      background-color: rgba(${r}, ${g}, ${b}, ${bgOpacity});
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    }
-  `
-}
+// Subtitle styling composable
+const { subtitleStyle, saveSubtitleStyle, applySubtitleStyle } = useSubtitleStyle()
 
 // Double-tap seek state (mobile)
 const lastTapTime = ref(0)
@@ -191,20 +108,20 @@ const seekIndicator = ref<{ show: boolean; side: 'left' | 'right'; text: string 
 })
 let seekIndicatorTimeout: ReturnType<typeof setTimeout> | null = null
 
+// Gesture state for swipe indicators
+const swipeSeekPreview = ref<{ show: boolean; time: string; delta: number }>({
+  show: false,
+  time: '',
+  delta: 0,
+})
+const volumeIndicator = ref<{ show: boolean; value: number }>({
+  show: false,
+  value: 0,
+})
+let gestureIndicatorTimeout: ReturnType<typeof setTimeout> | null = null
+
 let controlsTimeout: ReturnType<typeof setTimeout> | null = null
 let progressInterval: ReturnType<typeof setInterval> | null = null
-
-// Format time helper
-const formatTime = (seconds: number): string => {
-  if (isNaN(seconds) || !isFinite(seconds)) return '0:00'
-  const hrs = Math.floor(seconds / 3600)
-  const mins = Math.floor((seconds % 3600) / 60)
-  const secs = Math.floor(seconds % 60)
-  if (hrs > 0) {
-    return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-  }
-  return `${mins}:${secs.toString().padStart(2, '0')}`
-}
 
 const progress = computed(() => {
   if (videoDuration.value === 0) return 0
@@ -384,6 +301,95 @@ const toggleMute = () => {
   }
 }
 
+// Playback speed controls
+const setPlaybackSpeed = (speed: PlaybackSpeed) => {
+  if (videoRef.value) {
+    videoRef.value.playbackRate = speed
+    playbackSpeed.value = speed
+    showSpeedIndicatorTemporarily()
+  }
+}
+
+const increaseSpeed = () => {
+  const currentIndex = PLAYBACK_SPEEDS.indexOf(playbackSpeed.value)
+  if (currentIndex < PLAYBACK_SPEEDS.length - 1) {
+    setPlaybackSpeed(PLAYBACK_SPEEDS[currentIndex + 1])
+  }
+}
+
+const decreaseSpeed = () => {
+  const currentIndex = PLAYBACK_SPEEDS.indexOf(playbackSpeed.value)
+  if (currentIndex > 0) {
+    setPlaybackSpeed(PLAYBACK_SPEEDS[currentIndex - 1])
+  }
+}
+
+const showSpeedIndicatorTemporarily = () => {
+  showSpeedIndicator.value = true
+  if (speedIndicatorTimeout) {
+    clearTimeout(speedIndicatorTimeout)
+  }
+  speedIndicatorTimeout = setTimeout(() => {
+    showSpeedIndicator.value = false
+  }, 1500)
+}
+
+// Frame stepping (when paused)
+const stepFrame = (direction: 'forward' | 'backward') => {
+  if (videoRef.value && !isPlaying.value) {
+    // Approximate frame duration at 24fps = ~0.042s
+    const frameDuration = 1 / 24
+    const newTime = direction === 'forward'
+      ? Math.min(videoDuration.value, currentTime.value + frameDuration)
+      : Math.max(0, currentTime.value - frameDuration)
+    videoRef.value.currentTime = newTime
+    currentTime.value = newTime
+  }
+}
+
+// Seek to percentage
+const seekToPercent = (percent: number) => {
+  if (videoRef.value && videoDuration.value > 0) {
+    const newTime = (percent / 100) * videoDuration.value
+    videoRef.value.currentTime = newTime
+    currentTime.value = newTime
+  }
+}
+
+// Toggle subtitles on/off
+const toggleSubtitles = () => {
+  if (selectedSubtitle.value !== null) {
+    loadSubtitle(null)
+  } else if (props.subtitles && props.subtitles.length > 0) {
+    loadSubtitle(props.subtitles[0].id)
+  }
+}
+
+// Cycle through subtitle tracks
+const cycleSubtitles = () => {
+  if (!props.subtitles || props.subtitles.length === 0) return
+
+  if (selectedSubtitle.value === null) {
+    loadSubtitle(props.subtitles[0].id)
+  } else {
+    const currentIndex = props.subtitles.findIndex(s => s.id === selectedSubtitle.value)
+    if (currentIndex === props.subtitles.length - 1) {
+      loadSubtitle(null) // Turn off after last track
+    } else {
+      loadSubtitle(props.subtitles[currentIndex + 1].id)
+    }
+  }
+}
+
+// Cycle through audio tracks
+const cycleAudioTracks = () => {
+  if (!props.audioTracks || props.audioTracks.length <= 1) return
+
+  const currentIndex = props.audioTracks.findIndex(a => a.streamIndex === selectedAudioTrack.value)
+  const nextIndex = (currentIndex + 1) % props.audioTracks.length
+  switchAudioTrack(props.audioTracks[nextIndex].streamIndex)
+}
+
 // Double-tap seek handler (mobile)
 const handleDoubleTapSeek = (clientX: number) => {
   const container = containerRef.value
@@ -425,6 +431,51 @@ const handleTouchStart = (e: TouchEvent) => {
   lastTapTime.value = now
   lastTapX.value = touch.clientX
 }
+
+// Hide gesture indicator after a delay
+const hideGestureIndicator = () => {
+  if (gestureIndicatorTimeout) {
+    clearTimeout(gestureIndicatorTimeout)
+  }
+  gestureIndicatorTimeout = setTimeout(() => {
+    swipeSeekPreview.value.show = false
+    volumeIndicator.value.show = false
+  }, 500)
+}
+
+// Set up touch gesture handlers using composable
+useTouchGestures(containerRef, {
+  onDoubleTapLeft: () => {
+    seekRelative(-10)
+    showSeekIndicator('left', '-10s')
+  },
+  onDoubleTapRight: () => {
+    seekRelative(10)
+    showSeekIndicator('right', '+10s')
+  },
+  onDoubleTapCenter: () => {
+    togglePlay()
+  },
+  onSwipeHorizontal: (deltaX: number) => {
+    // Convert swipe distance to seek time (100px = 10 seconds)
+    const seekSeconds = Math.round(deltaX / 10)
+    if (seekSeconds !== 0) {
+      seekRelative(seekSeconds)
+      showSeekIndicator(seekSeconds > 0 ? 'right' : 'left', `${seekSeconds > 0 ? '+' : ''}${seekSeconds}s`)
+    }
+  },
+  onSwipeVerticalRight: (deltaY: number) => {
+    // Volume control on right side (100px = 0.5 volume change)
+    const volumeChange = deltaY / 200
+    const newVolume = Math.max(0, Math.min(1, volume.value + volumeChange))
+    setVolume(newVolume)
+    volumeIndicator.value = { show: true, value: Math.round(newVolume * 100) }
+    hideGestureIndicator()
+  },
+  onTap: () => {
+    showControlsTemporarily()
+  },
+})
 
 // Toggle settings menu
 const toggleSettings = () => {
@@ -791,10 +842,12 @@ const handleKeydown = (e: KeyboardEvent) => {
       togglePlay()
       break
     case 'ArrowLeft':
+    case 'j':
       e.preventDefault()
       seekRelative(-10)
       break
     case 'ArrowRight':
+    case 'l':
       e.preventDefault()
       seekRelative(10)
       break
@@ -813,6 +866,47 @@ const handleKeydown = (e: KeyboardEvent) => {
     case 'm':
       e.preventDefault()
       toggleMute()
+      break
+    case ',':
+      e.preventDefault()
+      stepFrame('backward')
+      break
+    case '.':
+      e.preventDefault()
+      stepFrame('forward')
+      break
+    case '<':
+      e.preventDefault()
+      decreaseSpeed()
+      break
+    case '>':
+      e.preventDefault()
+      increaseSpeed()
+      break
+    case 'c':
+      e.preventDefault()
+      toggleSubtitles()
+      break
+    case 's':
+      e.preventDefault()
+      cycleSubtitles()
+      break
+    case 'a':
+      e.preventDefault()
+      cycleAudioTracks()
+      break
+    case '0':
+    case '1':
+    case '2':
+    case '3':
+    case '4':
+    case '5':
+    case '6':
+    case '7':
+    case '8':
+    case '9':
+      e.preventDefault()
+      seekToPercent(parseInt(e.key) * 10)
       break
     case 'Escape':
       if (!document.fullscreenElement) {
@@ -917,6 +1011,37 @@ defineExpose({
             <i :class="seekIndicator.side === 'left' ? 'pi pi-replay' : 'pi pi-forward'" class="text-2xl text-white"></i>
           </div>
           <span class="text-white text-lg font-semibold">{{ seekIndicator.text }}</span>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- Playback Speed Indicator -->
+    <Transition name="seek-fade">
+      <div
+        v-if="showSpeedIndicator"
+        class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-30"
+      >
+        <div class="bg-black/70 rounded-lg px-6 py-3">
+          <span class="text-white text-2xl font-bold">{{ playbackSpeed }}x</span>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- Volume Gesture Indicator (Mobile) -->
+    <Transition name="seek-fade">
+      <div
+        v-if="volumeIndicator.show"
+        class="absolute top-1/2 right-8 -translate-y-1/2 pointer-events-none z-30"
+      >
+        <div class="bg-black/70 rounded-lg px-4 py-3 flex flex-col items-center gap-2">
+          <i class="pi pi-volume-up text-white text-xl"></i>
+          <div class="w-1 h-20 bg-white/30 rounded-full relative">
+            <div
+              class="absolute bottom-0 left-0 right-0 bg-white rounded-full transition-all"
+              :style="{ height: `${volumeIndicator.value}%` }"
+            />
+          </div>
+          <span class="text-white text-sm font-bold">{{ volumeIndicator.value }}%</span>
         </div>
       </div>
     </Transition>

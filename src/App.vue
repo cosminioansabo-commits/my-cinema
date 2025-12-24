@@ -3,10 +3,15 @@ import { ref, computed, onMounted } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import AppHeader from '@/components/layout/AppHeader.vue'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
+import KeyboardShortcutsModal from '@/components/common/KeyboardShortcutsModal.vue'
 import Toast from 'primevue/toast'
+import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
 
 const route = useRoute()
 const sidebarVisible = ref(false)
+
+// Initialize global keyboard shortcuts
+useKeyboardShortcuts()
 
 const toggleSidebar = () => {
   sidebarVisible.value = !sidebarVisible.value
@@ -35,5 +40,8 @@ onMounted(() => {
     </main>
 
     <Toast position="bottom-right" />
+
+    <!-- Global Keyboard Shortcuts Help Modal -->
+    <KeyboardShortcutsModal />
   </div>
 </template>

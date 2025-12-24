@@ -7,8 +7,11 @@ import ProgressSpinner from 'primevue/progressspinner'
 import Message from 'primevue/message'
 import TorrentResultCard from './TorrentResultCard.vue'
 import { useTorrentsStore } from '@/stores/torrentsStore'
+import { useLanguage } from '@/composables/useLanguage'
 import type { TorrentResult } from '@/types/torrent'
 import type { MediaType } from '@/types'
+
+const { t } = useLanguage()
 
 const props = defineProps<{
   visible: boolean
@@ -64,9 +67,14 @@ onMounted(() => {
   }
 })
 
-// Compute the actual search query - use customQuery for episode searches, otherwise use English title
+// Compute the actual search query - use customQuery for episode searches, otherwise use English/original title
 const searchQuery = computed(() => {
   if (props.customQuery) return props.customQuery
+  // For non-English content, prefer originalTitle (which is usually the English name from TMDB)
+  // For English content, originalTitle === title, so this works for both cases
+  if (props.originalLanguage && props.originalLanguage !== 'en' && props.originalTitle) {
+    return props.originalTitle
+  }
   return props.title
 })
 
@@ -118,13 +126,13 @@ async function handleDownload(torrent: TorrentResult) {
           <i class="pi pi-search text-primary text-sm sm:text-lg"></i>
         </div>
         <div class="flex-1 min-w-0">
-          <h2 class="text-sm sm:text-lg font-semibold text-white mb-1">Find Torrent</h2>
+          <h2 class="text-sm sm:text-lg font-semibold text-white mb-1">{{ t('torrent.searchTitle') }}</h2>
           <!-- Editable search query -->
           <div class="flex items-center gap-2">
             <InputText
               v-model="editableQuery"
               class="!text-xs sm:!text-sm !py-1 !px-2 flex-1 min-w-0"
-              placeholder="Search query..."
+              :placeholder="t('torrent.searchPlaceholder')"
               @keyup.enter="handleSearchWithNewQuery"
             />
             <Button
@@ -134,7 +142,7 @@ async function handleDownload(torrent: TorrentResult) {
               class="!p-1.5 flex-shrink-0"
               :loading="torrentsStore.isSearching"
               @click="handleSearchWithNewQuery"
-              v-tooltip.bottom="'Search'"
+              v-tooltip.bottom="t('common.search')"
             />
           </div>
         </div>
@@ -149,7 +157,7 @@ async function handleDownload(torrent: TorrentResult) {
         strokeWidth="3"
         animationDuration=".8s"
       />
-      <p class="mt-3 sm:mt-4 text-gray-400 text-xs sm:text-sm">Searching for torrents...</p>
+      <p class="mt-3 sm:mt-4 text-gray-400 text-xs sm:text-sm">{{ t('torrent.searching') }}</p>
     </div>
 
     <!-- Error -->
@@ -164,10 +172,10 @@ async function handleDownload(torrent: TorrentResult) {
       <div class="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-[#2a2a2a] flex items-center justify-center mb-3 sm:mb-4">
         <i class="pi pi-inbox text-2xl sm:text-3xl text-gray-500"></i>
       </div>
-      <p class="text-gray-400 mb-1 text-sm sm:text-base">No HD torrents found</p>
-      <p class="text-gray-500 text-xs sm:text-sm mb-3 sm:mb-4">Only showing 4K and 1080p results</p>
+      <p class="text-gray-400 mb-1 text-sm sm:text-base">{{ t('torrent.noResults') }}</p>
+      <p class="text-gray-500 text-xs sm:text-sm mb-3 sm:mb-4">{{ t('torrent.noResultsHint') }}</p>
       <Button
-        label="Search Again"
+        :label="t('torrent.searchAgain')"
         icon="pi pi-refresh"
         severity="secondary"
         size="small"
@@ -180,7 +188,7 @@ async function handleDownload(torrent: TorrentResult) {
     <div v-else class="max-h-[55vh] sm:max-h-[60vh] overflow-y-auto">
       <div class="px-3 sm:px-6 py-2 sm:py-3 bg-[#1a1a1a] border-b border-[#2a2a2a] sticky top-0 z-10">
         <span class="text-[10px] sm:text-xs text-gray-400">
-          Showing {{ filteredResults.length }} HD results (4K & 1080p only)
+          {{ t('torrent.showingResults', { count: filteredResults.length }) }}
         </span>
       </div>
       <div class="p-2 sm:p-4 space-y-1.5 sm:space-y-2">
@@ -197,7 +205,7 @@ async function handleDownload(torrent: TorrentResult) {
     <template #footer>
       <div class="flex justify-end">
         <Button
-          label="Close"
+          :label="t('common.close')"
           severity="secondary"
           outlined
           class="!text-xs sm:!text-sm !py-1.5 sm:!py-2 !px-3 sm:!px-4"

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { getImageUrl } from '@/services/tmdbService'
+import { getImageUrl, getPosterSrcset } from '@/services/tmdbService'
 import { useFiltersStore } from '@/stores/filtersStore'
 import type { Media } from '@/types'
 import Card from 'primevue/card'
@@ -17,6 +17,7 @@ const filtersStore = useFiltersStore()
 const imageLoaded = ref(false)
 
 const posterUrl = computed(() => getImageUrl(props.media.posterPath, 'w300'))
+const posterSrcset = computed(() => getPosterSrcset(props.media.posterPath))
 
 const year = computed(() => {
   if (!props.media.releaseDate) return ''
@@ -47,15 +48,12 @@ const matchBgColor = computed(() => {
 
 const mediaTypeLabel = computed(() => props.media.mediaType === 'movie' ? 'Movie' : 'Series')
 
-// Get genre names from IDs
+// Get genre names from IDs using O(1) Map lookup
 const genreNames = computed(() => {
   if (!props.media.genreIds || props.media.genreIds.length === 0) return []
-  const allGenres = props.media.mediaType === 'movie'
-      ? filtersStore.movieGenres
-      : filtersStore.tvGenres
   return props.media.genreIds
       .slice(0, 2)
-      .map(id => allGenres.find(g => g.id === id)?.name)
+      .map(id => filtersStore.getGenreById(id, props.media.mediaType)?.name)
       .filter(Boolean)
 })
 
@@ -75,9 +73,13 @@ const onImageLoad = () => {
         class="overflow-hidden"
     >
       <template #content>
-        <div class="aspect-2/3 relative overflow-hidden">
+        <div class="aspect-2/3 relative overflow-hidden bg-zinc-800">
+          <!-- Skeleton placeholder -->
+          <div v-if="!imageLoaded" class="absolute inset-0 animate-pulse bg-gradient-to-br from-zinc-800 to-zinc-900" />
           <img
               :src="posterUrl"
+              :srcset="posterSrcset"
+              sizes="(max-width: 640px) 150px, (max-width: 1024px) 180px, 200px"
               :alt="media.title"
               class="w-full h-full object-cover transition-opacity duration-300"
               :class="imageLoaded ? 'opacity-100' : 'opacity-0'"
@@ -108,9 +110,13 @@ const onImageLoad = () => {
     <RouterLink :to="`/media/${media.mediaType}/${media.id}`">
       <Card class="hover:scale-110 transition-transform duration-300 group">
         <template #header>
-          <div class="w-full h-full overflow-hidden rounded-t-2xl">
+          <div class="w-full h-full overflow-hidden rounded-t-2xl bg-zinc-800">
+            <!-- Skeleton placeholder -->
+            <div v-if="!imageLoaded" class="absolute inset-0 animate-pulse bg-gradient-to-br from-zinc-800 to-zinc-900 rounded-t-2xl" />
             <img
                 :src="posterUrl"
+                :srcset="posterSrcset"
+                sizes="(max-width: 640px) 150px, (max-width: 1024px) 200px, 250px"
                 :alt="media.title"
                 class="w-full h-full object-cover rounded-t-2xl group-hover:scale-110 transition-transform duration-600"
                 :class="imageLoaded ? 'opacity-100' : 'opacity-0'"

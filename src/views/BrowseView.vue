@@ -2,6 +2,7 @@
 import { onMounted, watch, ref } from 'vue'
 import { useMediaStore } from '@/stores/mediaStore'
 import { useFiltersStore } from '@/stores/filtersStore'
+import { useLanguage } from '@/composables/useLanguage'
 import MediaGrid from '@/components/media/MediaGrid.vue'
 import MediaFilters from '@/components/media/MediaFilters.vue'
 import Button from 'primevue/button'
@@ -9,6 +10,7 @@ import Drawer from 'primevue/drawer'
 
 const mediaStore = useMediaStore()
 const filtersStore = useFiltersStore()
+const { t } = useLanguage()
 
 const showMobileFilters = ref(false)
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
@@ -78,7 +80,7 @@ const hasMore = () => {
       }"
     >
       <template #header>
-        <h2 class="text-base sm:text-lg font-semibold px-4">Filters</h2>
+        <h2 class="text-base sm:text-lg font-semibold px-4">{{ t('browse.filters') }}</h2>
       </template>
       <MediaFilters />
     </Drawer>
@@ -87,9 +89,9 @@ const hasMore = () => {
     <main class="flex-1 min-w-0">
       <div class="flex items-center justify-between mb-4 sm:mb-6">
         <div>
-          <h1 class="text-xl sm:text-2xl font-bold">Browse</h1>
+          <h1 class="text-xl sm:text-2xl font-bold">{{ t('browse.title') }}</h1>
           <p class="text-gray-400 text-xs sm:text-sm mt-0.5 sm:mt-1">
-            {{ mediaStore.totalResults.toLocaleString() }} results
+            {{ t('browse.results', { count: mediaStore.totalResults.toLocaleString() }) }}
           </p>
         </div>
       </div>
@@ -105,7 +107,7 @@ const hasMore = () => {
         class="flex justify-center mt-6 sm:mt-8"
       >
         <Button
-          label="Load More"
+          :label="t('browse.loadMore')"
           icon="pi pi-arrow-down"
           severity="secondary"
           outlined
