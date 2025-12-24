@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, computed } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import Tabs from 'primevue/tabs'
 import TabList from 'primevue/tablist'
 import Tab from 'primevue/tab'
@@ -8,16 +8,19 @@ import TabPanel from 'primevue/tabpanel'
 import Button from 'primevue/button'
 import DownloadProgress from '@/components/torrents/DownloadProgress.vue'
 import OfflineMediaCard from '@/components/media/OfflineMediaCard.vue'
+import PlaybackModal from '@/components/media/PlaybackModal.vue'
 import { useTorrentsStore } from '@/stores/torrentsStore'
 import { useOfflineStore } from '@/stores/offlineStore'
 import { useLanguage } from '@/composables/useLanguage'
-import { useRouter } from 'vue-router'
 import type { OfflineMediaItem } from '@/services/offlineStorageService'
 
 const torrentsStore = useTorrentsStore()
 const offlineStore = useOfflineStore()
 const { t } = useLanguage()
-const router = useRouter()
+
+// Offline playback state
+const showPlaybackModal = ref(false)
+const currentOfflineItem = ref<OfflineMediaItem | null>(null)
 
 onMounted(() => {
   torrentsStore.fetchDownloads()
@@ -44,7 +47,8 @@ const storageUsedFormatted = computed(() => offlineStore.formatFileSize(offlineS
 const storageAvailableFormatted = computed(() => offlineStore.formatFileSize(offlineStore.storageEstimate.available))
 
 const handlePlayOffline = (item: OfflineMediaItem) => {
-  router.push(`/media/${item.mediaType}/${item.tmdbId}?offline=true`)
+  currentOfflineItem.value = item
+  showPlaybackModal.value = true
 }
 
 const handleDeleteOffline = (_item: OfflineMediaItem) => {
@@ -53,7 +57,7 @@ const handleDeleteOffline = (_item: OfflineMediaItem) => {
 </script>
 
 <template>
-  <div class="downloads-view max-w-4xl mx-auto">
+  <div class="downloads-view max-w-4xl mx-auto py-6">
     <div class="flex items-center justify-between mb-4 sm:mb-6">
       <h1 class="text-xl sm:text-2xl font-bold text-white">Downloads</h1>
 
@@ -244,6 +248,15 @@ const handleDeleteOffline = (_item: OfflineMediaItem) => {
         </TabPanels>
       </Tabs>
     </div>
+
+    <!-- Offline Playback Modal -->
+    <PlaybackModal
+      v-if="currentOfflineItem"
+      v-model:visible="showPlaybackModal"
+      :media-type="currentOfflineItem.mediaType"
+      :title="currentOfflineItem.title"
+      :offline-item="currentOfflineItem"
+    />
   </div>
 </template>
 

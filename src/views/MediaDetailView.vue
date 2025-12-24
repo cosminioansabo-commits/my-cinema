@@ -13,6 +13,7 @@ import TorrentSearchModal from '@/components/torrents/TorrentSearchModal.vue'
 import TrailerModal from '@/components/media/TrailerModal.vue'
 import PlaybackModal from '@/components/media/PlaybackModal.vue'
 import SeasonEpisodes from '@/components/media/SeasonEpisodes.vue'
+import OfflineDownloadButton from '@/components/media/OfflineDownloadButton.vue'
 import Button from 'primevue/button'
 import Skeleton from 'primevue/skeleton'
 import { useToast } from 'primevue/usetoast'
@@ -584,6 +585,12 @@ const goBack = () => {
                   class="!text-xs sm:!text-sm !py-2 sm:!py-2.5 !px-3 sm:!px-4"
                   @click="handleMainTorrentSearch"
                 />
+                <!-- Offline download button (for movies with file) -->
+                <OfflineDownloadButton
+                  v-if="media && mediaType === 'movie' && libraryStatus.hasFile"
+                  :media="media"
+                  variant="full"
+                />
               </div>
 
               <!-- style improvements -->
@@ -698,6 +705,7 @@ const goBack = () => {
             :seasons="seasons"
             :show-title="media.title"
             :sonarr-series-id="mediaType === 'tv' && libraryStatus.inLibrary ? libraryStatus.id : undefined"
+            :media="media"
             @search-torrent="handleEpisodeTorrentSearch"
           />
         </section>

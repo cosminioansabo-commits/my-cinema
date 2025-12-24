@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, computed } from 'vue'
-import type { Season, SeasonDetails, Episode } from '@/types'
+import type { Season, SeasonDetails, Episode, MediaDetails } from '@/types'
 import { getTVSeasonDetails, getImageUrl } from '@/services/tmdbService'
 import { libraryService, type SonarrEpisode, type SonarrSeasonStats } from '@/services/libraryService'
 import { useLanguage } from '@/composables/useLanguage'
@@ -12,6 +12,7 @@ import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
 import Tag from 'primevue/tag'
 import PlaybackModal from './PlaybackModal.vue'
+import OfflineDownloadButton from './OfflineDownloadButton.vue'
 
 const { t, locale } = useLanguage()
 
@@ -20,6 +21,7 @@ const props = defineProps<{
   seasons: Season[]
   showTitle: string
   sonarrSeriesId?: number // Sonarr internal series ID for fetching download status
+  media?: MediaDetails // Full media details for offline download button
 }>()
 
 const emit = defineEmits<{
@@ -420,6 +422,13 @@ const isEpisodeAired = (airDate: string | null): boolean => {
                         text
                         @click="playEpisode(episode)"
                         v-tooltip.left="t('media.play')"
+                      />
+                      <!-- Offline download button (for downloaded episodes) -->
+                      <OfflineDownloadButton
+                        v-if="media && isEpisodeDownloaded(episode.seasonNumber, episode.episodeNumber)"
+                        :media="media"
+                        :episode="episode"
+                        variant="icon"
                       />
                       <!-- Search episode torrent button (only show if not downloaded) -->
                       <Button

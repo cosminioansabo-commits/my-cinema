@@ -7,6 +7,8 @@ import { mediaService, type PlaybackInfo } from '@/services/mediaService'
 import { progressService } from '@/services/progressService'
 import { useNextEpisode } from '@/composables/useNextEpisode'
 import { useModalState } from '@/composables/useModalState'
+import { useOfflineStore } from '@/stores/offlineStore'
+import type { OfflineMediaItem } from '@/services/offlineStorageService'
 
 const props = defineProps<{
   visible: boolean
@@ -18,6 +20,8 @@ const props = defineProps<{
   showTmdbId?: number
   // Display info
   title: string
+  // Offline playback
+  offlineItem?: OfflineMediaItem
 }>()
 
 const emit = defineEmits<{
@@ -25,12 +29,14 @@ const emit = defineEmits<{
 }>()
 
 const isOpen = useModalState(props, emit)
+const offlineStore = useOfflineStore()
 
 const isLoading = ref(false)
 const hasError = ref(false)
 const errorMessage = ref('')
 const playbackInfo = ref<PlaybackInfo | null>(null)
 const resumePosition = ref(0)
+const isOfflineMode = computed(() => !!props.offlineItem)
 
 // Next episode composable
 const {
@@ -71,6 +77,40 @@ const fetchPlaybackInfo = async () => {
   resetNextEpisode()
 
   try {
+    // Offline mode - get video URL from cache
+    if (props.offlineItem) {
+      console.log('Loading offline playback for:', props.offlineItem.id)
+
+      const offlineVideoUrl = await offlineStore.getOfflineVideoUrl(props.offlineItem.id)
+
+      if (!offlineVideoUrl) {
+        hasError.value = true
+        errorMessage.value = 'Offline video not found. The cached file may have been deleted.'
+        return
+      }
+
+      // Create playback info from offline item
+      playbackInfo.value = {
+        streamUrl: offlineVideoUrl,
+        title: props.offlineItem.episodeTitle
+          ? `${props.offlineItem.title} - S${props.offlineItem.seasonNumber}E${props.offlineItem.episodeNumber} - ${props.offlineItem.episodeTitle}`
+          : props.offlineItem.title,
+        duration: props.offlineItem.duration * 1000, // Convert seconds to ms
+        subtitles: [],
+        audioTracks: [],
+      }
+
+      // Resume from saved position in offline item
+      if (props.offlineItem.playbackPosition && props.offlineItem.playbackPosition > 0) {
+        resumePosition.value = props.offlineItem.playbackPosition * 1000 // Convert seconds to ms
+        console.log('Offline resume position:', resumePosition.value)
+      }
+
+      console.log('Offline playback ready:', playbackInfo.value)
+      return
+    }
+
+    // Online mode - fetch from Jellyfin
     console.log('Fetching playback info:', { mediaType: props.mediaType, tmdbId: props.tmdbId, showTmdbId: props.showTmdbId, season: currentSeasonNumber.value, episode: currentEpisodeNumber.value })
 
     // Fetch playback info and saved progress in parallel
@@ -115,12 +155,24 @@ const fetchPlaybackInfo = async () => {
   }
 }
 
-// Save progress to backend database
+// Save progress to backend database (or offline store for offline playback)
 // Called every 10 seconds by VideoPlayer interval, and on pause/stop
 const handleProgress = async (timeMs: number, state: 'playing' | 'paused' | 'stopped') => {
-  if (!effectiveTmdbId.value || !playbackInfo.value?.duration) return
+  if (!playbackInfo.value?.duration) return
 
   const durationMs = playbackInfo.value.duration
+
+  // For offline playback, save progress to offline store
+  if (props.offlineItem) {
+    const positionSeconds = timeMs / 1000
+    await offlineStore.updatePlaybackPosition(props.offlineItem.id, positionSeconds)
+    console.log(`Offline progress saved: ${positionSeconds}s (${state})`)
+    return
+  }
+
+  // Online playback - save to backend
+  if (!effectiveTmdbId.value) return
+
   const progressType = props.mediaType === 'movie' ? 'movie' : 'episode'
 
   await progressService.saveProgress(
