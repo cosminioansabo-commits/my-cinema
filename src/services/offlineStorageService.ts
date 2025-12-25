@@ -280,12 +280,29 @@ class OfflineStorageService {
 
   /**
    * Cache an image (poster/backdrop)
+   * Uses no-cors mode for cross-origin images (like TMDB)
+   * Opaque responses can still be cached and used by img tags
    */
   async cacheImage(url: string, cacheKey: string): Promise<void> {
     const cache = await caches.open(CACHE_NAME)
-    const response = await fetch(url)
-    if (response.ok) {
-      await cache.put(cacheKey, response)
+    try {
+      // Try with cors first (same-origin or CORS-enabled images)
+      const response = await fetch(url)
+      if (response.ok) {
+        await cache.put(cacheKey, response)
+        return
+      }
+    } catch {
+      // If CORS fails, try no-cors mode for cross-origin images
+      // This returns an opaque response (type: 'opaque') which can still be cached
+      // and used by <img> tags, but we can't read its contents
+      try {
+        const response = await fetch(url, { mode: 'no-cors' })
+        // Opaque responses have status 0, but are still cacheable
+        await cache.put(cacheKey, response)
+      } catch (error) {
+        console.warn(`Failed to cache image: ${url}`, error)
+      }
     }
   }
 
@@ -304,12 +321,21 @@ class OfflineStorageService {
 
   /**
    * Get cached image URL
+   * For opaque responses (CORS-blocked images), returns the cache key as URL
+   * since opaque blobs can't be read but img tags can still use cached responses
    */
   async getCachedImageUrl(cacheKey: string): Promise<string | null> {
     const cache = await caches.open(CACHE_NAME)
     const response = await cache.match(cacheKey)
 
     if (!response) return null
+
+    // Opaque responses (from no-cors requests) have type 'opaque'
+    // They can't be read as blobs, but img tags can use them via cache
+    if (response.type === 'opaque') {
+      // Return the original cache key (which is the URL) for img tag to fetch from cache
+      return cacheKey
+    }
 
     const blob = await response.blob()
     return URL.createObjectURL(blob)

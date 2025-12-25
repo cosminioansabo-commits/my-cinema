@@ -5,6 +5,7 @@ export interface Media {
   id: number
   title: string
   originalTitle?: string
+  englishTitle?: string // English title for torrent searches
   overview: string
   posterPath: string | null
   backdropPath: string | null

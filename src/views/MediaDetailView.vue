@@ -540,21 +540,21 @@ const goBack = () => {
               </div>
 
               <!-- Actions -->
-              <div class="flex flex-wrap items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
+              <div class="flex flex-wrap items-center gap-2.5 sm:gap-3 mb-4 sm:mb-6">
                 <!-- Play/Resume Button (for movies with file) -->
                 <Button
                   v-if="mediaType === 'movie' && libraryStatus.inLibrary && libraryStatus.hasFile"
                   :label="hasResumeProgress ? t('media.resume') : t('media.play')"
-                  icon="pi pi-play"
-                  class="play-btn !text-xs sm:!text-sm !py-2 sm:!py-2.5 !px-3 sm:!px-4 !border-0"
+                  icon="pi pi-play-circle"
+                  class="action-btn action-btn-play"
                   @click="showPlaybackModal = true"
                 />
                 <!-- Play/Resume Button (for TV shows with downloaded episodes) -->
                 <Button
                   v-if="mediaType === 'tv' && nextTvEpisode"
                   :label="nextTvEpisode.hasProgress ? t('media.resume') : t('media.play')"
-                  icon="pi pi-play"
-                  class="play-btn !text-xs sm:!text-sm !py-2 sm:!py-2.5 !px-3 sm:!px-4 !border-0"
+                  icon="pi pi-play-circle"
+                  class="action-btn action-btn-play"
                   @click="playTvShow"
                   v-tooltip.bottom="`S${nextTvEpisode.seasonNumber}E${nextTvEpisode.episodeNumber}`"
                 />
@@ -562,27 +562,25 @@ const goBack = () => {
                   v-if="trailer"
                   :label="t('media.trailer')"
                   icon="pi pi-youtube"
-                  class="trailer-btn !text-xs sm:!text-sm !py-2 sm:!py-2.5 !px-3 sm:!px-4 !border-0"
+                  class="action-btn action-btn-trailer"
                   @click="showTrailerModal = true"
                 />
                 <Button
                   v-if="libraryStatus.enabled"
                   :label="libraryStatus.inLibrary ? t('media.inLibrary') : t('media.addToLibrary')"
-                  :icon="isAddingToLibrary ? 'pi pi-spin pi-spinner' : (libraryStatus.inLibrary ? 'pi pi-check' : 'pi pi-plus')"
-                  :severity="libraryStatus.inLibrary ? 'success' : 'secondary'"
+                  :icon="isAddingToLibrary ? 'pi pi-spin pi-spinner' : (libraryStatus.inLibrary ? 'pi pi-check-circle' : 'pi pi-plus-circle')"
+                  :class="['action-btn', libraryStatus.inLibrary ? 'action-btn-library-active' : 'action-btn-library']"
                   :disabled="isAddingToLibrary"
-                  class="!text-xs sm:!text-sm !py-2 sm:!py-2.5 !px-3 sm:!px-4"
                   @click="toggleLibrary"
                 />
                 <!-- Torrent button: hidden if movie already has file -->
                 <Button
                   v-if="libraryStatus.enabled && !(mediaType === 'movie' && libraryStatus.hasFile)"
                   :label="t('media.findTorrent')"
-                  icon="pi pi-download"
-                  severity="help"
+                  icon="pi pi-cloud-download"
+                  :class="['action-btn action-btn-torrent', { 'action-btn-disabled': !libraryStatus.inLibrary }]"
                   :disabled="!libraryStatus.inLibrary"
                   :title="!libraryStatus.inLibrary ? t('media.addToLibraryFirst') : t('torrent.searchTitle')"
-                  class="!text-xs sm:!text-sm !py-2 sm:!py-2.5 !px-3 sm:!px-4"
                   @click="handleMainTorrentSearch"
                 />
                 <!-- Offline download button (for movies with file) -->
@@ -806,8 +804,7 @@ const goBack = () => {
       v-if="media"
       v-model:visible="showTorrentModal"
       :title="media.title"
-      :original-title="media.originalTitle"
-      :original-language="media.originalLanguage"
+      :english-title="media.englishTitle"
       :year="year ? Number(year) : undefined"
       :media-type="mediaType"
       :media-id="media.id"
@@ -845,41 +842,178 @@ const goBack = () => {
 </template>
 
 <style scoped>
-/* Play button with gradient */
-.play-btn {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
-  color: white !important;
+/* Base action button styles */
+.action-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem !important;
+  font-size: 0.8125rem !important;
   font-weight: 600 !important;
-  transition: all 0.2s ease !important;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3) !important;
+  letter-spacing: 0.02em;
+  border: none !important;
+  border-radius: 9999px !important;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  overflow: hidden;
 }
 
-.play-btn:hover {
-  background: linear-gradient(135deg, #34d399 0%, #10b981 100%) !important;
-  transform: scale(1.02) !important;
-  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4) !important;
+@media (min-width: 640px) {
+  .action-btn {
+    padding: 0.75rem 1.5rem !important;
+    font-size: 0.875rem !important;
+  }
 }
 
-.play-btn :deep(.pi-play) {
+/* Play button - Primary CTA with vibrant gradient */
+.action-btn-play {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 50%, #15803d 100%) !important;
   color: white !important;
+  box-shadow:
+    0 4px 14px rgba(34, 197, 94, 0.4),
+    0 2px 6px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
 }
 
-/* Trailer button with YouTube-style gradient */
-.trailer-btn {
-  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%) !important;
+.action-btn-play::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 50%);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.action-btn-play:hover {
+  background: linear-gradient(135deg, #4ade80 0%, #22c55e 50%, #16a34a 100%) !important;
+  transform: translateY(-2px) scale(1.02);
+  box-shadow:
+    0 8px 24px rgba(34, 197, 94, 0.5),
+    0 4px 12px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+.action-btn-play:hover::before {
+  opacity: 1;
+}
+
+.action-btn-play:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.action-btn-play :deep(.p-button-icon) {
+  font-size: 1.125rem;
+}
+
+/* Trailer button - YouTube-inspired with red accent */
+.action-btn-trailer {
+  background: linear-gradient(135deg, #374151 0%, #1f2937 100%) !important;
   color: white !important;
-  font-weight: 600 !important;
-  transition: all 0.2s ease !important;
-  box-shadow: 0 4px 12px rgba(107, 114, 128, 0.3) !important;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
-.trailer-btn:hover {
-  background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%) !important;
-  transform: scale(1.02) !important;
-  box-shadow: 0 6px 16px rgba(107, 114, 128, 0.4) !important;
+.action-btn-trailer:hover {
+  background: linear-gradient(135deg, #4b5563 0%, #374151 100%) !important;
+  transform: translateY(-2px);
+  box-shadow:
+    0 8px 20px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
 }
 
-.trailer-btn :deep(.pi-youtube) {
-  color: #ff0000 !important;
+.action-btn-trailer:active {
+  transform: translateY(0);
+}
+
+.action-btn-trailer :deep(.pi-youtube) {
+  color: #ef4444 !important;
+  font-size: 1.125rem;
+  filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.4));
+}
+
+/* Library button - Add to library state */
+.action-btn-library {
+  background: transparent !important;
+  color: white !important;
+  border: 2px solid rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+}
+
+.action-btn-library:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3) !important;
+}
+
+.action-btn-library:active {
+  transform: translateY(0);
+}
+
+.action-btn-library :deep(.p-button-icon) {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1rem;
+}
+
+/* Library button - In library state (success) */
+.action-btn-library-active {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.2) 0%, rgba(22, 163, 74, 0.15) 100%) !important;
+  color: #4ade80 !important;
+  border: 2px solid rgba(34, 197, 94, 0.4) !important;
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.15) !important;
+}
+
+.action-btn-library-active:hover {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.3) 0%, rgba(22, 163, 74, 0.25) 100%) !important;
+  border-color: rgba(34, 197, 94, 0.6) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(34, 197, 94, 0.25) !important;
+}
+
+.action-btn-library-active :deep(.p-button-icon) {
+  color: #4ade80 !important;
+}
+
+/* Torrent/Download button - Purple accent */
+.action-btn-torrent {
+  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 50%, #5b21b6 100%) !important;
+  color: white !important;
+  box-shadow:
+    0 4px 14px rgba(124, 58, 237, 0.35),
+    0 2px 6px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+}
+
+.action-btn-torrent:hover:not(.action-btn-disabled) {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 50%, #6d28d9 100%) !important;
+  transform: translateY(-2px);
+  box-shadow:
+    0 8px 24px rgba(124, 58, 237, 0.45),
+    0 4px 12px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+.action-btn-torrent:active:not(.action-btn-disabled) {
+  transform: translateY(0);
+}
+
+.action-btn-torrent :deep(.p-button-icon) {
+  font-size: 1rem;
+}
+
+/* Disabled state for torrent button */
+.action-btn-disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+  background: linear-gradient(135deg, #4b5563 0%, #374151 100%) !important;
+  box-shadow: none !important;
+}
+
+.action-btn-disabled:hover {
+  transform: none !important;
 }
 </style>

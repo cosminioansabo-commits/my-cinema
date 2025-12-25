@@ -677,16 +677,21 @@ export async function getMediaDetails(mediaType: MediaType, id: number): Promise
   const cached = getCached<MediaDetails>(cacheKey, CACHE_TTL_DETAILS)
   if (cached) return cached
 
-  const [detailsResponse, watchProvidersResponse, creditsResponse, videosResponse, externalIdsResponse] = await Promise.all([
+  const [detailsResponse, watchProvidersResponse, creditsResponse, videosResponse, externalIdsResponse, englishDetailsResponse] = await Promise.all([
     api.get(`/${mediaType}/${id}`),
     api.get<WatchProviders>(`/${mediaType}/${id}/watch/providers`),
     // Credits response uses snake_case, we transform it below
     api.get(`/${mediaType}/${id}/credits`),
     api.get(`/${mediaType}/${id}/videos`),
     api.get(`/${mediaType}/${id}/external_ids`),
+    // Fetch English title for torrent searches (bypass language interceptor)
+    axios.get(`${TMDB_BASE_URL}/${mediaType}/${id}`, {
+      params: { api_key: import.meta.env.VITE_TMDB_API_KEY, language: 'en-US' }
+    }),
   ])
 
   const details = detailsResponse.data
+  const englishDetails = englishDetailsResponse.data
   const externalIds = externalIdsResponse.data
   const genreIds = details.genres?.map((g: Genre) => g.id) || []
 
@@ -784,10 +789,14 @@ export async function getMediaDetails(mediaType: MediaType, id: number): Promise
     backdropPath: details.belongs_to_collection.backdrop_path,
   } : undefined
 
+  // Get English title for torrent searches
+  const englishTitle = englishDetails.title || englishDetails.name
+
   const result: MediaDetails = {
     id: details.id,
     title: details.title || details.name,
     originalTitle: details.original_title || details.original_name,
+    englishTitle,
     overview: details.overview,
     posterPath: details.poster_path,
     backdropPath: details.backdrop_path,

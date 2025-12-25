@@ -16,8 +16,7 @@ const { t } = useLanguage()
 const props = defineProps<{
   visible: boolean
   title: string
-  originalTitle?: string // Japanese/original title for anime
-  originalLanguage?: string // e.g. 'ja' for Japanese
+  englishTitle?: string // English title for torrent searches
   year?: number
   mediaType: MediaType
   mediaId: number
@@ -67,15 +66,11 @@ onMounted(() => {
   }
 })
 
-// Compute the actual search query - use customQuery for episode searches, otherwise use English/original title
+// Compute the actual search query - use customQuery for episode searches, otherwise use English title
 const searchQuery = computed(() => {
   if (props.customQuery) return props.customQuery
-  // For non-English content, prefer originalTitle (which is usually the English name from TMDB)
-  // For English content, originalTitle === title, so this works for both cases
-  if (props.originalLanguage && props.originalLanguage !== 'en' && props.originalTitle) {
-    return props.originalTitle
-  }
-  return props.title
+  // Always prefer English title for torrent searches (most torrents are named in English)
+  return props.englishTitle || props.title
 })
 
 // Use editableQuery for actual searches (allows user modification)
@@ -110,88 +105,84 @@ async function handleDownload(torrent: TorrentResult) {
   <Dialog
     v-model:visible="dialogVisible"
     modal
-    :style="{ width: '90vw', maxWidth: '800px', border: 'none' }"
-    :breakpoints="{ '640px': '96vw' }"
+    closable
+    :header="t('torrent.searchTitle')"
+    :style="{ width: '90vw', maxWidth: '800px', margin: '0.5rem', overflow: 'hidden' }"
+    :breakpoints="{ '640px': '100vw' }"
     :draggable="false"
     class="torrent-search-modal"
     :pt="{
-      header: { class: 'bg-[#1a1a1a] border-b border-[#2a2a2a] px-3 sm:px-6 py-3 sm:py-4' },
-      content: { class: 'bg-[#141414] p-0' },
-      footer: { class: 'bg-[#1a1a1a] border-t border-[#2a2a2a] px-3 sm:px-6 py-3 sm:py-4' }
+      root: { class: 'torrent-dialog-root' },
+      header: { class: 'torrent-dialog-header' },
+      content: { class: 'torrent-dialog-content' },
+      closeButton: { class: 'torrent-dialog-close' }
     }"
   >
-    <template #header>
-      <div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-          <i class="pi pi-search text-primary text-sm sm:text-lg"></i>
-        </div>
-        <div class="flex-1 min-w-0">
-          <h2 class="text-sm sm:text-lg font-semibold text-white mb-1">{{ t('torrent.searchTitle') }}</h2>
-          <!-- Editable search query -->
-          <div class="flex items-center gap-2">
-            <InputText
-              v-model="editableQuery"
-              class="!text-xs sm:!text-sm !py-1 !px-2 flex-1 min-w-0"
-              :placeholder="t('torrent.searchPlaceholder')"
-              @keyup.enter="handleSearchWithNewQuery"
-            />
-            <Button
-              icon="pi pi-search"
-              severity="primary"
-              size="small"
-              class="!p-1.5 flex-shrink-0"
-              :loading="torrentsStore.isSearching"
-              @click="handleSearchWithNewQuery"
-              v-tooltip.bottom="t('common.search')"
-            />
-          </div>
-        </div>
+    <!-- Search Input in Content -->
+    <div class="search-container">
+      <div class="search-input-wrapper">
+        <i class="pi pi-search search-icon"></i>
+        <InputText
+          v-model="editableQuery"
+          class="search-input"
+          :placeholder="t('torrent.searchPlaceholder')"
+          @keyup.enter="handleSearchWithNewQuery"
+        />
+        <Button
+          icon="pi pi-arrow-right"
+          severity="primary"
+          size="small"
+          rounded
+          class="search-btn"
+          :loading="torrentsStore.isSearching"
+          @click="handleSearchWithNewQuery"
+        />
       </div>
-    </template>
+    </div>
 
     <!-- Loading -->
-    <div v-if="torrentsStore.isSearching" class="flex flex-col items-center py-10 sm:py-16 px-4 sm:px-6">
+    <div v-if="torrentsStore.isSearching" class="state-container">
       <ProgressSpinner
-        style="width: 40px; height: 40px"
-        class="sm:!w-12 sm:!h-12"
+        style="width: 36px; height: 36px"
         strokeWidth="3"
         animationDuration=".8s"
       />
-      <p class="mt-3 sm:mt-4 text-gray-400 text-xs sm:text-sm">{{ t('torrent.searching') }}</p>
+      <p class="state-text">{{ t('torrent.searching') }}</p>
     </div>
 
     <!-- Error -->
-    <div v-else-if="torrentsStore.searchError" class="p-4 sm:p-6">
-      <Message severity="error" :closable="false" class="mb-4 text-xs sm:text-sm">
+    <div v-else-if="torrentsStore.searchError" class="px-3 py-4">
+      <Message severity="error" :closable="false" class="!text-xs">
         {{ torrentsStore.searchError }}
       </Message>
     </div>
 
     <!-- No Results -->
-    <div v-else-if="filteredResults.length === 0" class="flex flex-col items-center py-10 sm:py-16 px-4 sm:px-6">
-      <div class="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-[#2a2a2a] flex items-center justify-center mb-3 sm:mb-4">
-        <i class="pi pi-inbox text-2xl sm:text-3xl text-gray-500"></i>
+    <div v-else-if="filteredResults.length === 0" class="state-container">
+      <div class="state-icon-wrapper">
+        <i class="pi pi-inbox text-xl text-gray-500"></i>
       </div>
-      <p class="text-gray-400 mb-1 text-sm sm:text-base">{{ t('torrent.noResults') }}</p>
-      <p class="text-gray-500 text-xs sm:text-sm mb-3 sm:mb-4">{{ t('torrent.noResultsHint') }}</p>
+      <p class="state-text">{{ t('torrent.noResults') }}</p>
+      <p class="state-hint">{{ t('torrent.noResultsHint') }}</p>
       <Button
         :label="t('torrent.searchAgain')"
         icon="pi pi-refresh"
         severity="secondary"
         size="small"
-        class="!text-xs sm:!text-sm"
+        text
+        class="!text-xs mt-2"
         @click="performSearch"
       />
     </div>
 
     <!-- Results -->
-    <div v-else class="max-h-[55vh] sm:max-h-[60vh] overflow-y-auto">
-      <div class="px-3 sm:px-6 py-2 sm:py-3 bg-[#1a1a1a] border-b border-[#2a2a2a] sticky top-0 z-10">
-        <span class="text-[10px] sm:text-xs text-gray-400">
+    <div v-else class="results-container">
+      <div class="results-header">
+        <span class="results-count">
           {{ t('torrent.showingResults', { count: filteredResults.length }) }}
         </span>
       </div>
-      <div class="p-2 sm:p-4 space-y-1.5 sm:space-y-2">
+      <div class="results-list">
         <TorrentResultCard
           v-for="torrent in filteredResults"
           :key="torrent.id"
@@ -201,56 +192,197 @@ async function handleDownload(torrent: TorrentResult) {
         />
       </div>
     </div>
-
-    <template #footer>
-      <div class="flex justify-end">
-        <Button
-          :label="t('common.close')"
-          severity="secondary"
-          outlined
-          class="!text-xs sm:!text-sm !py-1.5 sm:!py-2 !px-3 sm:!px-4"
-          @click="dialogVisible = false"
-        />
-      </div>
-    </template>
   </Dialog>
 </template>
 
 <style>
-.torrent-search-modal .p-dialog-mask {
-  backdrop-filter: blur(4px);
-}
-
+/* Dialog root */
 .torrent-search-modal .p-dialog {
   border: 1px solid #2a2a2a !important;
-  border-radius: 12px;
+  border-radius: 16px;
   overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
 }
 
-.torrent-search-modal .p-dialog-header {
+@media (max-width: 640px) {
+  .torrent-search-modal .p-dialog {
+    border-radius: 16px 16px 0 0;
+    margin: 0 !important;
+    max-height: 90vh !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+/* Header */
+.torrent-dialog-header {
+  background: #1a1a1a !important;
+  border-bottom: 1px solid #2a2a2a !important;
+  padding: 0.875rem 1rem !important;
+  font-size: 0.9375rem !important;
+  font-weight: 600 !important;
+}
+
+@media (min-width: 640px) {
+  .torrent-dialog-header {
+    padding: 1rem 1.25rem !important;
+    font-size: 1.0625rem !important;
+  }
+}
+
+/* Close button */
+.torrent-dialog-close {
+  color: #666 !important;
+  width: 2rem !important;
+  height: 2rem !important;
+  border-radius: 8px !important;
+}
+
+.torrent-dialog-close:hover {
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Content */
+.torrent-dialog-content {
+  background: #141414 !important;
+  padding: 0 !important;
+}
+
+/* Search container */
+.search-container {
+  padding: 0.75rem;
+  background: #1a1a1a;
   border-bottom: 1px solid #2a2a2a;
 }
 
-.torrent-search-modal .p-dialog-header-icons .p-dialog-header-close {
-  color: #888 !important;
+@media (min-width: 640px) {
+  .search-container {
+    padding: 1rem 1.25rem;
+  }
+}
+
+.search-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #252525;
+  border-radius: 10px;
+  padding: 0.375rem 0.5rem 0.375rem 0.75rem;
+  border: 1px solid #333;
+  transition: border-color 0.2s;
+}
+
+.search-input-wrapper:focus-within {
+  border-color: #4a4a4a;
+}
+
+.search-icon {
+  color: #666;
+  font-size: 0.875rem;
+  flex-shrink: 0;
+}
+
+.search-input {
+  flex: 1;
   background: transparent !important;
   border: none !important;
+  padding: 0.375rem 0.25rem !important;
+  font-size: 0.8125rem !important;
+  color: white !important;
+  box-shadow: none !important;
 }
 
-.torrent-search-modal .p-dialog-header-icons .p-dialog-header-close:hover {
-  color: #fff !important;
-  background: #333 !important;
+.search-input::placeholder {
+  color: #666;
 }
 
-.torrent-search-modal .p-dialog-footer .p-button-secondary.p-button-outlined {
-  border-color: #444 !important;
-  color: #aaa !important;
+.search-btn {
+  width: 2rem !important;
+  height: 2rem !important;
+  flex-shrink: 0;
 }
 
-.torrent-search-modal .p-dialog-footer .p-button-secondary.p-button-outlined:hover {
-  border-color: #666 !important;
-  color: #fff !important;
-  background: #333 !important;
+/* State containers (loading, no results) */
+.state-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2.5rem 1rem;
 }
 
+.state-icon-wrapper {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: #252525;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.75rem;
+}
+
+.state-text {
+  color: #888;
+  font-size: 0.8125rem;
+  margin-top: 0.75rem;
+}
+
+.state-hint {
+  color: #555;
+  font-size: 0.6875rem;
+  margin-top: 0.25rem;
+}
+
+/* Results */
+.results-container {
+  max-height: 55vh;
+  overflow-y: auto;
+}
+
+@media (max-width: 640px) {
+  .results-container {
+    max-height: 60vh;
+  }
+}
+
+.results-header {
+  padding: 0.5rem 0.75rem;
+  background: #1a1a1a;
+  border-bottom: 1px solid #2a2a2a;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+@media (min-width: 640px) {
+  .results-header {
+    padding: 0.625rem 1.25rem;
+  }
+}
+
+.results-count {
+  font-size: 0.6875rem;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.results-list {
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+@media (min-width: 640px) {
+  .results-list {
+    padding: 0.75rem 1rem;
+    gap: 0.5rem;
+  }
+}
 </style>
