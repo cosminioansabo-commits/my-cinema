@@ -246,9 +246,9 @@ const toggleLibrary = async () => {
       // Remove from library
       let success = false
       if (mediaType.value === 'movie') {
-        success = await libraryService.deleteMovie(libraryStatus.value.id)
+        success = await libraryService.deleteMovie(libraryStatus.value.id, libraryStatus.value.hasFile)
       } else {
-        success = await libraryService.deleteSeries(libraryStatus.value.id)
+        success = await libraryService.deleteSeries(libraryStatus.value.id, libraryStatus.value.hasFile)
       }
 
       if (success) {

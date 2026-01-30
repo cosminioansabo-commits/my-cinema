@@ -225,11 +225,16 @@ class OfflineStorageService {
   /**
    * Save video to cache
    */
-  async cacheVideo(url: string, cacheKey: string, onProgress?: (progress: DownloadProgress) => void): Promise<number> {
+  async cacheVideo(url: string, cacheKey: string, onProgress?: (progress: DownloadProgress) => void, signal?: AbortSignal): Promise<number> {
     const cache = await caches.open(CACHE_NAME)
 
     // Use fetch with streaming to track progress
-    const response = await fetch(url)
+    const headers: Record<string, string> = {}
+    const token = localStorage.getItem('my-cinema-auth-token')
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+    const response = await fetch(url, { signal, headers })
 
     if (!response.ok) {
       throw new Error(`Failed to fetch video: ${response.status}`)

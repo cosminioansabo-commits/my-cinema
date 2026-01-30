@@ -286,6 +286,9 @@
     "daysAgo": "acum {n} zi | acum {n} zile",
     "remaining": "{time} rămas"
   },
+  "continueWatching": {
+    "clearAll": "Șterge Tot"
+  },
   "offline": {
     "title": "Offline",
     "downloadForOffline": "Descarcă pentru offline",

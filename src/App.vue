@@ -6,6 +6,7 @@ import AppSidebar from '@/components/layout/AppSidebar.vue'
 import KeyboardShortcutsModal from '@/components/common/KeyboardShortcutsModal.vue'
 import Toast from 'primevue/toast'
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
+import notificationService from '@/services/notificationService'
 
 const route = useRoute()
 const sidebarVisible = ref(false)
@@ -23,6 +24,7 @@ const showLayout = computed(() => route.name !== 'login')
 // Add dark-mode class to html element for PrimeVue overlays
 onMounted(() => {
   document.documentElement.classList.add('dark-mode')
+  notificationService.requestPermission()
 })
 </script>
 

@@ -9,6 +9,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   click: []
+  remove: []
 }>()
 
 const posterUrl = props.item.posterPath
@@ -44,6 +45,14 @@ const displayTitle = props.item.mediaType === 'episode' && props.item.seasonNumb
           <i class="pi pi-play text-2xl text-black ml-1"></i>
         </div>
       </div>
+
+      <!-- Remove Button -->
+      <button
+        class="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/70 hover:bg-red-600 flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-opacity z-10"
+        @click.stop="emit('remove')"
+      >
+        <i class="pi pi-times text-[10px] text-white"></i>
+      </button>
 
       <!-- Episode Badge -->
       <div

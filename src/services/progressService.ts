@@ -141,6 +141,17 @@ export const progressService = {
   },
 
   /**
+   * Clear all watch progress
+   */
+  async clearAllProgress(): Promise<void> {
+    try {
+      await api.delete('/all')
+    } catch (error) {
+      console.error('Error clearing all progress:', error)
+    }
+  },
+
+  /**
    * Remove progress (mark as unwatched)
    */
   async removeProgress(

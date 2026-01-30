@@ -2,7 +2,10 @@
 import { ref } from 'vue'
 import PlaybackModal from './PlaybackModal.vue'
 import ContinueWatchingCard from './ContinueWatchingCard.vue'
+import Button from 'primevue/button'
 import { useCarouselScroll } from '@/composables/useCarouselScroll'
+import { progressService } from '@/services/progressService'
+import { useLanguage } from '@/composables/useLanguage'
 
 export interface ContinueWatchingItem {
   id: number
@@ -29,6 +32,8 @@ const props = withDefaults(defineProps<{
   cardWidth: 180,
 })
 
+const { t } = useLanguage()
+
 const emit = defineEmits<{
   refresh: []
 }>()
@@ -45,6 +50,23 @@ const playbackItem = ref<ContinueWatchingItem | null>(null)
 const handleItemClick = (item: ContinueWatchingItem) => {
   playbackItem.value = item
   showPlayback.value = true
+}
+
+// Handle removing a single item
+const handleRemoveItem = async (item: ContinueWatchingItem) => {
+  await progressService.removeProgress(
+    item.mediaType,
+    item.tmdbId,
+    item.seasonNumber ?? undefined,
+    item.episodeNumber ?? undefined
+  )
+  emit('refresh')
+}
+
+// Handle clearing all continue watching
+const handleClearAll = async () => {
+  await progressService.clearAllProgress()
+  emit('refresh')
 }
 
 // Handle playback modal visibility change
@@ -65,6 +87,15 @@ const handlePlaybackVisibilityChange = (visible: boolean) => {
         <i class="pi pi-play-circle text-[#e50914]"></i>
         {{ title }}
       </h2>
+      <Button
+        v-if="items.length > 0"
+        :label="t('continueWatching.clearAll')"
+        icon="pi pi-trash"
+        text
+        severity="secondary"
+        size="small"
+        @click="handleClearAll"
+      />
     </div>
 
     <!-- Carousel -->
@@ -106,7 +137,7 @@ const handlePlaybackVisibilityChange = (visible: boolean) => {
             class="carousel-item"
             :style="cardStyle"
           >
-            <ContinueWatchingCard :item="item" @click="handleItemClick(item)" />
+            <ContinueWatchingCard :item="item" @click="handleItemClick(item)" @remove="handleRemoveItem(item)" />
           </div>
         </template>
       </div>

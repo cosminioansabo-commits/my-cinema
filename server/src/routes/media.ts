@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express'
 import { mediaService } from '../services/mediaService.js'
 import { jellyfinService } from '../services/jellyfinService.js'
+import { config } from '../config.js'
 
 const router = Router()
 
@@ -149,6 +150,68 @@ router.get('/episode/:showTmdbId/:season/:episode', async (req: Request, res: Re
   } catch (error: any) {
     console.error('Error getting episode playback:', error.message)
     res.status(500).json({ error: 'Failed to get playback info' })
+  }
+})
+
+// ============================================================================
+// DOWNLOAD PROXY (for offline media)
+// ============================================================================
+
+// Proxy direct stream from Jellyfin for offline download
+router.get('/download/:itemId/:mediaSourceId', async (req: Request, res: Response) => {
+  const { itemId, mediaSourceId } = req.params
+
+  if (!jellyfinService.isEnabled()) {
+    res.status(503).json({ error: 'Jellyfin not enabled' })
+    return
+  }
+
+  try {
+    const jellyfinUrl = `${config.jellyfin.url}/Videos/${itemId}/stream?Static=true&MediaSourceId=${mediaSourceId}&api_key=${config.jellyfin.apiKey}`
+
+    const upstream = await fetch(jellyfinUrl)
+    if (!upstream.ok) {
+      res.status(upstream.status).json({ error: 'Failed to fetch from Jellyfin' })
+      return
+    }
+
+    const contentType = upstream.headers.get('content-type') || 'video/mp4'
+    const contentLength = upstream.headers.get('content-length')
+
+    res.setHeader('Content-Type', contentType)
+    if (contentLength) {
+      res.setHeader('Content-Length', contentLength)
+    }
+    res.setHeader('Content-Disposition', 'attachment')
+
+    if (upstream.body) {
+      const reader = upstream.body.getReader()
+      const pump = async () => {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          if (!res.write(value)) {
+            await new Promise(resolve => res.once('drain', resolve))
+          }
+        }
+        res.end()
+      }
+      pump().catch(err => {
+        console.error('Download proxy error:', err)
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'Stream error' })
+        } else {
+          res.end()
+        }
+      })
+    } else {
+      res.status(500).json({ error: 'No response body' })
+    }
+  } catch (error: any) {
+    console.error('Download proxy error:', error.message)
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Download failed' })
+    }
   }
 })
 

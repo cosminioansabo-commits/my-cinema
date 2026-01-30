@@ -194,9 +194,15 @@ class DownloadManagerService {
         playbackInfo = await mediaService.getMoviePlayback(media.id)
       }
 
-      if (!playbackInfo?.streamUrl) {
-        throw new Error('No stream URL available for this media')
+      if (!playbackInfo?.jellyfinItemId || !playbackInfo?.jellyfinMediaSourceId) {
+        throw new Error('No download info available for this media')
       }
+
+      // Use direct download proxy instead of HLS stream
+      const downloadUrl = mediaService.getDownloadUrl(
+        playbackInfo.jellyfinItemId,
+        playbackInfo.jellyfinMediaSourceId
+      )
 
       // Update status to downloading
       activeDownload.progress.status = 'downloading'
@@ -208,12 +214,13 @@ class DownloadManagerService {
 
       // Download video with progress tracking
       const fileSize = await offlineStorageService.cacheVideo(
-        playbackInfo.streamUrl,
+        downloadUrl,
         videoCacheKey,
         (progress) => {
           activeDownload.progress = progress
           this.emit('progress', activeDownload)
-        }
+        },
+        abortController.signal
       )
 
       // Download poster image

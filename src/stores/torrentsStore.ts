@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { torrentService } from '@/services/torrentService'
+import notificationService from '@/services/notificationService'
 import type { TorrentResult, Download, SearchQuery, ProgressUpdate } from '@/types/torrent'
 
 export const useTorrentsStore = defineStore('torrents', () => {
@@ -116,7 +117,11 @@ export const useTorrentsStore = defineStore('torrents', () => {
 
     const download = downloads.value.find(d => d.id === update.downloadId)
     if (download) {
+      const wasNotCompleted = download.status !== 'completed'
       Object.assign(download, update.data)
+      if (wasNotCompleted && download.status === 'completed') {
+        notificationService.show('Download Complete', download.name)
+      }
     }
   }
 

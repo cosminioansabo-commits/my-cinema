@@ -178,6 +178,13 @@ export const mediaService = {
   },
 
   /**
+   * Get direct download URL for offline caching
+   */
+  getDownloadUrl(jellyfinItemId: string, jellyfinMediaSourceId: string): string {
+    return `${API_BASE}/api/media/download/${jellyfinItemId}/${jellyfinMediaSourceId}`
+  },
+
+  /**
    * Trigger Jellyfin library refresh
    */
   async refreshJellyfinLibrary(): Promise<void> {

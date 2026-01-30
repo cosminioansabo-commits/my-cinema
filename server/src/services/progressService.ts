@@ -270,6 +270,20 @@ class ProgressService {
   }
 
   /**
+   * Clear all continue watching progress for a user
+   */
+  clearAllProgress(userId: string): boolean {
+    try {
+      const stmt = db.prepare(`DELETE FROM watch_progress WHERE user_id = ?`)
+      stmt.run(userId)
+      return true
+    } catch (error) {
+      console.error('Error clearing all progress:', error)
+      return false
+    }
+  }
+
+  /**
    * Get all progress for a TV show (all episodes)
    */
   getShowProgress(userId: string, tmdbId: number): WatchProgress[] {

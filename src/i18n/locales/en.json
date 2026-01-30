@@ -286,6 +286,9 @@
     "daysAgo": "{n} day ago | {n} days ago",
     "remaining": "{time} remaining"
   },
+  "continueWatching": {
+    "clearAll": "Clear All"
+  },
   "offline": {
     "title": "Offline",
     "downloadForOffline": "Download for Offline",

@@ -135,6 +135,21 @@ router.post('/watched', async (req: AuthRequest, res: Response) => {
 })
 
 /**
+ * Clear all watch progress
+ * DELETE /api/progress/all
+ */
+router.delete('/all', async (req: AuthRequest, res: Response) => {
+  const userId = DEFAULT_USER_ID
+  const success = progressService.clearAllProgress(userId)
+
+  if (success) {
+    res.json({ success: true })
+  } else {
+    res.status(500).json({ error: 'Failed to clear all progress' })
+  }
+})
+
+/**
  * Remove progress (mark as unwatched)
  * DELETE /api/progress/:mediaType/:tmdbId
  */
