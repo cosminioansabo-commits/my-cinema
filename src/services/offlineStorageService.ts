@@ -93,7 +93,7 @@ class OfflineStorageService {
    * Check if offline storage is supported
    */
   isSupported(): boolean {
-    return 'indexedDB' in window && 'caches' in window
+    return 'indexedDB' in window
   }
 
   /**

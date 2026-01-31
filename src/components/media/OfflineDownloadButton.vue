@@ -96,7 +96,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div v-if="offlineStore.isDownloadSupported" class="offline-download-button">
+  <div class="offline-download-button">
     <Button
       :icon="buttonIcon"
       :label="buttonLabel"

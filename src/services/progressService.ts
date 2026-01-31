@@ -162,10 +162,12 @@ export const progressService = {
   ): Promise<void> {
     try {
       let url = `/${mediaType}/${tmdbId}`
+      const params: Record<string, number> = {}
       if (mediaType === 'episode' && seasonNumber !== undefined && episodeNumber !== undefined) {
-        url += `/${seasonNumber}/${episodeNumber}`
+        params.season = seasonNumber
+        params.episode = episodeNumber
       }
-      await api.delete(url)
+      await api.delete(url, { params })
     } catch (error) {
       console.error('Error removing progress:', error)
     }
