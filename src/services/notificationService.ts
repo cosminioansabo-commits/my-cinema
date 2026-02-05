@@ -13,11 +13,20 @@ const notificationService = {
     return result === 'granted'
   },
 
-  show(title: string, body: string, icon?: string): void {
-    // Try native notification first (HTTPS/localhost only)
-    if (this.isNativeSupported() && Notification.permission === 'granted') {
-      new Notification(title, { body, icon: icon || '/pwa-192x192.png', badge: '/pwa-192x192.png' })
-      return
+  async show(title: string, body: string, icon?: string): Promise<void> {
+    // Try service worker notification (produces real phone notifications in PWA)
+    if (this.isNativeSupported() && Notification.permission === 'granted' && 'serviceWorker' in navigator) {
+      try {
+        const registration = await navigator.serviceWorker.ready
+        await registration.showNotification(title, {
+          body,
+          icon: icon || '/pwa-192x192.png',
+          badge: '/pwa-192x192.png',
+        })
+        return
+      } catch {
+        // Fall through to toast fallback
+      }
     }
 
     // Fallback: dispatch custom event for in-app toast
