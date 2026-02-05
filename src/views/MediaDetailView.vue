@@ -14,6 +14,7 @@ import TrailerModal from '@/components/media/TrailerModal.vue'
 import PlaybackModal from '@/components/media/PlaybackModal.vue'
 import SeasonEpisodes from '@/components/media/SeasonEpisodes.vue'
 import OfflineDownloadButton from '@/components/media/OfflineDownloadButton.vue'
+import notificationService from '@/services/notificationService'
 import Button from 'primevue/button'
 import Skeleton from 'primevue/skeleton'
 import { useToast } from 'primevue/usetoast'
@@ -234,6 +235,15 @@ const checkLibraryStatus = async () => {
     }
   } catch (error) {
     console.error('Error checking library status:', error)
+  }
+}
+
+const testNotification = async () => {
+  const granted = await notificationService.requestPermission()
+  if (granted) {
+    notificationService.show('My Cinema', media.value?.title || 'Test notification')
+  } else {
+    toast.add({ severity: 'warn', summary: 'Notifications blocked', detail: 'Please enable notifications in your browser settings', life: 4000 })
   }
 }
 
@@ -588,6 +598,15 @@ const goBack = () => {
                   v-if="media && mediaType === 'movie' && libraryStatus.hasFile"
                   :media="media"
                   variant="full"
+                />
+                <!-- Test notification button -->
+                <Button
+                  icon="pi pi-bell"
+                  text
+                  rounded
+                  class="!text-gray-400 hover:!text-white hover:!bg-white/10"
+                  v-tooltip.bottom="'Test notification'"
+                  @click="testNotification"
                 />
               </div>
 
