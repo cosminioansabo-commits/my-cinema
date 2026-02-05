@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import AppHeader from '@/components/layout/AppHeader.vue'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
 import KeyboardShortcutsModal from '@/components/common/KeyboardShortcutsModal.vue'
 import Toast from 'primevue/toast'
+import { useToast } from 'primevue/usetoast'
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
-import notificationService from '@/services/notificationService'
+import notificationService, { APP_NOTIFICATION_EVENT } from '@/services/notificationService'
 
 const route = useRoute()
+const toast = useToast()
 const sidebarVisible = ref(false)
 
 // Initialize global keyboard shortcuts
@@ -21,10 +23,21 @@ const toggleSidebar = () => {
 // Hide header/sidebar on login page
 const showLayout = computed(() => route.name !== 'login')
 
+// Listen for in-app notification fallback events
+const handleAppNotification = (e: Event) => {
+  const { title, body } = (e as CustomEvent).detail
+  toast.add({ severity: 'info', summary: title, detail: body, life: 5000 })
+}
+
 // Add dark-mode class to html element for PrimeVue overlays
 onMounted(() => {
   document.documentElement.classList.add('dark-mode')
   notificationService.requestPermission()
+  window.addEventListener(APP_NOTIFICATION_EVENT, handleAppNotification)
+})
+
+onUnmounted(() => {
+  window.removeEventListener(APP_NOTIFICATION_EVENT, handleAppNotification)
 })
 </script>
 

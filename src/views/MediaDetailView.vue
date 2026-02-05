@@ -238,13 +238,8 @@ const checkLibraryStatus = async () => {
   }
 }
 
-const testNotification = async () => {
-  const granted = await notificationService.requestPermission()
-  if (granted) {
-    notificationService.show('My Cinema', media.value?.title || 'Test notification')
-  } else {
-    toast.add({ severity: 'warn', summary: 'Notifications blocked', detail: 'Please enable notifications in your browser settings', life: 4000 })
-  }
+const testNotification = () => {
+  notificationService.show('My Cinema', media.value?.title || 'Test notification')
 }
 
 const toggleLibrary = async () => {
