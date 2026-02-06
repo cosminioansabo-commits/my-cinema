@@ -238,8 +238,37 @@ const checkLibraryStatus = async () => {
   }
 }
 
-const testNotification = () => {
-  notificationService.show('My Cinema', media.value?.title || 'Test notification')
+const testNotification = async () => {
+  const debugInfo = {
+    isSecureContext: window.isSecureContext,
+    hasNotificationAPI: 'Notification' in window,
+    permission: 'Notification' in window ? Notification.permission : 'N/A',
+    hasServiceWorker: 'serviceWorker' in navigator,
+    swReady: false,
+    swState: 'N/A'
+  }
+
+  // Check SW status
+  if ('serviceWorker' in navigator) {
+    try {
+      const reg = await navigator.serviceWorker.getRegistration()
+      debugInfo.swReady = !!reg?.active
+      debugInfo.swState = reg?.active?.state || 'no active SW'
+    } catch (e) {
+      debugInfo.swState = 'error: ' + (e as Error).message
+    }
+  }
+
+  // Show debug info in toast
+  toast.add({
+    severity: 'info',
+    summary: 'Notification Debug',
+    detail: `Secure: ${debugInfo.isSecureContext}, Permission: ${debugInfo.permission}, SW: ${debugInfo.swState}`,
+    life: 10000
+  })
+
+  // Now try to send notification
+  await notificationService.show('My Cinema', media.value?.title || 'Test notification')
 }
 
 const toggleLibrary = async () => {
