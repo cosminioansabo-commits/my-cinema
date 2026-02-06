@@ -5,9 +5,21 @@ import { libraryService, type RadarrMovie, type SonarrSeries } from '@/services/
 import { findByExternalId, getImageUrl, getPosterPath } from '@/services/tmdbService'
 import { useLanguage } from '@/composables/useLanguage'
 import ProgressSpinner from 'primevue/progressspinner'
+import Dropdown from 'primevue/dropdown'
 
 const router = useRouter()
 const { t } = useLanguage()
+
+// Filter and sort state
+type FilterType = 'all' | 'movies' | 'tvShows'
+const activeFilter = ref<FilterType>('all')
+const sortBy = ref<'added' | 'title' | 'year'>('added')
+
+const sortOptions = computed(() => [
+  { label: t('library.sortDateAdded'), value: 'added' },
+  { label: t('library.sortTitle'), value: 'title' },
+  { label: t('library.sortYear'), value: 'year' }
+])
 
 // Library state
 const libraryMovies = ref<RadarrMovie[]>([])
@@ -44,6 +56,40 @@ const fetchLibrary = async () => {
 const totalLibraryItems = computed(() => libraryMovies.value.length + librarySeries.value.length)
 const downloadedMovies = computed(() => libraryMovies.value.filter(m => m.hasFile).length)
 const downloadedSeries = computed(() => librarySeries.value.filter(s => s.statistics && s.statistics.episodeFileCount > 0).length)
+
+// Sorted and filtered movies
+const sortedMovies = computed(() => {
+  const movies = [...libraryMovies.value]
+  switch (sortBy.value) {
+    case 'added':
+      return movies.sort((a, b) => new Date(b.added || 0).getTime() - new Date(a.added || 0).getTime())
+    case 'title':
+      return movies.sort((a, b) => a.title.localeCompare(b.title))
+    case 'year':
+      return movies.sort((a, b) => (b.year || 0) - (a.year || 0))
+    default:
+      return movies
+  }
+})
+
+// Sorted and filtered series
+const sortedSeries = computed(() => {
+  const series = [...librarySeries.value]
+  switch (sortBy.value) {
+    case 'added':
+      return series.sort((a, b) => new Date(b.added || 0).getTime() - new Date(a.added || 0).getTime())
+    case 'title':
+      return series.sort((a, b) => a.title.localeCompare(b.title))
+    case 'year':
+      return series.sort((a, b) => (b.year || 0) - (a.year || 0))
+    default:
+      return series
+  }
+})
+
+// Show based on filter
+const showMovies = computed(() => activeFilter.value === 'all' || activeFilter.value === 'movies')
+const showTvShows = computed(() => activeFilter.value === 'all' || activeFilter.value === 'tvShows')
 
 // Cache for TMDB poster paths
 const movieTmdbPosters = ref<Map<number, string>>(new Map())
@@ -131,28 +177,61 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Stats Bar -->
-    <div class="grid grid-cols-3 gap-2.5 sm:gap-4 mb-8 sm:mb-12 max-w-2xl">
-      <div class="bg-zinc-900/60 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-5 border border-zinc-800/50">
-        <div class="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
-          <i class="pi pi-database text-amber-500 text-xs sm:text-sm"></i>
-          <span class="text-gray-400 text-[10px] sm:text-sm">{{ t('library.total') }}</span>
-        </div>
-        <p class="text-xl sm:text-3xl font-bold text-white">{{ totalLibraryItems }}</p>
+    <!-- Filter Tabs & Sort -->
+    <div class="flex flex-col sm:flex-row sm:items-center gap-4 mb-8 sm:mb-12">
+      <!-- Filter Tabs (Stats Bar) -->
+      <div class="grid grid-cols-3 gap-2.5 sm:gap-4 flex-1 max-w-2xl">
+        <button
+          @click="activeFilter = 'all'"
+          class="text-left rounded-xl sm:rounded-2xl p-3 sm:p-5 border transition-all duration-200"
+          :class="activeFilter === 'all'
+            ? 'bg-amber-500/20 border-amber-500/50 ring-2 ring-amber-500/30'
+            : 'bg-zinc-900/60 backdrop-blur-sm border-zinc-800/50 hover:border-zinc-700'"
+        >
+          <div class="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
+            <i class="pi pi-database text-amber-500 text-xs sm:text-sm"></i>
+            <span class="text-gray-400 text-[10px] sm:text-sm">{{ t('library.total') }}</span>
+          </div>
+          <p class="text-xl sm:text-3xl font-bold text-white">{{ totalLibraryItems }}</p>
+        </button>
+        <button
+          @click="activeFilter = 'movies'"
+          class="text-left rounded-xl sm:rounded-2xl p-3 sm:p-5 border transition-all duration-200"
+          :class="activeFilter === 'movies'
+            ? 'bg-blue-500/20 border-blue-500/50 ring-2 ring-blue-500/30'
+            : 'bg-zinc-900/60 backdrop-blur-sm border-zinc-800/50 hover:border-zinc-700'"
+        >
+          <div class="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
+            <i class="pi pi-video text-blue-400 text-xs sm:text-sm"></i>
+            <span class="text-gray-400 text-[10px] sm:text-sm">{{ t('library.movies') }}</span>
+          </div>
+          <p class="text-xl sm:text-3xl font-bold text-white">{{ downloadedMovies }}<span class="text-gray-500 text-sm">/{{ libraryMovies.length }}</span></p>
+        </button>
+        <button
+          @click="activeFilter = 'tvShows'"
+          class="text-left rounded-xl sm:rounded-2xl p-3 sm:p-5 border transition-all duration-200"
+          :class="activeFilter === 'tvShows'
+            ? 'bg-purple-500/20 border-purple-500/50 ring-2 ring-purple-500/30'
+            : 'bg-zinc-900/60 backdrop-blur-sm border-zinc-800/50 hover:border-zinc-700'"
+        >
+          <div class="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
+            <i class="pi pi-desktop text-purple-400 text-xs sm:text-sm"></i>
+            <span class="text-gray-400 text-[10px] sm:text-sm">{{ t('library.tvShows') }}</span>
+          </div>
+          <p class="text-xl sm:text-3xl font-bold text-white">{{ downloadedSeries }}<span class="text-gray-500 text-sm">/{{ librarySeries.length }}</span></p>
+        </button>
       </div>
-      <div class="bg-zinc-900/60 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-5 border border-zinc-800/50">
-        <div class="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
-          <i class="pi pi-video text-blue-400 text-xs sm:text-sm"></i>
-          <span class="text-gray-400 text-[10px] sm:text-sm">{{ t('library.movies') }}</span>
-        </div>
-        <p class="text-xl sm:text-3xl font-bold text-white">{{ downloadedMovies }}<span class="text-gray-500 text-sm">/{{ libraryMovies.length }}</span></p>
-      </div>
-      <div class="bg-zinc-900/60 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-5 border border-zinc-800/50">
-        <div class="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
-          <i class="pi pi-desktop text-purple-400 text-xs sm:text-sm"></i>
-          <span class="text-gray-400 text-[10px] sm:text-sm">{{ t('library.tvShows') }}</span>
-        </div>
-        <p class="text-xl sm:text-3xl font-bold text-white">{{ downloadedSeries }}<span class="text-gray-500 text-sm">/{{ librarySeries.length }}</span></p>
+
+      <!-- Sort Dropdown -->
+      <div class="flex items-center gap-2 sm:self-end">
+        <i class="pi pi-sort-alt text-gray-400 text-sm"></i>
+        <Dropdown
+          v-model="sortBy"
+          :options="sortOptions"
+          optionLabel="label"
+          optionValue="value"
+          class="w-40 sm:w-48"
+        />
       </div>
     </div>
 
@@ -164,15 +243,15 @@ onMounted(() => {
     <!-- Library content -->
     <template v-else-if="libraryEnabled.radarr || libraryEnabled.sonarr">
       <!-- Movies from Radarr -->
-      <section v-if="libraryMovies.length > 0" class="mb-8 sm:mb-12">
+      <section v-if="showMovies && sortedMovies.length > 0" class="mb-8 sm:mb-12">
         <div class="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
           <div class="w-1 h-6 sm:h-8 bg-blue-500 rounded-full"></div>
           <h2 class="text-lg sm:text-2xl font-bold text-white">{{ t('library.movies') }}</h2>
-          <span class="text-gray-500 text-xs sm:text-sm">({{ libraryMovies.length }})</span>
+          <span class="text-gray-500 text-xs sm:text-sm">({{ sortedMovies.length }})</span>
         </div>
         <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2.5 sm:gap-4">
           <div
-            v-for="movie in libraryMovies"
+            v-for="movie in sortedMovies"
             :key="movie.id"
             class="group cursor-pointer"
             @click="goToMovie(movie.tmdbId)"
@@ -202,15 +281,15 @@ onMounted(() => {
       </section>
 
       <!-- TV Shows from Sonarr -->
-      <section v-if="librarySeries.length > 0" class="mb-8 sm:mb-12">
+      <section v-if="showTvShows && sortedSeries.length > 0" class="mb-8 sm:mb-12">
         <div class="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
           <div class="w-1 h-6 sm:h-8 bg-purple-500 rounded-full"></div>
           <h2 class="text-lg sm:text-2xl font-bold text-white">{{ t('library.tvShows') }}</h2>
-          <span class="text-gray-500 text-xs sm:text-sm">({{ librarySeries.length }})</span>
+          <span class="text-gray-500 text-xs sm:text-sm">({{ sortedSeries.length }})</span>
         </div>
         <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2.5 sm:gap-4">
           <div
-            v-for="series in librarySeries"
+            v-for="series in sortedSeries"
             :key="series.id"
             class="group cursor-pointer"
             @click="goToSeries(series.tvdbId)"

@@ -211,7 +211,10 @@
     "empty": "Biblioteca ta este goală",
     "addContent": "Adaugă filme și seriale din paginile lor de detalii",
     "notConfigured": "Bibliotecă neconfigurată",
-    "connectServices": "Conectează Radarr și/sau Sonarr pentru a gestiona biblioteca media"
+    "connectServices": "Conectează Radarr și/sau Sonarr pentru a gestiona biblioteca media",
+    "sortDateAdded": "Data adăugării",
+    "sortTitle": "Titlu",
+    "sortYear": "An"
   },
   "calendar": {
     "title": "Calendar",

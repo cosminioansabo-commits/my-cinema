@@ -14,7 +14,7 @@ const notificationService = {
   },
 
   async show(title: string, body: string, icon?: string): Promise<void> {
-    console.log('[Notification] show() called', {
+    console.debug('[Notification] show() called', {
       title,
       body,
       isNativeSupported: this.isNativeSupported(),
@@ -26,15 +26,15 @@ const notificationService = {
     // Try service worker notification (produces real phone notifications in PWA)
     if (this.isNativeSupported() && Notification.permission === 'granted' && 'serviceWorker' in navigator) {
       try {
-        console.log('[Notification] Attempting SW notification...')
+        console.debug('[Notification] Attempting SW notification...')
         const registration = await navigator.serviceWorker.ready
-        console.log('[Notification] SW ready, calling showNotification')
+        console.debug('[Notification] SW ready, calling showNotification')
         await registration.showNotification(title, {
           body,
           icon: icon || '/pwa-192x192.png',
           badge: '/pwa-192x192.png',
         })
-        console.log('[Notification] SW showNotification succeeded')
+        console.debug('[Notification] SW showNotification succeeded')
         return
       } catch (err) {
         console.error('[Notification] SW notification failed:', err)
@@ -43,7 +43,7 @@ const notificationService = {
     }
 
     // Fallback: dispatch custom event for in-app toast
-    console.log('[Notification] Using toast fallback')
+    console.debug('[Notification] Using toast fallback')
     window.dispatchEvent(new CustomEvent(APP_NOTIFICATION_EVENT, {
       detail: { title, body }
     }))

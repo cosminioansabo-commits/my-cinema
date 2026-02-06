@@ -211,7 +211,10 @@
     "empty": "Your library is empty",
     "addContent": "Add movies and TV shows to your library from their detail pages",
     "notConfigured": "Library not configured",
-    "connectServices": "Connect Radarr and/or Sonarr to manage your media library"
+    "connectServices": "Connect Radarr and/or Sonarr to manage your media library",
+    "sortDateAdded": "Date Added",
+    "sortTitle": "Title",
+    "sortYear": "Year"
   },
   "calendar": {
     "title": "Calendar",
