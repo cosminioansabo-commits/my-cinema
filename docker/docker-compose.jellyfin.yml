@@ -51,10 +51,12 @@ services:
       # Intel QuickSync - REQUIRED for hardware transcoding
       # This exposes the Intel GPU to the container
       - /dev/dri:/dev/dri
-    # Grant access to GPU device
+    # Grant access to GPU device (render and video groups)
+    # Note: group_add requires compose specification v3.7+
+    # Group IDs may vary - check with: getent group render; getent group video
     group_add:
-      - "109"  # render group - may vary, check with: getent group render
-      - "44"   # video group - may vary, check with: getent group video
+      - "109"  # render group
+      - "44"   # video group
 
 networks:
   default:

@@ -302,8 +302,8 @@
   },
   "offline": {
     "title": "Offline",
-    "downloadForOffline": "Download for Offline",
-    "downloaded": "Downloaded",
+    "downloadForOffline": "Save Offline",
+    "downloaded": "Saved Offline",
     "downloading": "Downloading",
     "alreadyDownloaded": "Already downloaded",
     "cancelDownload": "Cancel download",
@@ -317,6 +317,8 @@
     "remaining": "remaining",
     "playOffline": "Play Offline",
     "downloadFailed": "Download failed",
+    "downloadStarted": "Download started",
+    "downloadCancelled": "Download cancelled",
     "notSupported": "Offline downloads are not supported in this browser"
   }
 }

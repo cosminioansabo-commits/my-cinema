@@ -11,7 +11,7 @@ import hlsProxyRoutes from './routes/hlsProxy.js'
 import subtitleRoutes from './routes/subtitles.js'
 import { authMiddleware } from './middleware/auth.js'
 import { setupWebSocket } from './websocket/progressSocket.js'
-import { downloadManager } from './services/downloadManager.js'
+import { downloadManager } from './services/downloadManagerService.js'
 
 const app = express()
 const server = createServer(app)

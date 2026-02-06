@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { setupAuthInterceptor } from '@/composables/useAuthInterceptor'
+import type { ContinueWatchingItem } from '@/types'
 
 const API_BASE = import.meta.env.VITE_TORRENT_API_URL || 'http://localhost:3001'
 
@@ -23,17 +24,8 @@ export interface WatchProgress {
   updatedAt: string
 }
 
-export interface ContinueWatchingItem {
-  id: number
-  mediaType: 'movie' | 'episode'
-  tmdbId: number
-  seasonNumber: number | null
-  episodeNumber: number | null
-  positionMs: number
-  durationMs: number
-  progress: number
-  updatedAt: string
-}
+// Re-export for backward compatibility
+export type { ContinueWatchingItem }
 
 export const progressService = {
   /**

@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express'
 import { radarrService } from '../services/radarrService.js'
 import { sonarrService } from '../services/sonarrService.js'
-import { downloadManager } from '../services/downloadManager.js'
+import { downloadManager } from '../services/downloadManagerService.js'
 
 const router = Router()
 

@@ -37,8 +37,7 @@ const youtubeUrl = computed(() => {
       <iframe
         v-if="video?.key && isOpen"
         :src="youtubeUrl"
-        class="absolute inset-0 w-full h-full"
-        frameborder="0"
+        class="absolute inset-0 w-full h-full border-0"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         allowfullscreen
       ></iframe>

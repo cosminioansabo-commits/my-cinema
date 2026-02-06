@@ -3,15 +3,17 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import AppHeader from '@/components/layout/AppHeader.vue'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
-import KeyboardShortcutsModal from '@/components/common/KeyboardShortcutsModal.vue'
+import KeyboardShortcutsModal from '@/components/modals/KeyboardShortcutsModal.vue'
 import Toast from 'primevue/toast'
 import { useToast } from 'primevue/usetoast'
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
 import notificationService, { APP_NOTIFICATION_EVENT } from '@/services/notificationService'
+import { useOfflineStore } from '@/stores/offlineStore'
 
 const route = useRoute()
 const toast = useToast()
 const sidebarVisible = ref(false)
+const offlineStore = useOfflineStore()
 
 // Initialize global keyboard shortcuts
 useKeyboardShortcuts()
@@ -34,6 +36,10 @@ onMounted(() => {
   document.documentElement.classList.add('dark-mode')
   notificationService.requestPermission()
   window.addEventListener(APP_NOTIFICATION_EVENT, handleAppNotification)
+
+  // Initialize offline download store listeners
+  offlineStore.initializeListeners()
+  offlineStore.loadOfflineMedia()
 })
 
 onUnmounted(() => {

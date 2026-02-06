@@ -21,7 +21,7 @@ npm run start    # Run compiled server
 
 **Docker Deployment:**
 ```bash
-docker compose -f docker-compose.my-cinema.yml up -d
+docker compose -f docker/docker-compose.my-cinema.yml up -d
 ```
 
 ## Environment Variables
@@ -73,8 +73,9 @@ This is a Vue 3 media browsing application (Netflix-style) with:
 
 **Composables** (`src/composables/`):
 - `useAuthInterceptor` - Axios interceptor for auth tokens and 401 handling
-- `useLocalStorage` - Reactive localStorage wrapper
 - `useDebounce` - Debounce utility for search inputs
+- `useCarouselScroll` - Carousel scrolling with arrow navigation
+- `useLanguage` - i18n language utilities
 
 ### Type System
 

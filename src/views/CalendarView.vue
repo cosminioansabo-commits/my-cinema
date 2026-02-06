@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import TorrentSearchModal from '@/components/torrents/TorrentSearchModal.vue'
+import TorrentSearchModal from '@/components/modals/TorrentSearchModal.vue'
 import { type CalendarEpisode, libraryService, type SonarrSeries } from '@/services/libraryService'
 import { findTVByExternalId, getImageUrl } from '@/services/tmdbService'
 import { useLanguage } from '@/composables/useLanguage'

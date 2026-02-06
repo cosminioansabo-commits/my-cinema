@@ -1,27 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import PlaybackModal from './PlaybackModal.vue'
+import PlaybackModal from '@/components/modals/PlaybackModal.vue'
 import ContinueWatchingCard from './ContinueWatchingCard.vue'
 import Button from 'primevue/button'
 import { useCarouselScroll } from '@/composables/useCarouselScroll'
 import { progressService } from '@/services/progressService'
 import { useLanguage } from '@/composables/useLanguage'
-
-export interface ContinueWatchingItem {
-  id: number
-  mediaType: 'movie' | 'episode'
-  tmdbId: number
-  seasonNumber: number | null
-  episodeNumber: number | null
-  positionMs: number
-  durationMs: number
-  progress: number
-  updatedAt: string
-  // TMDB enriched data
-  title?: string
-  posterPath?: string | null
-  episodeTitle?: string
-}
+import type { ContinueWatchingItem } from '@/types'
 
 const props = withDefaults(defineProps<{
   title: string

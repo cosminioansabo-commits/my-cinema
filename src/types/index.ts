@@ -222,6 +222,23 @@ export interface TMDBSearchResult {
   original_language?: string
 }
 
+// Continue Watching
+export interface ContinueWatchingItem {
+  id: number
+  mediaType: 'movie' | 'episode'
+  tmdbId: number
+  seasonNumber: number | null
+  episodeNumber: number | null
+  positionMs: number
+  durationMs: number
+  progress: number
+  updatedAt: string
+  // TMDB enriched data (added by frontend)
+  title?: string
+  posterPath?: string | null
+  episodeTitle?: string
+}
+
 // Streaming Platforms (common ones for filtering)
 export const STREAMING_PLATFORMS = [
   { id: 8, name: 'Netflix', logo: '/t2yyOv40HZeVlLjYsCsPHnWLk4W.jpg' },

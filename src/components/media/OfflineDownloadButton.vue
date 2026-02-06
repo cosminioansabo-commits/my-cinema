@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed } from 'vue'
 import Button from 'primevue/button'
+import { useToast } from 'primevue/usetoast'
 import { useOfflineStore } from '@/stores/offlineStore'
 import { useLanguage } from '@/composables/useLanguage'
 import type { MediaDetails, Episode } from '@/types'
@@ -12,6 +13,7 @@ const props = defineProps<{
 }>()
 
 const offlineStore = useOfflineStore()
+const toast = useToast()
 const { t } = useLanguage()
 
 const mediaId = computed(() => {
@@ -51,7 +53,7 @@ const downloadProgress = computed(() =>
 const buttonIcon = computed(() => {
   if (isDownloaded.value) return 'pi pi-check-circle'
   if (isDownloading.value) return 'pi pi-spin pi-spinner'
-  return 'pi pi-download'
+  return 'pi pi-mobile'
 })
 
 const buttonLabel = computed(() => {
@@ -64,12 +66,6 @@ const buttonLabel = computed(() => {
   return t('offline.downloadForOffline')
 })
 
-const buttonSeverity = computed(() => {
-  if (isDownloaded.value) return 'success'
-  if (isDownloading.value) return 'secondary'
-  return 'secondary'
-})
-
 const handleClick = async () => {
   if (isDownloaded.value) {
     // Already downloaded - could show options to delete
@@ -79,20 +75,33 @@ const handleClick = async () => {
   if (isDownloading.value) {
     // Cancel download
     offlineStore.cancelDownload(mediaId.value)
+    toast.add({
+      severity: 'info',
+      summary: t('offline.downloadCancelled'),
+      life: 3000
+    })
     return
   }
 
   // Start download
   try {
     await offlineStore.startDownload(props.media, props.episode)
+    toast.add({
+      severity: 'info',
+      summary: t('offline.downloadStarted'),
+      detail: props.media.title,
+      life: 3000
+    })
   } catch (error) {
     console.error('Failed to start download:', error)
+    toast.add({
+      severity: 'error',
+      summary: t('offline.downloadFailed'),
+      detail: error instanceof Error ? error.message : 'Unknown error',
+      life: 5000
+    })
   }
 }
-
-onMounted(() => {
-  offlineStore.syncActiveDownloads()
-})
 </script>
 
 <template>
@@ -136,7 +145,7 @@ onMounted(() => {
   background: rgba(255, 255, 255, 0.15) !important;
 }
 
-/* Base action button styles */
+/* Base action button styles - matches MediaDetailView */
 .action-btn {
   position: relative;
   display: inline-flex;
@@ -160,23 +169,23 @@ onMounted(() => {
   }
 }
 
-/* Default offline download button - Cyan/Teal accent */
+/* Default offline download button - Matches secondary button style */
 .action-btn-offline {
-  background: linear-gradient(135deg, #06b6d4 0%, #0891b2 50%, #0e7490 100%) !important;
+  background: linear-gradient(135deg, #374151 0%, #1f2937 100%) !important;
   color: white !important;
   box-shadow:
-    0 4px 14px rgba(6, 182, 212, 0.35),
-    0 2px 6px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+    0 4px 12px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
 .action-btn-offline:hover {
-  background: linear-gradient(135deg, #22d3ee 0%, #06b6d4 50%, #0891b2 100%) !important;
+  background: linear-gradient(135deg, #4b5563 0%, #374151 100%) !important;
   transform: translateY(-2px);
   box-shadow:
-    0 8px 24px rgba(6, 182, 212, 0.45),
-    0 4px 12px rgba(0, 0, 0, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+    0 8px 20px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
 }
 
 .action-btn-offline:active {
@@ -185,6 +194,7 @@ onMounted(() => {
 
 .action-btn-offline :deep(.p-button-icon) {
   font-size: 1rem;
+  color: #06b6d4 !important;
 }
 
 /* Downloading state - Animated with subtle pulse */

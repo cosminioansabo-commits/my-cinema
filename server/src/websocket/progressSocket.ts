@@ -3,7 +3,7 @@ import type { Server } from 'http'
 import type { IncomingMessage } from 'http'
 import jwt from 'jsonwebtoken'
 import type { ProgressUpdate, WSMessage } from '../types/index.js'
-import { downloadManager } from '../services/downloadManager.js'
+import { downloadManager } from '../services/downloadManagerService.js'
 import { config } from '../config.js'
 
 function verifyToken(token: string): boolean {

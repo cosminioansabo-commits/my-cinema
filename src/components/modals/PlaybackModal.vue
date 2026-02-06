@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted } from 'vue'
 import Dialog from 'primevue/dialog'
-import VideoPlayer from './VideoPlayer.vue'
-import NextEpisodeCountdown from './player/NextEpisodeCountdown.vue'
+import VideoPlayer from '@/components/media/VideoPlayer.vue'
+import NextEpisodeCountdown from '@/components/media/player/NextEpisodeCountdown.vue'
 import { mediaService, type PlaybackInfo } from '@/services/mediaService'
 import { progressService } from '@/services/progressService'
 import { useNextEpisode } from '@/composables/useNextEpisode'

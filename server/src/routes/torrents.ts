@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express'
-import { searchTorrents, getProviders } from '../services/torrentSearch.js'
-import { downloadManager } from '../services/downloadManager.js'
+import { searchTorrents, getProviders } from '../services/torrentSearchService.js'
+import { downloadManager } from '../services/downloadManagerService.js'
 import type { SearchQuery, DownloadRequest } from '../types/index.js'
 
 const router = Router()

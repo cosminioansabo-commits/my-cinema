@@ -11,7 +11,7 @@ import AccordionContent from 'primevue/accordioncontent'
 import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
 import Tag from 'primevue/tag'
-import PlaybackModal from './PlaybackModal.vue'
+import PlaybackModal from '@/components/modals/PlaybackModal.vue'
 import OfflineDownloadButton from './OfflineDownloadButton.vue'
 
 const { t, locale } = useLanguage()

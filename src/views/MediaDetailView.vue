@@ -9,9 +9,9 @@ import { libraryService } from '@/services/libraryService'
 import { getExternalRatings, type ExternalRatings } from '@/services/omdbService'
 import { progressService, type WatchProgress } from '@/services/progressService'
 import type { SonarrEpisode } from '@/services/libraryService'
-import TorrentSearchModal from '@/components/torrents/TorrentSearchModal.vue'
-import TrailerModal from '@/components/media/TrailerModal.vue'
-import PlaybackModal from '@/components/media/PlaybackModal.vue'
+import TorrentSearchModal from '@/components/modals/TorrentSearchModal.vue'
+import TrailerModal from '@/components/modals/TrailerModal.vue'
+import PlaybackModal from '@/components/modals/PlaybackModal.vue'
 import SeasonEpisodes from '@/components/media/SeasonEpisodes.vue'
 import OfflineDownloadButton from '@/components/media/OfflineDownloadButton.vue'
 import Button from 'primevue/button'
@@ -244,7 +244,7 @@ const toggleLibrary = async () => {
   try {
     if (libraryStatus.value.inLibrary && libraryStatus.value.id) {
       // Remove from library
-      let success = false
+      let success: boolean
       if (mediaType.value === 'movie') {
         success = await libraryService.deleteMovie(libraryStatus.value.id, libraryStatus.value.hasFile)
       } else {

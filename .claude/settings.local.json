@@ -40,7 +40,10 @@
       "Bash(npm ls:*)",
       "Bash(wc:*)",
       "Bash(find:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(for file in /Users/sabocosmin/workspace/my-cinema/src/composables/*.ts)",
+      "Bash(done)",
+      "Bash(expect:*)"
     ],
     "deny": [],
     "ask": []

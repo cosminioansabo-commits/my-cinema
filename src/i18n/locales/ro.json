@@ -302,8 +302,8 @@
   },
   "offline": {
     "title": "Offline",
-    "downloadForOffline": "Descarcă pentru offline",
-    "downloaded": "Descărcat",
+    "downloadForOffline": "Salvează offline",
+    "downloaded": "Salvat offline",
     "downloading": "Se descarcă",
     "alreadyDownloaded": "Deja descărcat",
     "cancelDownload": "Anulează descărcarea",
@@ -317,6 +317,8 @@
     "remaining": "rămas",
     "playOffline": "Redare offline",
     "downloadFailed": "Descărcarea a eșuat",
+    "downloadStarted": "Descărcarea a început",
+    "downloadCancelled": "Descărcare anulată",
     "notSupported": "Descărcările offline nu sunt suportate în acest browser"
   }
 }
