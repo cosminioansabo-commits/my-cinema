@@ -292,6 +292,14 @@
   "continueWatching": {
     "clearAll": "Clear All"
   },
+  "notifications": {
+    "title": "Notifications",
+    "subtitle": "Your latest updates and download completions",
+    "empty": "No notifications",
+    "emptyHint": "When downloads complete or other events occur, they'll appear here",
+    "markAllRead": "Mark all read",
+    "clearAll": "Clear All"
+  },
   "offline": {
     "title": "Offline",
     "downloadForOffline": "Download for Offline",

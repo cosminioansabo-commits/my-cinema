@@ -3,11 +3,13 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import DownloadManager from '@/components/torrents/DownloadManager.vue'
 import LanguageSelector from '@/components/common/LanguageSelector.vue'
 import { useAuthStore } from '@/stores/authStore'
+import { useNotificationStore } from '@/stores/notificationStore'
 import { useLanguage } from '@/composables/useLanguage'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const notificationStore = useNotificationStore()
 const { t } = useLanguage()
 
 const handleLogout = () => {
@@ -88,6 +90,23 @@ const isActiveRoute = (path: string) => {
           title="Search"
         >
           <i class="pi pi-search text-lg"></i>
+        </RouterLink>
+
+        <!-- Notifications icon -->
+        <RouterLink
+          to="/notifications"
+          class="relative p-2 hover:bg-white/10 rounded-lg transition-colors"
+          :class="isActiveRoute('/notifications') ? 'text-white bg-white/10' : 'text-gray-400 hover:text-white'"
+          :title="t('notifications.title')"
+        >
+          <i class="pi pi-bell text-lg"></i>
+          <!-- Unread badge -->
+          <span
+            v-if="notificationStore.unreadCount > 0"
+            class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center bg-[#e50914] text-white text-[10px] font-bold rounded-full"
+          >
+            {{ notificationStore.unreadCount > 9 ? '9+' : notificationStore.unreadCount }}
+          </span>
         </RouterLink>
 
         <!-- Download Manager -->

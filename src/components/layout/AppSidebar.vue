@@ -21,6 +21,7 @@ const navLinks = [
   { path: '/search', labelKey: 'nav.search', icon: 'pi-search' },
   { path: '/my-library', labelKey: 'nav.myLibrary', icon: 'pi-database' },
   { path: '/calendar', labelKey: 'nav.calendar', icon: 'pi-calendar' },
+  { path: '/notifications', labelKey: 'notifications.title', icon: 'pi-bell' },
   { path: '/downloads', labelKey: 'nav.downloads', icon: 'pi-download' },
 ]
 

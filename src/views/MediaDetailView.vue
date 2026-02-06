@@ -14,7 +14,6 @@ import TrailerModal from '@/components/media/TrailerModal.vue'
 import PlaybackModal from '@/components/media/PlaybackModal.vue'
 import SeasonEpisodes from '@/components/media/SeasonEpisodes.vue'
 import OfflineDownloadButton from '@/components/media/OfflineDownloadButton.vue'
-import notificationService from '@/services/notificationService'
 import Button from 'primevue/button'
 import Skeleton from 'primevue/skeleton'
 import { useToast } from 'primevue/usetoast'
@@ -236,39 +235,6 @@ const checkLibraryStatus = async () => {
   } catch (error) {
     console.error('Error checking library status:', error)
   }
-}
-
-const testNotification = async () => {
-  const debugInfo = {
-    isSecureContext: window.isSecureContext,
-    hasNotificationAPI: 'Notification' in window,
-    permission: 'Notification' in window ? Notification.permission : 'N/A',
-    hasServiceWorker: 'serviceWorker' in navigator,
-    swReady: false,
-    swState: 'N/A'
-  }
-
-  // Check SW status
-  if ('serviceWorker' in navigator) {
-    try {
-      const reg = await navigator.serviceWorker.getRegistration()
-      debugInfo.swReady = !!reg?.active
-      debugInfo.swState = reg?.active?.state || 'no active SW'
-    } catch (e) {
-      debugInfo.swState = 'error: ' + (e as Error).message
-    }
-  }
-
-  // Show debug info in toast
-  toast.add({
-    severity: 'info',
-    summary: 'Notification Debug',
-    detail: `Secure: ${debugInfo.isSecureContext}, Permission: ${debugInfo.permission}, SW: ${debugInfo.swState}`,
-    life: 10000
-  })
-
-  // Now try to send notification
-  await notificationService.show('My Cinema', media.value?.title || 'Test notification')
 }
 
 const toggleLibrary = async () => {
@@ -622,15 +588,6 @@ const goBack = () => {
                   v-if="media && mediaType === 'movie' && libraryStatus.hasFile"
                   :media="media"
                   variant="full"
-                />
-                <!-- Test notification button -->
-                <Button
-                  icon="pi pi-bell"
-                  text
-                  rounded
-                  class="!text-gray-400 hover:!text-white hover:!bg-white/10"
-                  v-tooltip.bottom="'Test notification'"
-                  @click="testNotification"
                 />
               </div>
 

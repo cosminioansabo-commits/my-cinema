@@ -292,6 +292,14 @@
   "continueWatching": {
     "clearAll": "Șterge Tot"
   },
+  "notifications": {
+    "title": "Notificări",
+    "subtitle": "Ultimele actualizări și descărcări finalizate",
+    "empty": "Nicio notificare",
+    "emptyHint": "Când descărcările se finalizează sau apar alte evenimente, vor apărea aici",
+    "markAllRead": "Marchează toate citite",
+    "clearAll": "Șterge tot"
+  },
   "offline": {
     "title": "Offline",
     "downloadForOffline": "Descarcă pentru offline",

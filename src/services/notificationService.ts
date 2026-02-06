@@ -1,3 +1,5 @@
+import { useNotificationStore } from '@/stores/notificationStore'
+
 export const APP_NOTIFICATION_EVENT = 'app-notification'
 
 const notificationService = {
@@ -13,7 +15,16 @@ const notificationService = {
     return result === 'granted'
   },
 
-  async show(title: string, body: string, icon?: string): Promise<void> {
+  async show(title: string, body: string, icon?: string, type: 'download' | 'info' | 'error' = 'info'): Promise<void> {
+    // Store notification in the notification center
+    try {
+      const notificationStore = useNotificationStore()
+      notificationStore.addNotification(title, body, type)
+    } catch (e) {
+      // Store might not be initialized yet
+      console.debug('[Notification] Could not store notification:', e)
+    }
+
     console.debug('[Notification] show() called', {
       title,
       body,

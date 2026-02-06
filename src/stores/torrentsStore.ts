@@ -120,7 +120,7 @@ export const useTorrentsStore = defineStore('torrents', () => {
       const wasNotCompleted = download.status !== 'completed'
       Object.assign(download, update.data)
       if (wasNotCompleted && download.status === 'completed') {
-        notificationService.show('Download Complete', download.name)
+        notificationService.show('Download Complete', download.name, undefined, 'download')
       }
     }
   }
