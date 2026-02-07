@@ -114,9 +114,16 @@ export const useOfflineStore = defineStore('offline', () => {
   }
 
   async function getOfflineVideoUrl(id: string): Promise<string | null> {
+    console.log('[OfflineStore] Getting video URL for:', id)
     const metadata = await offlineStorageService.getMediaMetadata(id)
-    if (!metadata) return null
-    return offlineStorageService.getCachedVideoUrl(metadata.videoCacheKey)
+    console.log('[OfflineStore] Metadata:', metadata)
+    if (!metadata) {
+      console.warn('[OfflineStore] No metadata found for:', id)
+      return null
+    }
+    const videoUrl = await offlineStorageService.getCachedVideoUrl(metadata.videoCacheKey)
+    console.log('[OfflineStore] Video URL:', videoUrl ? 'Found' : 'Not found', 'cacheKey:', metadata.videoCacheKey)
+    return videoUrl
   }
 
   async function getOfflinePosterUrl(id: string): Promise<string | null> {

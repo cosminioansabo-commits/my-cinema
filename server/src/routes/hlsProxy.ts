@@ -189,6 +189,42 @@ router.get('/hls/:itemId/:segmentPath(*).mp4', async (req: Request, res: Respons
   }
 })
 
+// ============================================================================
+// IMAGE PROXY ENDPOINTS (to bypass CORS restrictions for TMDB images)
+// ============================================================================
+
+// Proxy TMDB images for offline caching
+router.get('/image/tmdb/:size/:path(*)', async (req: Request, res: Response) => {
+  const { size, path } = req.params
+
+  // Validate size parameter to prevent abuse
+  const allowedSizes = ['w92', 'w154', 'w185', 'w342', 'w500', 'w780', 'original']
+  if (!allowedSizes.includes(size)) {
+    res.status(400).json({ error: 'Invalid image size' })
+    return
+  }
+
+  try {
+    const tmdbUrl = `https://image.tmdb.org/t/p/${size}/${path}`
+
+    const response = await axios.get(tmdbUrl, {
+      responseType: 'stream',
+      timeout: 30000
+    })
+
+    // Forward content type and cache headers
+    const contentType = response.headers['content-type'] || 'image/jpeg'
+    res.setHeader('Content-Type', contentType)
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    res.setHeader('Cache-Control', 'public, max-age=86400') // Cache for 1 day
+
+    response.data.pipe(res)
+  } catch (error: any) {
+    console.error('Image proxy error:', error.message)
+    res.status(500).json({ error: 'Failed to proxy image' })
+  }
+})
+
 // Proxy subtitle files from Jellyfin
 router.get('/subtitles/:itemId/:mediaSourceId/:streamIndex/Stream.:format', async (req: Request, res: Response) => {
   const { itemId, mediaSourceId, streamIndex, format } = req.params

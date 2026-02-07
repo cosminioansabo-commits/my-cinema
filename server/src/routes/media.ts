@@ -157,7 +157,8 @@ router.get('/episode/:showTmdbId/:season/:episode', async (req: Request, res: Re
 // DOWNLOAD PROXY (for offline media)
 // ============================================================================
 
-// Proxy direct stream from Jellyfin for offline download
+// Proxy transcoded stream from Jellyfin for offline download
+// Uses transcoding to ensure browser-compatible MP4 with H.264 video and AAC audio
 router.get('/download/:itemId/:mediaSourceId', async (req: Request, res: Response) => {
   const { itemId, mediaSourceId } = req.params
 
@@ -167,22 +168,50 @@ router.get('/download/:itemId/:mediaSourceId', async (req: Request, res: Respons
   }
 
   try {
-    const jellyfinUrl = `${config.jellyfin.url}/Videos/${itemId}/stream?Static=true&MediaSourceId=${mediaSourceId}&api_key=${config.jellyfin.apiKey}`
+    // Use the universal stream endpoint with transcoding for browser compatibility
+    // This ensures H.264 video + AAC audio in MP4 container that all browsers can play
+    const params = new URLSearchParams({
+      api_key: config.jellyfin.apiKey,
+      MediaSourceId: mediaSourceId,
+      // Request direct stream if possible, but allow transcoding
+      Static: 'false',
+      // Video settings - use H.264 for maximum compatibility
+      VideoCodec: 'h264',
+      VideoBitrate: '8000000', // 8 Mbps - good quality for offline
+      MaxWidth: '1920',
+      MaxHeight: '1080',
+      // Audio settings - AAC is universally supported
+      AudioCodec: 'aac',
+      AudioBitrate: '192000', // 192 kbps AAC
+      AudioChannels: '2',
+      // Container
+      Container: 'mp4',
+      // Copy streams if already compatible
+      CopyTimestamps: 'true',
+      EnableAutoStreamCopy: 'true',
+    })
+
+    const jellyfinUrl = `${config.jellyfin.url}/Videos/${itemId}/stream.mp4?${params.toString()}`
+
+    console.log(`Download proxy: Fetching transcoded stream from Jellyfin...`)
 
     const upstream = await fetch(jellyfinUrl)
     if (!upstream.ok) {
+      console.error(`Download proxy: Jellyfin returned ${upstream.status}`)
       res.status(upstream.status).json({ error: 'Failed to fetch from Jellyfin' })
       return
     }
 
-    const contentType = upstream.headers.get('content-type') || 'video/mp4'
+    const contentType = 'video/mp4'
     const contentLength = upstream.headers.get('content-length')
+
+    console.log(`Download proxy: Content-Type=${contentType}, Content-Length=${contentLength || 'unknown (transcoding)'}`)
 
     res.setHeader('Content-Type', contentType)
     if (contentLength) {
       res.setHeader('Content-Length', contentLength)
     }
-    res.setHeader('Content-Disposition', 'attachment')
+    res.setHeader('Content-Disposition', 'attachment; filename="video.mp4"')
 
     if (upstream.body) {
       const reader = upstream.body.getReader()

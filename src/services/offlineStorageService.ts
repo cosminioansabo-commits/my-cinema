@@ -317,29 +317,28 @@ class OfflineStorageService {
 
   /**
    * Cache an image (poster/backdrop)
-   * Uses no-cors mode for cross-origin images (like TMDB)
-   * Opaque responses can still be cached and used by img tags
+   * For TMDB images, uses a proxy endpoint to avoid CORS issues
    */
   async cacheImage(url: string, cacheKey: string): Promise<void> {
     const cache = await caches.open(CACHE_NAME)
+
+    // Convert TMDB URLs to proxy URLs
+    let fetchUrl = url
+    const tmdbMatch = url.match(/image\.tmdb\.org\/t\/p\/(w\d+|original)\/(.+)/)
+    if (tmdbMatch) {
+      const apiBase = import.meta.env.VITE_TORRENT_API_URL || 'http://localhost:3001'
+      fetchUrl = `${apiBase}/api/proxy/image/tmdb/${tmdbMatch[1]}/${tmdbMatch[2]}`
+    }
+
     try {
-      // Try with cors first (same-origin or CORS-enabled images)
-      const response = await fetch(url)
+      const response = await fetch(fetchUrl)
       if (response.ok) {
         await cache.put(cacheKey, response)
-        return
+      } else {
+        console.warn(`Failed to cache image: ${url}, status: ${response.status}`)
       }
-    } catch {
-      // If CORS fails, try no-cors mode for cross-origin images
-      // This returns an opaque response (type: 'opaque') which can still be cached
-      // and used by <img> tags, but we can't read its contents
-      try {
-        const response = await fetch(url, { mode: 'no-cors' })
-        // Opaque responses have status 0, but are still cacheable
-        await cache.put(cacheKey, response)
-      } catch (error) {
-        console.warn(`Failed to cache image: ${url}`, error)
-      }
+    } catch (error) {
+      console.warn(`Failed to cache image: ${url}`, error)
     }
   }
 
@@ -350,29 +349,27 @@ class OfflineStorageService {
     const cache = await caches.open(CACHE_NAME)
     const response = await cache.match(cacheKey)
 
-    if (!response) return null
+    if (!response) {
+      console.warn('[OfflineStorage] No cached video found for:', cacheKey)
+      // Debug: List all keys in cache
+      const keys = await cache.keys()
+      console.log('[OfflineStorage] Available cache keys:', keys.map(r => r.url))
+      return null
+    }
 
     const blob = await response.blob()
+    console.log('[OfflineStorage] Video blob size:', blob.size)
     return URL.createObjectURL(blob)
   }
 
   /**
    * Get cached image URL
-   * For opaque responses (CORS-blocked images), returns the cache key as URL
-   * since opaque blobs can't be read but img tags can still use cached responses
    */
   async getCachedImageUrl(cacheKey: string): Promise<string | null> {
     const cache = await caches.open(CACHE_NAME)
     const response = await cache.match(cacheKey)
 
     if (!response) return null
-
-    // Opaque responses (from no-cors requests) have type 'opaque'
-    // They can't be read as blobs, but img tags can use them via cache
-    if (response.type === 'opaque') {
-      // Return the original cache key (which is the URL) for img tag to fetch from cache
-      return cacheKey
-    }
 
     const blob = await response.blob()
     return URL.createObjectURL(blob)

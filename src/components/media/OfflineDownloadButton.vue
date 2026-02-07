@@ -129,27 +129,43 @@ const handleClick = async () => {
 </script>
 
 <template>
-  <div class="offline-download-button">
-    <Button
-      :icon="buttonIcon"
-      :label="buttonLabel"
-      :text="variant === 'icon'"
-      :rounded="variant === 'icon'"
-      :disabled="isDownloaded"
+  <div class="offline-download-button" :class="{ 'icon-variant': variant === 'icon' }">
+    <!-- Icon-only variant (simplified) -->
+    <button
+      v-if="variant === 'icon'"
       @click="handleClick"
-      :class="[
-        variant === 'icon' ? 'icon-btn' : 'action-btn',
-        isDownloaded ? 'action-btn-downloaded' : '',
-        isDownloading ? 'action-btn-downloading' : 'action-btn-offline'
-      ]"
-    />
+      :disabled="isDownloaded"
+      class="icon-only-btn"
+      :class="{
+        'is-downloaded': isDownloaded,
+        'is-downloading': isDownloading
+      }"
+      :title="isDownloaded ? t('offline.downloaded') : isDownloading ? t('offline.downloading') : t('offline.downloadForOffline')"
+    >
+      <i :class="buttonIcon"></i>
+    </button>
 
-    <!-- Progress bar overlay for downloading state -->
-    <div
-      v-if="isDownloading && variant !== 'icon'"
-      class="progress-bar"
-      :style="{ width: `${downloadProgress?.progress || 0}%` }"
-    />
+    <!-- Full button variant -->
+    <template v-else>
+      <Button
+        :icon="buttonIcon"
+        :label="buttonLabel"
+        :disabled="isDownloaded"
+        @click="handleClick"
+        :class="[
+          'action-btn',
+          isDownloaded ? 'action-btn-downloaded' : '',
+          isDownloading ? 'action-btn-downloading' : 'action-btn-offline'
+        ]"
+      />
+
+      <!-- Progress bar overlay for downloading state -->
+      <div
+        v-if="isDownloading"
+        class="progress-bar"
+        :style="{ width: `${downloadProgress?.progress || 0}%` }"
+      />
+    </template>
   </div>
 </template>
 
@@ -159,14 +175,46 @@ const handleClick = async () => {
   display: inline-flex;
 }
 
-/* Icon variant */
-.icon-btn {
-  color: white !important;
-  background: transparent !important;
+/* Icon-only variant - minimal style */
+.icon-only-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.icon-btn:hover {
-  background: rgba(255, 255, 255, 0.15) !important;
+.icon-only-btn:hover:not(:disabled) {
+  color: #22d3ee;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.icon-only-btn i {
+  font-size: 1.125rem;
+}
+
+.icon-only-btn.is-downloading {
+  color: #22d3ee;
+}
+
+.icon-only-btn.is-downloading:hover {
+  color: #ef4444;
+}
+
+.icon-only-btn.is-downloaded {
+  color: #4ade80;
+  cursor: default;
+}
+
+.icon-only-btn:disabled {
+  opacity: 1;
 }
 
 /* Base action button styles - matches MediaDetailView */

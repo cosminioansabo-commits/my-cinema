@@ -9,9 +9,11 @@ import Button from 'primevue/button'
 import DownloadProgress from '@/components/torrents/DownloadProgress.vue'
 import OfflineMediaCard from '@/components/media/OfflineMediaCard.vue'
 import PlaybackModal from '@/components/modals/PlaybackModal.vue'
+import CircularProgress from '@/components/ui/CircularProgress.vue'
 import { useTorrentsStore } from '@/stores/torrentsStore'
 import { useOfflineStore } from '@/stores/offlineStore'
 import { useLanguage } from '@/composables/useLanguage'
+import { getImageUrl } from '@/services/tmdbService'
 import type { OfflineMediaItem } from '@/services/offlineStorageService'
 
 const torrentsStore = useTorrentsStore()
@@ -193,48 +195,77 @@ const handleDeleteOffline = (_item: OfflineMediaItem) => {
             <!-- Active offline downloads -->
             <div v-if="offlineStore.hasActiveDownloads" class="mb-6">
               <h3 class="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
-                <i class="pi pi-spin pi-spinner text-blue-400"></i>
+                <i class="pi pi-download text-blue-400"></i>
                 {{ t('offline.downloading') }}
               </h3>
               <div class="flex flex-col gap-3">
                 <div
                   v-for="download in offlineStore.activeDownloads"
                   :key="download.id"
-                  class="p-4 bg-zinc-800/70 rounded-xl border border-zinc-700/50"
+                  class="p-3 bg-zinc-800/70 rounded-xl border border-blue-500/20"
                 >
-                  <div class="flex items-start justify-between gap-3 mb-3">
+                  <div class="flex items-center gap-3">
+                    <!-- Poster with circular progress overlay -->
+                    <div class="relative w-16 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-zinc-700">
+                      <img
+                        v-if="download.media.posterPath"
+                        :src="getImageUrl(download.media.posterPath, 'w185') || ''"
+                        :alt="download.media.title"
+                        class="w-full h-full object-cover"
+                      />
+                      <div v-else class="w-full h-full flex items-center justify-center">
+                        <i class="pi pi-image text-zinc-500"></i>
+                      </div>
+                      <!-- Progress overlay -->
+                      <div class="absolute inset-0 bg-black/60 flex items-center justify-center">
+                        <CircularProgress
+                          :progress="download.progress.progress"
+                          :size="40"
+                          :stroke-width="3"
+                          color="#3b82f6"
+                          track-color="rgba(255,255,255,0.2)"
+                        />
+                      </div>
+                    </div>
+
+                    <!-- Info -->
                     <div class="flex-1 min-w-0">
                       <span class="text-white font-medium text-sm block truncate">{{ download.media.title }}</span>
-                      <span v-if="download.episode" class="text-gray-400 text-xs">
+                      <span v-if="download.episode" class="text-gray-400 text-xs block truncate">
                         S{{ download.episode.seasonNumber }}E{{ download.episode.episodeNumber }}
                         <span v-if="download.episode.name"> - {{ download.episode.name }}</span>
                       </span>
+
+                      <!-- Progress bar -->
+                      <div class="mt-2 h-1.5 bg-zinc-700 rounded-full overflow-hidden">
+                        <div
+                          class="h-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-300"
+                          :style="{ width: `${download.progress.progress}%` }"
+                        />
+                      </div>
+
+                      <!-- Stats -->
+                      <div class="flex items-center justify-between mt-1.5 text-xs">
+                        <span class="text-gray-400">
+                          {{ offlineStore.formatFileSize(download.progress.downloadedBytes) }} / {{ offlineStore.formatFileSize(download.progress.totalBytes) }}
+                        </span>
+                        <span class="text-blue-400 font-medium">
+                          {{ download.progress.progress < 1 ? download.progress.progress.toFixed(1) : Math.round(download.progress.progress) }}%
+                        </span>
+                      </div>
                     </div>
+
+                    <!-- Cancel button -->
                     <Button
                       icon="pi pi-times"
-                      severity="danger"
+                      severity="secondary"
                       text
                       rounded
                       size="small"
+                      class="!w-8 !h-8 flex-shrink-0"
                       v-tooltip.top="t('offline.cancelDownload')"
                       @click="offlineStore.cancelDownload(download.id)"
                     />
-                  </div>
-                  <div class="h-2 bg-zinc-700 rounded-full overflow-hidden">
-                    <div
-                      class="h-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-300"
-                      :style="{ width: `${download.progress.progress}%` }"
-                    />
-                  </div>
-                  <div class="flex items-center justify-between mt-2 text-xs">
-                    <span class="text-blue-400 font-medium">
-                      {{ download.progress.progress < 0.5
-                        ? (download.progress.progress === 0 ? t('offline.starting') : download.progress.progress.toFixed(1) + '%')
-                        : Math.round(download.progress.progress) + '%' }}
-                    </span>
-                    <span class="text-gray-400">
-                      {{ offlineStore.formatFileSize(download.progress.downloadedBytes) }} / {{ offlineStore.formatFileSize(download.progress.totalBytes) }}
-                    </span>
                   </div>
                 </div>
               </div>
@@ -307,6 +338,10 @@ const handleDeleteOffline = (_item: OfflineMediaItem) => {
       v-if="currentOfflineItem"
       v-model:visible="showPlaybackModal"
       :media-type="currentOfflineItem.mediaType"
+      :tmdb-id="currentOfflineItem.mediaType === 'movie' ? currentOfflineItem.tmdbId : undefined"
+      :show-tmdb-id="currentOfflineItem.mediaType === 'tv' ? currentOfflineItem.tmdbId : undefined"
+      :season-number="currentOfflineItem.seasonNumber"
+      :episode-number="currentOfflineItem.episodeNumber"
       :title="currentOfflineItem.title"
       :offline-item="currentOfflineItem"
     />

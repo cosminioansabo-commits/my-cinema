@@ -7,12 +7,19 @@ import OverlayPanel from 'primevue/overlaypanel'
 import { ref } from 'vue'
 import DownloadProgress from './DownloadProgress.vue'
 import { useTorrentsStore } from '@/stores/torrentsStore'
+import { useOfflineStore } from '@/stores/offlineStore'
 
 const router = useRouter()
 const torrentsStore = useTorrentsStore()
+const offlineStore = useOfflineStore()
 const op = ref()
 
-const activeCount = computed(() => torrentsStore.activeDownloads.length)
+// Count both torrent and offline downloads
+const activeCount = computed(() => {
+  const torrentCount = torrentsStore.activeDownloads.length
+  const offlineCount = offlineStore.activeDownloads.length
+  return torrentCount + offlineCount
+})
 
 onMounted(() => {
   torrentsStore.fetchDownloads()
