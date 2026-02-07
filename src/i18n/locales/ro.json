@@ -319,6 +319,9 @@
     "downloadFailed": "Descărcarea a eșuat",
     "downloadStarted": "Descărcarea a început",
     "downloadCancelled": "Descărcare anulată",
-    "notSupported": "Descărcările offline nu sunt suportate în acest browser"
+    "notSupported": "Descărcările offline nu sunt suportate în acest browser",
+    "starting": "Se inițializează...",
+    "interrupted": "Descărcări întrerupte",
+    "interruptedHint": "Această descărcare a fost întreruptă. Mergi la pagina media pentru a o reporni."
   }
 }

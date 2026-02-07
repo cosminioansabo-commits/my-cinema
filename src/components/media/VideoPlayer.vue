@@ -132,7 +132,18 @@ const timeDisplay = computed(() => {
   return `${formatTime(currentTime.value)} / ${formatTime(videoDuration.value)}`
 })
 
-// Initialize HLS player (Jellyfin streams are always HLS)
+// Check if this is a direct video URL (blob, mp4, etc.) vs HLS stream
+const isDirectVideoUrl = computed(() => {
+  const url = props.streamUrl
+  if (!url) return false
+  // Blob URLs are always direct video
+  if (url.startsWith('blob:')) return true
+  // Check for common video file extensions
+  if (/\.(mp4|webm|mkv|avi|mov)(\?|$)/i.test(url)) return true
+  return false
+})
+
+// Initialize HLS player (Jellyfin streams are always HLS, but offline is direct MP4)
 const initPlayer = () => {
   const video = videoRef.value
   if (!video || !props.streamUrl) return
@@ -140,10 +151,19 @@ const initPlayer = () => {
   isLoading.value = true
   hasError.value = false
 
-  console.log('Initializing Jellyfin HLS stream:', props.streamUrl.substring(0, 80) + '...')
+  console.log('Initializing video player:', props.streamUrl.substring(0, 80) + '...')
+  console.log('Is direct video URL:', isDirectVideoUrl.value)
 
-  // Jellyfin streams are HLS - use HLS.js or native support
-  if (Hls.isSupported()) {
+  // For blob URLs (offline cached videos), use native video playback
+  if (isDirectVideoUrl.value) {
+    console.log('Using native video playback for direct video URL')
+    video.src = props.streamUrl
+    video.addEventListener('loadedmetadata', () => {
+      isLoading.value = false
+      checkResumePosition()
+    }, { once: true })
+  } else if (Hls.isSupported()) {
+    // Jellyfin streams are HLS - use HLS.js
     hls.value = new Hls({
       enableWorker: true,
       lowLatencyMode: false,

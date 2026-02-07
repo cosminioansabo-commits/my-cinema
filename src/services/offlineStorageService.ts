@@ -3,6 +3,16 @@
  * Uses IndexedDB for metadata and Cache API for media files
  */
 
+export interface OfflineSubtitleTrack {
+  id: number
+  streamIndex: number
+  language: string
+  languageCode: string
+  displayTitle: string
+  format: string
+  cacheKey: string // Key for cached subtitle file
+}
+
 export interface OfflineMediaItem {
   id: string
   tmdbId: number
@@ -25,6 +35,8 @@ export interface OfflineMediaItem {
   // Cache keys
   videoCacheKey: string
   posterCacheKey?: string
+  // Subtitles
+  subtitles?: OfflineSubtitleTrack[]
   // Playback state
   lastPlayedAt?: number
   playbackPosition?: number
@@ -40,9 +52,24 @@ export interface DownloadProgress {
 }
 
 const DB_NAME = 'my-cinema-offline'
-const DB_VERSION = 1
+const DB_VERSION = 2
 const STORE_NAME = 'offline-media'
+const PENDING_DOWNLOADS_STORE = 'pending-downloads'
 const CACHE_NAME = 'my-cinema-offline-media'
+
+export interface PendingDownload {
+  id: string
+  tmdbId: number
+  mediaType: 'movie' | 'tv'
+  title: string
+  posterPath: string | null
+  seasonNumber?: number
+  episodeNumber?: number
+  episodeName?: string
+  downloadedBytes: number
+  totalBytes: number
+  startedAt: number
+}
 
 class OfflineStorageService {
   private db: IDBDatabase | null = null
@@ -79,6 +106,11 @@ class OfflineStorageService {
           store.createIndex('tmdbId', 'tmdbId', { unique: false })
           store.createIndex('mediaType', 'mediaType', { unique: false })
           store.createIndex('downloadedAt', 'downloadedAt', { unique: false })
+        }
+
+        // Create object store for pending downloads (v2)
+        if (!db.objectStoreNames.contains(PENDING_DOWNLOADS_STORE)) {
+          db.createObjectStore(PENDING_DOWNLOADS_STORE, { keyPath: 'id' })
         }
       }
     })
@@ -347,6 +379,44 @@ class OfflineStorageService {
   }
 
   /**
+   * Cache a subtitle file (VTT/SRT)
+   */
+  async cacheSubtitle(url: string, cacheKey: string): Promise<void> {
+    const cache = await caches.open(CACHE_NAME)
+    const headers: Record<string, string> = {}
+    const token = localStorage.getItem('my-cinema-auth-token')
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
+    try {
+      const response = await fetch(url, { headers })
+      if (response.ok) {
+        // Clone response before caching
+        const clonedResponse = response.clone()
+        await cache.put(cacheKey, clonedResponse)
+      } else {
+        console.warn(`Failed to cache subtitle: ${url}, status: ${response.status}`)
+      }
+    } catch (error) {
+      console.warn(`Failed to cache subtitle: ${url}`, error)
+    }
+  }
+
+  /**
+   * Get cached subtitle URL (as blob URL)
+   */
+  async getCachedSubtitleUrl(cacheKey: string): Promise<string | null> {
+    const cache = await caches.open(CACHE_NAME)
+    const response = await cache.match(cacheKey)
+
+    if (!response) return null
+
+    const blob = await response.blob()
+    return URL.createObjectURL(blob)
+  }
+
+  /**
    * Update playback position
    */
   async updatePlaybackPosition(id: string, position: number): Promise<void> {
@@ -374,6 +444,66 @@ class OfflineStorageService {
   async getTotalSize(): Promise<number> {
     const media = await this.getAllMedia()
     return media.reduce((total, item) => total + item.fileSize, 0)
+  }
+
+  /**
+   * Save pending download state
+   */
+  async savePendingDownload(download: PendingDownload): Promise<void> {
+    const db = await this.getDB()
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([PENDING_DOWNLOADS_STORE], 'readwrite')
+      const store = transaction.objectStore(PENDING_DOWNLOADS_STORE)
+      const request = store.put(download)
+
+      request.onsuccess = () => resolve()
+      request.onerror = () => reject(new Error('Failed to save pending download'))
+    })
+  }
+
+  /**
+   * Get all pending downloads
+   */
+  async getPendingDownloads(): Promise<PendingDownload[]> {
+    const db = await this.getDB()
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([PENDING_DOWNLOADS_STORE], 'readonly')
+      const store = transaction.objectStore(PENDING_DOWNLOADS_STORE)
+      const request = store.getAll()
+
+      request.onsuccess = () => resolve(request.result || [])
+      request.onerror = () => reject(new Error('Failed to get pending downloads'))
+    })
+  }
+
+  /**
+   * Remove pending download
+   */
+  async removePendingDownload(id: string): Promise<void> {
+    const db = await this.getDB()
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([PENDING_DOWNLOADS_STORE], 'readwrite')
+      const store = transaction.objectStore(PENDING_DOWNLOADS_STORE)
+      const request = store.delete(id)
+
+      request.onsuccess = () => resolve()
+      request.onerror = () => reject(new Error('Failed to remove pending download'))
+    })
+  }
+
+  /**
+   * Clear all pending downloads
+   */
+  async clearPendingDownloads(): Promise<void> {
+    const db = await this.getDB()
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([PENDING_DOWNLOADS_STORE], 'readwrite')
+      const store = transaction.objectStore(PENDING_DOWNLOADS_STORE)
+      const request = store.clear()
+
+      request.onsuccess = () => resolve()
+      request.onerror = () => reject(new Error('Failed to clear pending downloads'))
+    })
   }
 }
 

@@ -1,8 +1,14 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { offlineStorageService, type OfflineMediaItem, type DownloadProgress } from '@/services/offlineStorageService'
+import { offlineStorageService, type OfflineMediaItem, type DownloadProgress, type PendingDownload } from '@/services/offlineStorageService'
 import { downloadManagerService, type ActiveDownload } from '@/services/downloadManagerService'
 import type { MediaDetails, Episode } from '@/types'
+
+export interface DownloadError {
+  id: string
+  title: string
+  error: string
+}
 
 export const useOfflineStore = defineStore('offline', () => {
   // State
@@ -14,6 +20,8 @@ export const useOfflineStore = defineStore('offline', () => {
     quota: 0,
     available: 0,
   })
+  const lastError = ref<DownloadError | null>(null)
+  const interruptedDownloads = ref<PendingDownload[]>([])
 
   // Getters
   const offlineMovies = computed(() =>
@@ -41,6 +49,7 @@ export const useOfflineStore = defineStore('offline', () => {
     isLoading.value = true
     try {
       offlineMedia.value = await offlineStorageService.getAllMedia()
+      interruptedDownloads.value = await downloadManagerService.getInterruptedDownloads()
       await updateStorageEstimate()
     } catch (error) {
       console.error('Failed to load offline media:', error)
@@ -59,11 +68,16 @@ export const useOfflineStore = defineStore('offline', () => {
   }
 
   function isMediaDownloading(tmdbId: number, mediaType: 'movie' | 'tv', seasonNumber?: number, episodeNumber?: number): boolean {
-    return downloadManagerService.isDownloading(tmdbId, mediaType, seasonNumber, episodeNumber)
+    // Use reactive activeDownloads state instead of service directly for reactivity
+    const id = offlineStorageService.generateMediaId(tmdbId, mediaType, seasonNumber, episodeNumber)
+    return activeDownloads.value.some(d => d.id === id && (d.progress.status === 'downloading' || d.progress.status === 'pending'))
   }
 
   function getDownloadProgress(tmdbId: number, mediaType: 'movie' | 'tv', seasonNumber?: number, episodeNumber?: number): DownloadProgress | null {
-    return downloadManagerService.getDownloadProgress(tmdbId, mediaType, seasonNumber, episodeNumber)
+    // Use reactive activeDownloads state instead of service directly for reactivity
+    const id = offlineStorageService.generateMediaId(tmdbId, mediaType, seasonNumber, episodeNumber)
+    const download = activeDownloads.value.find(d => d.id === id)
+    return download?.progress || null
   }
 
   async function startDownload(media: MediaDetails, episode?: Episode): Promise<string> {
@@ -111,6 +125,27 @@ export const useOfflineStore = defineStore('offline', () => {
     return offlineStorageService.getCachedImageUrl(metadata.posterCacheKey)
   }
 
+  async function getOfflineSubtitles(id: string): Promise<{ id: number; streamIndex: number; language: string; languageCode: string; displayTitle: string; url: string }[]> {
+    const metadata = await offlineStorageService.getMediaMetadata(id)
+    if (!metadata?.subtitles) return []
+
+    const subtitlesWithUrls = []
+    for (const sub of metadata.subtitles) {
+      const url = await offlineStorageService.getCachedSubtitleUrl(sub.cacheKey)
+      if (url) {
+        subtitlesWithUrls.push({
+          id: sub.id,
+          streamIndex: sub.streamIndex,
+          language: sub.language,
+          languageCode: sub.languageCode,
+          displayTitle: sub.displayTitle,
+          url,
+        })
+      }
+    }
+    return subtitlesWithUrls
+  }
+
   async function updatePlaybackPosition(id: string, position: number): Promise<void> {
     await offlineStorageService.updatePlaybackPosition(id, position)
     // Update local state
@@ -127,18 +162,40 @@ export const useOfflineStore = defineStore('offline', () => {
 
   // Initialize event listeners
   function initializeListeners(): void {
-    downloadManagerService.on('progress', () => {
+    downloadManagerService.on('progress', (download) => {
+      console.log('[OfflineStore] Progress update:', download.id, download.progress.status, download.progress.progress)
       syncActiveDownloads()
     })
 
-    downloadManagerService.on('complete', async () => {
+    downloadManagerService.on('complete', async (download) => {
+      console.log('[OfflineStore] Download complete:', download.id)
       syncActiveDownloads()
       await loadOfflineMedia()
     })
 
-    downloadManagerService.on('error', () => {
+    downloadManagerService.on('error', (download) => {
+      console.error('[OfflineStore] Download error:', download.id, download.progress.error)
+      lastError.value = {
+        id: download.id,
+        title: download.media.title,
+        error: download.progress.error || 'Unknown error'
+      }
       syncActiveDownloads()
     })
+  }
+
+  function clearLastError(): void {
+    lastError.value = null
+  }
+
+  async function clearInterruptedDownload(id: string): Promise<void> {
+    await downloadManagerService.clearInterruptedDownload(id)
+    interruptedDownloads.value = interruptedDownloads.value.filter(d => d.id !== id)
+  }
+
+  async function clearAllInterruptedDownloads(): Promise<void> {
+    await downloadManagerService.clearAllInterruptedDownloads()
+    interruptedDownloads.value = []
   }
 
   // Format file size helper
@@ -156,6 +213,8 @@ export const useOfflineStore = defineStore('offline', () => {
     activeDownloads,
     isLoading,
     storageEstimate,
+    lastError,
+    interruptedDownloads,
 
     // Getters
     offlineMovies,
@@ -178,9 +237,13 @@ export const useOfflineStore = defineStore('offline', () => {
     clearAllOfflineMedia,
     getOfflineVideoUrl,
     getOfflinePosterUrl,
+    getOfflineSubtitles,
     updatePlaybackPosition,
     syncActiveDownloads,
     initializeListeners,
     formatFileSize,
+    clearLastError,
+    clearInterruptedDownload,
+    clearAllInterruptedDownloads,
   }
 })

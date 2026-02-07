@@ -81,13 +81,19 @@ const fetchPlaybackInfo = async () => {
     if (props.offlineItem) {
       console.log('Loading offline playback for:', props.offlineItem.id)
 
-      const offlineVideoUrl = await offlineStore.getOfflineVideoUrl(props.offlineItem.id)
+      // Fetch video URL and subtitles in parallel
+      const [offlineVideoUrl, offlineSubtitles] = await Promise.all([
+        offlineStore.getOfflineVideoUrl(props.offlineItem.id),
+        offlineStore.getOfflineSubtitles(props.offlineItem.id),
+      ])
 
       if (!offlineVideoUrl) {
         hasError.value = true
         errorMessage.value = 'Offline video not found. The cached file may have been deleted.'
         return
       }
+
+      console.log('Loaded offline subtitles:', offlineSubtitles.length)
 
       // Create playback info from offline item
       playbackInfo.value = {
@@ -96,7 +102,7 @@ const fetchPlaybackInfo = async () => {
           ? `${props.offlineItem.title} - S${props.offlineItem.seasonNumber}E${props.offlineItem.episodeNumber} - ${props.offlineItem.episodeTitle}`
           : props.offlineItem.title,
         duration: props.offlineItem.duration * 1000, // Convert seconds to ms
-        subtitles: [],
+        subtitles: offlineSubtitles,
         audioTracks: [],
       }
 

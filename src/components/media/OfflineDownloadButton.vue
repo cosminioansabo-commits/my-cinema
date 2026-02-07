@@ -56,11 +56,33 @@ const buttonIcon = computed(() => {
   return 'pi pi-mobile'
 })
 
+// Format bytes to human readable size
+const formatSize = (bytes: number): string => {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
+}
+
 const buttonLabel = computed(() => {
   if (props.variant === 'icon') return undefined
   if (isDownloaded.value) return t('offline.downloaded')
   if (isDownloading.value) {
-    const progress = downloadProgress.value?.progress || 0
+    const progressData = downloadProgress.value
+    const progress = progressData?.progress || 0
+
+    // Show download size info if available (for large files)
+    if (progressData?.totalBytes && progressData.totalBytes > 0) {
+      const downloaded = formatSize(progressData.downloadedBytes)
+      const total = formatSize(progressData.totalBytes)
+      return `${downloaded} / ${total}`
+    }
+
+    // For very small progress values, show "Starting..." or one decimal place
+    if (progress < 0.5) {
+      return progress === 0 ? t('offline.starting') : `${progress.toFixed(1)}%`
+    }
     return `${Math.round(progress)}%`
   }
   return t('offline.downloadForOffline')
@@ -85,7 +107,9 @@ const handleClick = async () => {
 
   // Start download
   try {
-    await offlineStore.startDownload(props.media, props.episode)
+    console.log('[OfflineDownload] Starting download for:', props.media.title)
+    const downloadId = await offlineStore.startDownload(props.media, props.episode)
+    console.log('[OfflineDownload] Download queued with ID:', downloadId)
     toast.add({
       severity: 'info',
       summary: t('offline.downloadStarted'),
@@ -93,7 +117,7 @@ const handleClick = async () => {
       life: 3000
     })
   } catch (error) {
-    console.error('Failed to start download:', error)
+    console.error('[OfflineDownload] Failed to start download:', error)
     toast.add({
       severity: 'error',
       summary: t('offline.downloadFailed'),

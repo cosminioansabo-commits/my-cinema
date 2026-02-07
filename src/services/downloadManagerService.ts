@@ -3,7 +3,7 @@
  * Manages downloading media for offline viewing
  */
 
-import { offlineStorageService, type OfflineMediaItem, type DownloadProgress } from './offlineStorageService'
+import { offlineStorageService, type OfflineMediaItem, type DownloadProgress, type PendingDownload, type OfflineSubtitleTrack } from './offlineStorageService'
 import { mediaService } from './mediaService'
 import { getImageUrl } from './tmdbService'
 import type { MediaDetails, Episode } from '@/types'
@@ -162,6 +162,8 @@ class DownloadManagerService {
       episode?.episodeNumber
     )
 
+    console.log('[DownloadManager] Processing download:', id, media.title)
+
     const abortController = new AbortController()
 
     const activeDownload: ActiveDownload = {
@@ -183,6 +185,7 @@ class DownloadManagerService {
 
     try {
       // Get playback info from Jellyfin
+      console.log('[DownloadManager] Fetching playback info...')
       let playbackInfo
       if (episode) {
         playbackInfo = await mediaService.getEpisodePlayback(
@@ -194,8 +197,10 @@ class DownloadManagerService {
         playbackInfo = await mediaService.getMoviePlayback(media.id)
       }
 
+      console.log('[DownloadManager] Playback info:', playbackInfo)
+
       if (!playbackInfo?.jellyfinItemId || !playbackInfo?.jellyfinMediaSourceId) {
-        throw new Error('No download info available for this media')
+        throw new Error('No download info available for this media. Make sure the movie is in your library and Jellyfin has scanned it.')
       }
 
       // Use direct download proxy instead of HLS stream
@@ -203,10 +208,27 @@ class DownloadManagerService {
         playbackInfo.jellyfinItemId,
         playbackInfo.jellyfinMediaSourceId
       )
+      console.log('[DownloadManager] Download URL:', downloadUrl)
 
       // Update status to downloading
       activeDownload.progress.status = 'downloading'
       this.emit('progress', activeDownload)
+
+      // Save pending download state for recovery after page refresh
+      const pendingDownload: PendingDownload = {
+        id,
+        tmdbId: media.id,
+        mediaType: media.mediaType,
+        title: media.title,
+        posterPath: media.posterPath,
+        seasonNumber: episode?.seasonNumber,
+        episodeNumber: episode?.episodeNumber,
+        episodeName: episode?.name,
+        downloadedBytes: 0,
+        totalBytes: playbackInfo.fileSize || 0,
+        startedAt: Date.now(),
+      }
+      await offlineStorageService.savePendingDownload(pendingDownload)
 
       // Generate cache keys
       const videoCacheKey = `offline-video-${id}`
@@ -235,6 +257,32 @@ class DownloadManagerService {
         }
       }
 
+      // Download subtitles if available
+      const offlineSubtitles: OfflineSubtitleTrack[] = []
+      if (playbackInfo.subtitles && playbackInfo.subtitles.length > 0) {
+        console.log('[DownloadManager] Downloading subtitles:', playbackInfo.subtitles.length)
+        for (const subtitle of playbackInfo.subtitles) {
+          if (subtitle.url) {
+            try {
+              const subtitleCacheKey = `offline-subtitle-${id}-${subtitle.streamIndex}`
+              await offlineStorageService.cacheSubtitle(subtitle.url, subtitleCacheKey)
+              offlineSubtitles.push({
+                id: subtitle.id,
+                streamIndex: subtitle.streamIndex,
+                language: subtitle.language,
+                languageCode: subtitle.languageCode,
+                displayTitle: subtitle.displayTitle,
+                format: subtitle.format,
+                cacheKey: subtitleCacheKey,
+              })
+              console.log('[DownloadManager] Cached subtitle:', subtitle.displayTitle)
+            } catch (e) {
+              console.warn('Failed to cache subtitle:', subtitle.displayTitle, e)
+            }
+          }
+        }
+      }
+
       // Save metadata
       const offlineItem: OfflineMediaItem = {
         id,
@@ -255,9 +303,13 @@ class DownloadManagerService {
         quality,
         videoCacheKey,
         posterCacheKey,
+        subtitles: offlineSubtitles.length > 0 ? offlineSubtitles : undefined,
       }
 
       await offlineStorageService.saveMediaMetadata(offlineItem)
+
+      // Remove from pending downloads
+      await offlineStorageService.removePendingDownload(id)
 
       // Update progress to completed
       activeDownload.progress.status = 'completed'
@@ -265,11 +317,14 @@ class DownloadManagerService {
       this.emit('complete', activeDownload)
 
     } catch (error) {
-      console.error('Download failed:', error)
+      console.error('[DownloadManager] Download failed:', error)
       activeDownload.progress.status = 'error'
       activeDownload.progress.error = error instanceof Error ? error.message : 'Download failed'
+      // Remove from pending downloads on error
+      await offlineStorageService.removePendingDownload(id)
       this.emit('error', activeDownload)
     } finally {
+      console.log('[DownloadManager] Download finished, removing from active:', id)
       this.activeDownloads.delete(id)
       this.processQueue()
     }
@@ -349,6 +404,27 @@ class DownloadManagerService {
         this.activeDownloads.delete(id)
       }
     }
+  }
+
+  /**
+   * Get pending (interrupted) downloads from storage
+   */
+  async getInterruptedDownloads(): Promise<PendingDownload[]> {
+    return offlineStorageService.getPendingDownloads()
+  }
+
+  /**
+   * Clear an interrupted download
+   */
+  async clearInterruptedDownload(id: string): Promise<void> {
+    await offlineStorageService.removePendingDownload(id)
+  }
+
+  /**
+   * Clear all interrupted downloads
+   */
+  async clearAllInterruptedDownloads(): Promise<void> {
+    await offlineStorageService.clearPendingDownloads()
   }
 }
 

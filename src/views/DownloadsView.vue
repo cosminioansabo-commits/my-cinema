@@ -191,41 +191,94 @@ const handleDeleteOffline = (_item: OfflineMediaItem) => {
             </div>
 
             <!-- Active offline downloads -->
-            <div v-if="offlineStore.hasActiveDownloads" class="mb-4">
-              <h3 class="text-sm font-medium text-gray-400 mb-2">{{ t('offline.downloading') }}</h3>
-              <div class="flex flex-col gap-2">
+            <div v-if="offlineStore.hasActiveDownloads" class="mb-6">
+              <h3 class="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+                <i class="pi pi-spin pi-spinner text-blue-400"></i>
+                {{ t('offline.downloading') }}
+              </h3>
+              <div class="flex flex-col gap-3">
                 <div
                   v-for="download in offlineStore.activeDownloads"
                   :key="download.id"
-                  class="p-3 bg-zinc-800 rounded-lg"
+                  class="p-4 bg-zinc-800/70 rounded-xl border border-zinc-700/50"
                 >
-                  <div class="flex items-center justify-between mb-2">
-                    <span class="text-white text-sm truncate">{{ download.media.title }}</span>
+                  <div class="flex items-start justify-between gap-3 mb-3">
+                    <div class="flex-1 min-w-0">
+                      <span class="text-white font-medium text-sm block truncate">{{ download.media.title }}</span>
+                      <span v-if="download.episode" class="text-gray-400 text-xs">
+                        S{{ download.episode.seasonNumber }}E{{ download.episode.episodeNumber }}
+                        <span v-if="download.episode.name"> - {{ download.episode.name }}</span>
+                      </span>
+                    </div>
                     <Button
                       icon="pi pi-times"
                       severity="danger"
                       text
                       rounded
                       size="small"
+                      v-tooltip.top="t('offline.cancelDownload')"
                       @click="offlineStore.cancelDownload(download.id)"
                     />
                   </div>
-                  <div class="h-1.5 bg-zinc-700 rounded-full overflow-hidden">
+                  <div class="h-2 bg-zinc-700 rounded-full overflow-hidden">
                     <div
-                      class="h-full bg-blue-500 transition-all"
+                      class="h-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-300"
                       :style="{ width: `${download.progress.progress}%` }"
                     />
                   </div>
-                  <div class="flex items-center justify-between mt-1 text-xs text-gray-500">
-                    <span>{{ Math.round(download.progress.progress) }}%</span>
-                    <span>{{ offlineStore.formatFileSize(download.progress.downloadedBytes) }} / {{ offlineStore.formatFileSize(download.progress.totalBytes) }}</span>
+                  <div class="flex items-center justify-between mt-2 text-xs">
+                    <span class="text-blue-400 font-medium">
+                      {{ download.progress.progress < 0.5
+                        ? (download.progress.progress === 0 ? t('offline.starting') : download.progress.progress.toFixed(1) + '%')
+                        : Math.round(download.progress.progress) + '%' }}
+                    </span>
+                    <span class="text-gray-400">
+                      {{ offlineStore.formatFileSize(download.progress.downloadedBytes) }} / {{ offlineStore.formatFileSize(download.progress.totalBytes) }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Interrupted downloads (from page refresh) -->
+            <div v-if="offlineStore.interruptedDownloads.length > 0" class="mb-6">
+              <h3 class="text-sm font-semibold text-yellow-400 mb-3 flex items-center gap-2">
+                <i class="pi pi-exclamation-triangle"></i>
+                {{ t('offline.interrupted') }}
+              </h3>
+              <div class="flex flex-col gap-3">
+                <div
+                  v-for="download in offlineStore.interruptedDownloads"
+                  :key="download.id"
+                  class="p-4 bg-zinc-800/70 rounded-xl border border-yellow-600/30"
+                >
+                  <div class="flex items-start justify-between gap-3">
+                    <div class="flex-1 min-w-0">
+                      <span class="text-white font-medium text-sm block truncate">{{ download.title }}</span>
+                      <span v-if="download.seasonNumber !== undefined" class="text-gray-400 text-xs">
+                        S{{ download.seasonNumber }}E{{ download.episodeNumber }}
+                        <span v-if="download.episodeName"> - {{ download.episodeName }}</span>
+                      </span>
+                      <p class="text-xs text-yellow-400/80 mt-1">
+                        {{ t('offline.interruptedHint') }}
+                      </p>
+                    </div>
+                    <Button
+                      icon="pi pi-times"
+                      severity="secondary"
+                      text
+                      rounded
+                      size="small"
+                      v-tooltip.top="t('common.remove')"
+                      @click="offlineStore.clearInterruptedDownload(download.id)"
+                    />
                   </div>
                 </div>
               </div>
             </div>
 
             <!-- Downloaded media -->
-            <div v-if="offlineStore.offlineMedia.length === 0 && !offlineStore.hasActiveDownloads" class="text-center py-10 sm:py-16">
+            <div v-if="offlineStore.offlineMedia.length === 0 && !offlineStore.hasActiveDownloads && offlineStore.interruptedDownloads.length === 0" class="text-center py-10 sm:py-16">
               <div class="w-14 h-14 sm:w-16 sm:h-16 mx-auto rounded-full bg-zinc-800 flex items-center justify-center mb-4">
                 <i class="pi pi-cloud-download text-2xl sm:text-3xl text-gray-500"></i>
               </div>

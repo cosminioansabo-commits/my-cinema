@@ -319,6 +319,9 @@
     "downloadFailed": "Download failed",
     "downloadStarted": "Download started",
     "downloadCancelled": "Download cancelled",
-    "notSupported": "Offline downloads are not supported in this browser"
+    "notSupported": "Offline downloads are not supported in this browser",
+    "starting": "Starting...",
+    "interrupted": "Interrupted Downloads",
+    "interruptedHint": "This download was interrupted. Go to the media page to restart it."
   }
 }

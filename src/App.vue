@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import AppHeader from '@/components/layout/AppHeader.vue'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
@@ -30,6 +30,19 @@ const handleAppNotification = (e: Event) => {
   const { title, body } = (e as CustomEvent).detail
   toast.add({ severity: 'info', summary: title, detail: body, life: 5000 })
 }
+
+// Watch for offline download errors
+watch(() => offlineStore.lastError, (error) => {
+  if (error) {
+    toast.add({
+      severity: 'error',
+      summary: 'Download Failed',
+      detail: `${error.title}: ${error.error}`,
+      life: 8000
+    })
+    offlineStore.clearLastError()
+  }
+})
 
 // Add dark-mode class to html element for PrimeVue overlays
 onMounted(() => {
