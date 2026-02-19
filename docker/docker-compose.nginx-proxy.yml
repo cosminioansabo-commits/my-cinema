@@ -36,11 +36,11 @@ services:
       - "443:443"
     volumes:
       - ../nginx/reverse-proxy.conf:/etc/nginx/conf.d/default.conf:ro
+      - ../nginx/ssl.conf:/etc/nginx/ssl.conf.available:ro
       - certbot-certs:/etc/letsencrypt:ro
       - certbot-webroot:/var/www/certbot:ro
-    depends_on:
-      - my-cinema-frontend
-      - my-cinema-backend
+    # Auto-detect SSL certs: if they exist, enable HTTPS; otherwise HTTP-only
+    entrypoint: /bin/sh -c 'if [ -f /etc/letsencrypt/live/co-sa-srv.go.ro/fullchain.pem ]; then cp /etc/nginx/ssl.conf.available /etc/nginx/conf.d/ssl.conf; echo "SSL certs found - HTTPS enabled"; else echo "No SSL certs yet - HTTP-only mode"; fi && exec nginx -g "daemon off;"'
     labels:
       - "com.centurylinklabs.watchtower.enable=false"
 

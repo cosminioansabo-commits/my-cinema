@@ -65,7 +65,15 @@ export const torrentService = {
 
   createWebSocket(onMessage: (update: ProgressUpdate) => void): WebSocket {
     const authStore = useAuthStore()
-    let wsUrl = API_BASE.replace('http', 'ws') + '/ws'
+    let wsUrl: string
+    if (API_BASE && !API_BASE.startsWith('/')) {
+      // Direct backend URL (e.g., http://localhost:3001)
+      wsUrl = API_BASE.replace('http', 'ws') + '/ws'
+    } else {
+      // Behind reverse proxy — derive WebSocket URL from current page origin
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      wsUrl = `${protocol}//${window.location.host}/ws`
+    }
 
     // Add token to WebSocket URL if authenticated
     if (authStore.token) {

@@ -44,7 +44,8 @@
       "Bash(for file in /Users/sabocosmin/workspace/my-cinema/src/composables/*.ts)",
       "Bash(done)",
       "Bash(expect:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(ssh:*)"
     ],
     "deny": [],
     "ask": []
