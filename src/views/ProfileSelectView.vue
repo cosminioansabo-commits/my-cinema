@@ -80,14 +80,16 @@ function handleLogout() {
 <template>
   <div class="min-h-screen flex flex-col items-center justify-center bg-[#141414] p-6">
     <div class="fixed inset-0 bg-gradient-to-br from-[#1a1a2e] via-[#141414] to-[#0f0f0f] z-0"></div>
+    <!-- Ambient glow -->
+    <div class="fixed top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-[#e50914]/[0.03] rounded-full blur-[120px] z-0 pointer-events-none"></div>
 
-    <div class="relative z-10 w-full max-w-3xl">
+    <div class="relative z-10 w-full max-w-3xl profile-select-enter">
       <!-- Logo -->
       <div class="text-center mb-10">
-        <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[#e50914] to-[#b20710] flex items-center justify-center shadow-lg shadow-[#e50914]/20">
+        <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[#e50914] to-[#b20710] flex items-center justify-center shadow-lg shadow-[#e50914]/25 ring-1 ring-white/10">
           <i class="pi pi-play text-3xl text-white"></i>
         </div>
-        <h1 class="text-3xl font-bold text-white mb-2">{{ t('profiles.whoIsWatching') }}</h1>
+        <h1 class="text-3xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent mb-2">{{ t('profiles.whoIsWatching') }}</h1>
       </div>
 
       <!-- Loading -->
@@ -102,24 +104,24 @@ function handleLogout() {
           v-for="profile in profileStore.profiles"
           :key="profile.id"
           v-ripple
-          class="group flex flex-col items-center gap-3 p-4 rounded-xl transition-all duration-200 hover:bg-white/5 relative overflow-hidden"
+          class="group flex flex-col items-center gap-3 p-4 rounded-2xl transition-all duration-200 hover:bg-white/[0.04] relative overflow-hidden"
           :class="{ 'ring-2 ring-white/30': isManaging }"
           @click="isManaging ? handleManageProfile(profile) : handleSelectProfile(profile)"
         >
           <div
-            class="w-24 h-24 sm:w-28 sm:h-28 rounded-xl flex items-center justify-center transition-transform duration-200 group-hover:scale-105 relative"
-            :style="{ backgroundColor: profile.avatarColor }"
+            class="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl flex items-center justify-center transition-all duration-200 group-hover:scale-105 group-hover:shadow-lg relative ring-1 ring-white/10"
+            :style="{ backgroundColor: profile.avatarColor, boxShadow: `0 8px 24px ${profile.avatarColor}30` }"
           >
-            <i :class="['pi', profile.avatarIcon, 'text-4xl sm:text-5xl text-white']"></i>
+            <i :class="['pi', profile.avatarIcon, 'text-4xl sm:text-5xl text-white drop-shadow-sm']"></i>
             <!-- Edit overlay when managing -->
             <div
               v-if="isManaging"
-              class="absolute inset-0 bg-black/50 rounded-xl flex items-center justify-center"
+              class="absolute inset-0 bg-black/50 rounded-2xl flex items-center justify-center backdrop-blur-sm"
             >
               <i class="pi pi-pencil text-2xl text-white"></i>
             </div>
           </div>
-          <span class="text-gray-300 text-sm sm:text-base group-hover:text-white transition-colors">
+          <span class="text-gray-400 text-sm sm:text-base group-hover:text-white transition-colors font-medium">
             {{ profile.name }}
           </span>
         </button>
@@ -127,13 +129,13 @@ function handleLogout() {
         <!-- Add Profile Button -->
         <button
           v-if="profileStore.profileCount < 8"
-          class="group flex flex-col items-center gap-3 p-4 rounded-xl transition-all duration-200 hover:bg-white/5"
+          class="group flex flex-col items-center gap-3 p-4 rounded-2xl transition-all duration-200 hover:bg-white/[0.04]"
           @click="openCreateDialog"
         >
-          <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-xl flex items-center justify-center border-2 border-dashed border-gray-600 group-hover:border-gray-400 transition-colors">
-            <i class="pi pi-plus text-4xl text-gray-600 group-hover:text-gray-400 transition-colors"></i>
+          <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl flex items-center justify-center border-2 border-dashed border-zinc-700 group-hover:border-zinc-500 transition-all duration-200 group-hover:scale-105 bg-zinc-900/40">
+            <i class="pi pi-plus text-3xl text-zinc-600 group-hover:text-zinc-400 transition-colors"></i>
           </div>
-          <span class="text-gray-500 text-sm sm:text-base group-hover:text-gray-300 transition-colors">
+          <span class="text-zinc-500 text-sm sm:text-base group-hover:text-zinc-300 transition-colors font-medium">
             {{ t('profiles.addProfile') }}
           </span>
         </button>
@@ -168,16 +170,21 @@ function handleLogout() {
       :header="t('profiles.addProfile')"
       modal
       :style="{ width: '28rem' }"
-      :pt="{ root: { class: '!bg-zinc-900 !border-zinc-700' }, header: { class: '!bg-zinc-900 !text-white !border-b !border-zinc-700' }, content: { class: '!bg-zinc-900 !text-white' } }"
+      :pt="{
+        root: { class: 'profile-dialog-root' },
+        mask: { class: 'profile-dialog-mask' },
+        header: { class: 'profile-dialog-header' },
+        content: { class: 'profile-dialog-content' }
+      }"
     >
       <div class="space-y-6 pt-2">
         <!-- Preview -->
         <div class="flex justify-center">
           <div
-            class="w-20 h-20 rounded-xl flex items-center justify-center transition-all"
-            :style="{ backgroundColor: selectedColor }"
+            class="w-20 h-20 rounded-2xl flex items-center justify-center transition-all ring-1 ring-white/10"
+            :style="{ backgroundColor: selectedColor, boxShadow: `0 8px 24px ${selectedColor}30` }"
           >
-            <i :class="['pi', selectedIcon, 'text-3xl text-white']"></i>
+            <i :class="['pi', selectedIcon, 'text-3xl text-white drop-shadow-sm']"></i>
           </div>
         </div>
 
@@ -252,3 +259,64 @@ function handleLogout() {
     </Dialog>
   </div>
 </template>
+
+<style>
+/* Profile select entry animation */
+.profile-select-enter {
+  animation: profile-enter 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@keyframes profile-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* ── Profile Dialog Glassmorphism ── */
+.profile-dialog-mask {
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  background: rgba(0, 0, 0, 0.5) !important;
+}
+
+.profile-dialog-root.p-dialog {
+  border: none !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 24px 60px -12px rgba(0, 0, 0, 0.75) !important;
+  animation: profile-dialog-enter 0.2s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.profile-dialog-header {
+  background: rgba(24, 24, 27, 0.97) !important;
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+  color: white !important;
+}
+
+.profile-dialog-content {
+  background: rgba(24, 24, 27, 0.97) !important;
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  color: white !important;
+}
+
+@keyframes profile-dialog-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.98) translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+</style>

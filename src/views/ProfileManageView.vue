@@ -90,25 +90,27 @@ function goBack() {
 <template>
   <div class="min-h-screen flex flex-col items-center justify-center bg-[#141414] p-6">
     <div class="fixed inset-0 bg-gradient-to-br from-[#1a1a2e] via-[#141414] to-[#0f0f0f] z-0"></div>
+    <!-- Ambient glow -->
+    <div class="fixed top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[400px] bg-[#7c3aed]/[0.03] rounded-full blur-[120px] z-0 pointer-events-none"></div>
 
-    <div class="relative z-10 w-full max-w-md">
+    <div class="relative z-10 w-full max-w-md profile-manage-enter">
       <!-- Header -->
       <div class="text-center mb-8">
-        <h1 class="text-2xl font-bold text-white mb-2">{{ t('profiles.editProfile') }}</h1>
+        <h1 class="text-2xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent mb-2">{{ t('profiles.editProfile') }}</h1>
       </div>
 
       <div v-if="!profile" class="text-center py-12">
         <i class="pi pi-spin pi-spinner text-4xl text-gray-400"></i>
       </div>
 
-      <div v-else class="bg-zinc-900/80 backdrop-blur-sm rounded-2xl border border-zinc-800/50 p-8 space-y-6">
+      <div v-else class="bg-zinc-900/70 backdrop-blur-xl rounded-2xl border border-white/[0.08] p-8 space-y-6 shadow-2xl shadow-black/40">
         <!-- Preview -->
         <div class="flex justify-center">
           <div
-            class="w-24 h-24 rounded-xl flex items-center justify-center transition-all"
-            :style="{ backgroundColor: avatarColor }"
+            class="w-24 h-24 rounded-2xl flex items-center justify-center transition-all ring-1 ring-white/10"
+            :style="{ backgroundColor: avatarColor, boxShadow: `0 8px 24px ${avatarColor}30` }"
           >
-            <i :class="['pi', avatarIcon, 'text-4xl text-white']"></i>
+            <i :class="['pi', avatarIcon, 'text-4xl text-white drop-shadow-sm']"></i>
           </div>
         </div>
 
@@ -201,7 +203,12 @@ function goBack() {
       :header="t('profiles.deleteProfile')"
       modal
       :style="{ width: '26rem' }"
-      :pt="{ root: { class: '!bg-zinc-900 !border-zinc-700' }, header: { class: '!bg-zinc-900 !text-white !border-b !border-zinc-700' }, content: { class: '!bg-zinc-900 !text-white' } }"
+      :pt="{
+        root: { class: 'manage-dialog-root' },
+        mask: { class: 'manage-dialog-mask' },
+        header: { class: 'manage-dialog-header' },
+        content: { class: 'manage-dialog-content' }
+      }"
     >
       <div class="space-y-4 pt-2">
         <p class="text-gray-300">
@@ -245,3 +252,64 @@ function goBack() {
     </Dialog>
   </div>
 </template>
+
+<style>
+/* Entry animation */
+.profile-manage-enter {
+  animation: manage-enter 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@keyframes manage-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* ── Manage Dialog Glassmorphism ── */
+.manage-dialog-mask {
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  background: rgba(0, 0, 0, 0.5) !important;
+}
+
+.manage-dialog-root.p-dialog {
+  border: none !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 24px 60px -12px rgba(0, 0, 0, 0.75) !important;
+  animation: manage-dialog-enter 0.2s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.manage-dialog-header {
+  background: rgba(24, 24, 27, 0.97) !important;
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+  color: white !important;
+}
+
+.manage-dialog-content {
+  background: rgba(24, 24, 27, 0.97) !important;
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  color: white !important;
+}
+
+@keyframes manage-dialog-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.98) translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+</style>

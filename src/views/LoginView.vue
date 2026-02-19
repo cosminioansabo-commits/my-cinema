@@ -33,22 +33,24 @@ const handleKeyPress = (e: KeyboardEvent) => {
 
 <template>
   <div class="min-h-screen flex items-center justify-center bg-[#141414] p-6">
-    <!-- Background gradient -->
+    <!-- Background gradient with subtle noise -->
     <div class="fixed inset-0 bg-gradient-to-br from-[#1a1a2e] via-[#141414] to-[#0f0f0f] z-0"></div>
+    <!-- Ambient accent glow behind card -->
+    <div class="fixed top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#e50914]/[0.04] rounded-full blur-[120px] z-0 pointer-events-none"></div>
 
     <!-- Login Card -->
-    <div class="relative z-10 w-full max-w-md">
+    <div class="relative z-10 w-full max-w-md login-card-enter">
       <!-- Logo/Brand -->
       <div class="text-center mb-8">
-        <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[#e50914] to-[#b20710] flex items-center justify-center shadow-lg shadow-[#e50914]/20">
+        <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[#e50914] to-[#b20710] flex items-center justify-center shadow-lg shadow-[#e50914]/25 ring-1 ring-white/10">
           <i class="pi pi-play text-3xl text-white"></i>
         </div>
-        <h1 class="text-3xl font-bold text-white mb-2">My Cinema</h1>
-        <p class="text-gray-400">Enter your password to continue</p>
+        <h1 class="text-3xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent mb-2">My Cinema</h1>
+        <p class="text-gray-500 text-sm">Enter your password to continue</p>
       </div>
 
       <!-- Login Form -->
-      <div class="bg-zinc-900/80 backdrop-blur-sm rounded-2xl border border-zinc-800/50 p-8">
+      <div class="bg-zinc-900/70 backdrop-blur-xl rounded-2xl border border-white/[0.08] p-8 shadow-2xl shadow-black/40">
         <form @submit.prevent="handleLogin" class="space-y-6">
           <!-- Password Input -->
           <div>
@@ -109,7 +111,7 @@ const handleKeyPress = (e: KeyboardEvent) => {
       </div>
 
       <!-- Footer -->
-      <p class="text-center text-gray-500 text-sm mt-6">
+      <p class="text-center text-gray-600 text-xs mt-6 tracking-wide">
         Secure access to your media library
       </p>
     </div>
@@ -122,6 +124,7 @@ const handleKeyPress = (e: KeyboardEvent) => {
   border: none !important;
   transition: all 0.2s ease !important;
   box-shadow: 0 4px 12px rgba(229, 9, 20, 0.3) !important;
+  border-radius: 0.75rem !important;
 }
 
 .login-btn:hover:not(:disabled) {
@@ -135,5 +138,19 @@ const handleKeyPress = (e: KeyboardEvent) => {
   cursor: not-allowed !important;
 }
 
-/* Password component styling now handled via pt props */
+/* Entry animation */
+.login-card-enter {
+  animation: login-enter 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@keyframes login-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
 </style>
