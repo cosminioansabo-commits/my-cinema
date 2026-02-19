@@ -318,26 +318,12 @@ class ProfileLibraryService {
       for (const show of series) {
         const posterPath = this.extractPosterPath(show.images || [])
 
-        // Look up TMDB ID via Sonarr's lookup API (it supports tmdb: search)
-        let tmdbId = 0
-        try {
-          const lookupResult = await sonarrService.lookupSeries(show.tvdbId)
-          // Sonarr lookup results sometimes include tmdbId directly
-          if (lookupResult && (lookupResult as any).tmdbId) {
-            tmdbId = (lookupResult as any).tmdbId
-          }
-        } catch {
-          // If lookup fails, we'll use 0 — will be repaired later
-        }
+        // Sonarr v4.0.5+ includes tmdbId directly on the series object
+        const tmdbId = show.tmdbId || 0
 
-        // If still 0, try the tvdbId as a fallback lookup
         if (tmdbId === 0) {
-          try {
-            const tmdbLookup = await sonarrService.lookupSeriesByTmdbId(show.tvdbId)
-            // This is a heuristic — won't always work but worth trying
-          } catch {
-            // Ignore
-          }
+          console.warn(`Migration: TV show "${show.title}" has no TMDB ID (tvdbId: ${show.tvdbId}) — skipping to avoid UNIQUE constraint collision`)
+          continue
         }
 
         db.prepare(`
@@ -354,12 +340,13 @@ class ProfileLibraryService {
   }
 
   /**
-   * Repair migration data: update entries missing poster_path or with tmdb_id = 0.
-   * This can be called via an admin endpoint to fix data from the initial migration.
+   * Repair migration data: update entries missing poster_path or with tmdb_id = 0,
+   * and re-import TV shows that were silently dropped by the UNIQUE constraint.
    */
-  async repairMigrationData(): Promise<{ moviesFixed: number; showsFixed: number; showsFailed: string[] }> {
+  async repairMigrationData(): Promise<{ moviesFixed: number; showsFixed: number; showsImported: number; showsFailed: string[] }> {
     let moviesFixed = 0
     let showsFixed = 0
+    let showsImported = 0
     const showsFailed: string[] = []
 
     // Fix movies missing poster_path
@@ -367,99 +354,138 @@ class ProfileLibraryService {
       "SELECT * FROM profile_library WHERE media_type = 'movie' AND (poster_path IS NULL OR poster_path = '')"
     ).all() as ProfileLibraryRow[]
 
-    console.log(`Repairing ${moviesWithoutPoster.length} movies missing poster_path...`)
-    for (const movie of moviesWithoutPoster) {
-      try {
-        const radarrMovie = movie.radarr_id
-          ? await radarrService.getMovie(movie.radarr_id)
-          : await radarrService.getMovieByTmdbId(movie.tmdb_id)
+    if (moviesWithoutPoster.length > 0) {
+      console.log(`Repairing ${moviesWithoutPoster.length} movies missing poster_path...`)
+      for (const movie of moviesWithoutPoster) {
+        try {
+          const radarrMovie = movie.radarr_id
+            ? await radarrService.getMovie(movie.radarr_id)
+            : await radarrService.getMovieByTmdbId(movie.tmdb_id)
 
-        if (radarrMovie) {
-          const posterPath = this.extractPosterPath(radarrMovie.images || [])
-          if (posterPath) {
-            db.prepare(
-              'UPDATE profile_library SET poster_path = ? WHERE id = ?'
-            ).run(posterPath, movie.id)
-            moviesFixed++
+          if (radarrMovie) {
+            const posterPath = this.extractPosterPath(radarrMovie.images || [])
+            if (posterPath) {
+              db.prepare(
+                'UPDATE profile_library SET poster_path = ? WHERE id = ?'
+              ).run(posterPath, movie.id)
+              moviesFixed++
+            }
           }
+        } catch (error) {
+          console.error(`Failed to repair poster for movie "${movie.title}":`, error)
         }
-      } catch (error) {
-        console.error(`Failed to repair poster for movie "${movie.title}":`, error)
       }
     }
 
-    // Fix TV shows with tmdb_id = 0 or missing poster_path
-    const showsToRepair = db.prepare(
-      "SELECT * FROM profile_library WHERE media_type = 'tv' AND (tmdb_id = 0 OR poster_path IS NULL OR poster_path = '')"
-    ).all() as ProfileLibraryRow[]
+    // Get default profile for re-importing missing shows
+    const defaultProfile = db.prepare("SELECT id FROM profiles WHERE is_default = 1").get() as { id: string } | undefined
+    if (!defaultProfile) {
+      console.log('No default profile found, skipping TV show repair')
+      return { moviesFixed, showsFixed, showsImported, showsFailed }
+    }
 
-    console.log(`Repairing ${showsToRepair.length} TV shows with missing data...`)
-    for (const show of showsToRepair) {
-      try {
-        let tmdbId = show.tmdb_id
-        let posterPath = show.poster_path
+    // Get all Sonarr series to compare against profile_library
+    let allSonarrSeries: Awaited<ReturnType<typeof sonarrService.getSeries>> = []
+    try {
+      allSonarrSeries = await sonarrService.getSeries()
+    } catch (error) {
+      console.error('Failed to fetch Sonarr series for repair:', error)
+      return { moviesFixed, showsFixed, showsImported, showsFailed }
+    }
 
-        // Get full series data from Sonarr for poster
-        const sonarrSeries = show.sonarr_id
-          ? await sonarrService.getSeriesById(show.sonarr_id)
-          : show.tvdb_id
-            ? await sonarrService.getSeriesByTvdbId(show.tvdb_id)
-            : null
+    // Build a set of sonarr_ids already in the library
+    const existingEntries = db.prepare(
+      "SELECT sonarr_id, tvdb_id, tmdb_id, poster_path, id, title FROM profile_library WHERE profile_id = ? AND media_type = 'tv'"
+    ).all(defaultProfile.id) as { sonarr_id: number | null; tvdb_id: number | null; tmdb_id: number; poster_path: string | null; id: number; title: string }[]
 
-        if (sonarrSeries) {
-          // Extract poster
-          if (!posterPath) {
-            posterPath = this.extractPosterPath(sonarrSeries.images || [])
-          }
+    const existingSonarrIds = new Set(existingEntries.filter(e => e.sonarr_id).map(e => e.sonarr_id!))
+    const existingTvdbIds = new Set(existingEntries.filter(e => e.tvdb_id).map(e => e.tvdb_id!))
 
-          // Get TMDB ID — Sonarr doesn't store it directly on series,
-          // but we can get it via lookup
-          if (tmdbId === 0 && sonarrSeries.tvdbId) {
-            try {
-              const lookupResult = await sonarrService.lookupSeries(sonarrSeries.tvdbId)
-              if (lookupResult && (lookupResult as any).tmdbId) {
-                tmdbId = (lookupResult as any).tmdbId
-              }
-            } catch {
-              // Lookup failed
-            }
-          }
+    for (const show of allSonarrSeries) {
+      const isInLibrary = existingSonarrIds.has(show.id) || existingTvdbIds.has(show.tvdbId)
+
+      if (!isInLibrary) {
+        // Show is missing from profile_library — re-import it
+        const tmdbId = show.tmdbId || 0
+        if (tmdbId === 0) {
+          console.warn(`Repair: TV show "${show.title}" has no TMDB ID (tvdbId: ${show.tvdbId}) — cannot import`)
+          showsFailed.push(show.title)
+          continue
         }
 
-        // Apply fixes
-        if (tmdbId !== show.tmdb_id || posterPath !== show.poster_path) {
-          // If tmdb_id changed, we need to handle the UNIQUE constraint
-          if (tmdbId !== show.tmdb_id && tmdbId !== 0) {
-            // Check if an entry with the new tmdb_id already exists for this profile
-            const existing = db.prepare(
-              'SELECT id FROM profile_library WHERE profile_id = ? AND media_type = ? AND tmdb_id = ?'
-            ).get(show.profile_id, 'tv', tmdbId) as { id: number } | undefined
+        const posterPath = this.extractPosterPath(show.images || [])
 
-            if (existing) {
-              // Duplicate — delete the broken one (tmdb_id = 0)
-              db.prepare('DELETE FROM profile_library WHERE id = ?').run(show.id)
-            } else {
-              db.prepare(
-                'UPDATE profile_library SET tmdb_id = ?, poster_path = COALESCE(?, poster_path) WHERE id = ?'
-              ).run(tmdbId, posterPath, show.id)
-            }
-          } else {
-            db.prepare(
-              'UPDATE profile_library SET poster_path = COALESCE(?, poster_path) WHERE id = ?'
-            ).run(posterPath, show.id)
-          }
-          showsFixed++
-        } else if (tmdbId === 0) {
+        try {
+          db.prepare(`
+            INSERT OR IGNORE INTO profile_library
+              (profile_id, media_type, tmdb_id, title, year, poster_path, sonarr_id, tvdb_id)
+            VALUES (?, 'tv', ?, ?, ?, ?, ?, ?)
+          `).run(defaultProfile.id, tmdbId, show.title, show.year, posterPath, show.id, show.tvdbId)
+          showsImported++
+          console.log(`Repair: Re-imported TV show "${show.title}" (tmdbId: ${tmdbId})`)
+        } catch (error) {
+          console.error(`Failed to re-import TV show "${show.title}":`, error)
           showsFailed.push(show.title)
         }
-      } catch (error) {
-        console.error(`Failed to repair TV show "${show.title}":`, error)
-        showsFailed.push(show.title)
+      } else {
+        // Show exists — check if it needs tmdb_id or poster repair
+        const entry = existingEntries.find(e => e.sonarr_id === show.id || e.tvdb_id === show.tvdbId)
+        if (!entry) continue
+
+        let needsUpdate = false
+        let newTmdbId = entry.tmdb_id
+        let newPosterPath = entry.poster_path
+
+        // Fix tmdb_id = 0 using the series object's tmdbId directly
+        if (entry.tmdb_id === 0 && show.tmdbId) {
+          newTmdbId = show.tmdbId
+          needsUpdate = true
+        }
+
+        // Fix missing poster
+        if (!entry.poster_path) {
+          const posterPath = this.extractPosterPath(show.images || [])
+          if (posterPath) {
+            newPosterPath = posterPath
+            needsUpdate = true
+          }
+        }
+
+        if (needsUpdate) {
+          try {
+            if (newTmdbId !== entry.tmdb_id && newTmdbId !== 0) {
+              // Check for UNIQUE constraint conflict before updating tmdb_id
+              const conflict = db.prepare(
+                'SELECT id FROM profile_library WHERE profile_id = ? AND media_type = ? AND tmdb_id = ?'
+              ).get(defaultProfile.id, 'tv', newTmdbId) as { id: number } | undefined
+
+              if (conflict) {
+                // Another entry already has this tmdb_id — delete the broken one
+                db.prepare('DELETE FROM profile_library WHERE id = ?').run(entry.id)
+              } else {
+                db.prepare(
+                  'UPDATE profile_library SET tmdb_id = ?, poster_path = COALESCE(?, poster_path), sonarr_id = COALESCE(sonarr_id, ?), tvdb_id = COALESCE(tvdb_id, ?) WHERE id = ?'
+                ).run(newTmdbId, newPosterPath, show.id, show.tvdbId, entry.id)
+              }
+            } else {
+              db.prepare(
+                'UPDATE profile_library SET poster_path = COALESCE(?, poster_path), sonarr_id = COALESCE(sonarr_id, ?), tvdb_id = COALESCE(tvdb_id, ?) WHERE id = ?'
+              ).run(newPosterPath, show.id, show.tvdbId, entry.id)
+            }
+            showsFixed++
+          } catch (error) {
+            console.error(`Failed to repair TV show "${entry.title}":`, error)
+            showsFailed.push(entry.title)
+          }
+        }
       }
     }
 
-    console.log(`Repair complete: ${moviesFixed} movies fixed, ${showsFixed} shows fixed, ${showsFailed.length} shows failed`)
-    return { moviesFixed, showsFixed, showsFailed }
+    console.log(`Repair complete: ${moviesFixed} movies fixed, ${showsFixed} shows fixed, ${showsImported} shows re-imported, ${showsFailed.length} shows failed`)
+    if (showsFailed.length > 0) {
+      console.log(`Failed shows: ${showsFailed.join(', ')}`)
+    }
+    return { moviesFixed, showsFixed, showsImported, showsFailed }
   }
 }
 
