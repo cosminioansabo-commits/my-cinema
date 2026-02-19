@@ -125,4 +125,23 @@ router.get('/library/available/:mediaType/:tmdbId', async (req: AuthenticatedReq
   }
 })
 
+/**
+ * Repair migration data (fix missing poster_path and tmdb_id = 0)
+ * POST /api/profiles/admin/repair-library
+ * This is an admin action to fix data from the initial migration.
+ */
+router.post('/admin/repair-library', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    console.log('Starting library data repair...')
+    const result = await profileLibraryService.repairMigrationData()
+    res.json({
+      success: true,
+      ...result
+    })
+  } catch (error) {
+    console.error('Error repairing library data:', error)
+    res.status(500).json({ error: 'Failed to repair library data' })
+  }
+})
+
 export default router

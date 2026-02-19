@@ -96,4 +96,11 @@ server.listen(config.port, async () => {
   } catch (error) {
     console.error('Failed to run initial library migration:', error)
   }
+
+  // Auto-repair migration data (fix missing poster_path and tmdb_id = 0)
+  try {
+    await profileLibraryService.repairMigrationData()
+  } catch (error) {
+    console.error('Failed to repair migration data:', error)
+  }
 })
