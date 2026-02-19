@@ -1,5 +1,6 @@
 import axios, { AxiosInstance } from 'axios'
 import { config } from '../config.js'
+import { logger } from '../utils/logger.js'
 
 interface QBitTorrent {
   hash: string
@@ -102,7 +103,7 @@ class QBittorrentService {
         if (setCookie && setCookie.length > 0) {
           this.cookie = setCookie[0].split(';')[0]
           this.lastLogin = Date.now()
-          console.log('qBittorrent: Logged in successfully')
+          logger.debug('Logged in successfully', 'qBittorrent')
           return true
         }
       }
@@ -361,7 +362,7 @@ class QBittorrentService {
 
       const version = await this.getVersion()
       if (version) {
-        console.log(`qBittorrent: Connected to version ${version}`)
+        logger.debug(`Connected to version ${version}`, 'qBittorrent')
         return true
       }
       return false

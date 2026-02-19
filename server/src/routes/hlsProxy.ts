@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express'
 import axios from 'axios'
 import { jellyfinService } from '../services/jellyfinService.js'
 import { config } from '../config.js'
+import { logger } from '../utils/logger.js'
 
 const router = Router()
 
@@ -29,7 +30,7 @@ router.get('/hls/:itemId/master.m3u8', async (req: Request, res: Response) => {
     }
 
     const jellyfinUrl = `${config.jellyfin.url}/Videos/${itemId}/master.m3u8?${params.toString()}`
-    console.log(`HLS proxy: Fetching master manifest from ${jellyfinUrl.substring(0, 80)}...`)
+    logger.debug(`Fetching master manifest from ${jellyfinUrl.substring(0, 80)}...`, 'HLS')
 
     const response = await axios.get(jellyfinUrl, {
       headers: {

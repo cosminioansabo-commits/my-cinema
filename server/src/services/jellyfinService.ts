@@ -1,5 +1,6 @@
 import axios, { AxiosInstance } from 'axios'
 import { config } from '../config.js'
+import { logger } from '../utils/logger.js'
 
 // Jellyfin API response types
 interface JellyfinItem {
@@ -131,7 +132,7 @@ class JellyfinService {
 
       if (user) {
         this.userId = user.Id
-        console.log(`Jellyfin: Using user "${user.Name}" (${user.Id})`)
+        logger.debug(`Using user "${user.Name}" (${user.Id})`, 'Jellyfin')
         return this.userId
       }
 
@@ -147,7 +148,7 @@ class JellyfinService {
     try {
       const response = await this.client.get('/System/Info/Public')
       const serverName = response.data?.ServerName
-      console.log(`Jellyfin: Connected to server "${serverName}"`)
+      logger.debug(`Connected to server "${serverName}"`, 'Jellyfin')
       return true
     } catch (error) {
       console.error('Jellyfin: Connection test failed:', error)
@@ -191,10 +192,10 @@ class JellyfinService {
       }
 
       if (found) {
-        console.log(`Jellyfin: Found movie "${found.Name}" for path ${filePath}`)
+        logger.debug(`Found movie "${found.Name}" for path ${filePath}`, 'Jellyfin')
       } else {
-        console.log(`Jellyfin: Movie not found for path ${filePath} (filename: ${filename})`)
-        console.log(`Jellyfin: Searched ${items.length} movies`)
+        logger.debug(`Movie not found for path ${filePath} (filename: ${filename})`, 'Jellyfin')
+        logger.debug(`Searched ${items.length} movies`, 'Jellyfin')
       }
       return found || null
     } catch (error) {
@@ -239,10 +240,10 @@ class JellyfinService {
       }
 
       if (found) {
-        console.log(`Jellyfin: Found episode "${found.Name}" for path ${filePath}`)
+        logger.debug(`Found episode "${found.Name}" for path ${filePath}`, 'Jellyfin')
       } else {
-        console.log(`Jellyfin: Episode not found for path ${filePath} (filename: ${filename})`)
-        console.log(`Jellyfin: Searched ${items.length} episodes`)
+        logger.debug(`Episode not found for path ${filePath} (filename: ${filename})`, 'Jellyfin')
+        logger.debug(`Searched ${items.length} episodes`, 'Jellyfin')
       }
       return found || null
     } catch (error) {
@@ -308,7 +309,7 @@ class JellyfinService {
                               colorTransfer.toLowerCase().includes('arib-std-b67') ||
                               colorTransfer.toLowerCase().includes('bt2020')
 
-      console.log(`Jellyfin: Video range type: ${videoRangeType}, isHDR: ${isHDR || isHDRByTransfer}, colorTransfer: ${colorTransfer}`)
+      logger.debug(`Video range type: ${videoRangeType}, isHDR: ${isHDR || isHDRByTransfer}, colorTransfer: ${colorTransfer}`, 'Jellyfin')
 
       // Build HLS transcoding URL - use proxy endpoint to bypass Private Network Access
       // Match Jellyfin web client settings for best quality
@@ -542,7 +543,7 @@ class JellyfinService {
   async refreshLibrary(): Promise<void> {
     try {
       await this.client.post('/Library/Refresh')
-      console.log('Jellyfin: Library refresh triggered')
+      logger.debug('Library refresh triggered', 'Jellyfin')
     } catch (error) {
       console.error('Jellyfin refreshLibrary error:', error)
     }

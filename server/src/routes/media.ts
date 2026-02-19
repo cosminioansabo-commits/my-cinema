@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express'
 import { mediaService } from '../services/mediaService.js'
 import { jellyfinService } from '../services/jellyfinService.js'
 import { config } from '../config.js'
+import { logger } from '../utils/logger.js'
 
 const router = Router()
 
@@ -115,17 +116,17 @@ router.post('/jellyfin/refresh', async (req: Request, res: Response) => {
 // Get playback info for a movie by TMDB ID
 router.get('/movie/:tmdbId', async (req: Request, res: Response) => {
   const tmdbId = parseInt(req.params.tmdbId, 10)
-  console.log(`Media API: Getting movie playback for TMDB ID ${tmdbId}`)
+  logger.debug(`Getting movie playback for TMDB ID ${tmdbId}`, 'MediaService')
 
   try {
     const playbackInfo = await mediaService.getMoviePlayback(tmdbId)
     if (!playbackInfo) {
-      console.log(`Media API: Movie ${tmdbId} not found or no file available`)
+      logger.debug(`Movie ${tmdbId} not found or no file available`, 'MediaService')
       res.json({ found: false })
       return
     }
 
-    console.log(`Media API: Movie ${tmdbId} found, stream URL: ${playbackInfo.streamUrl.substring(0, 80)}...`)
+    logger.debug(`Movie ${tmdbId} found, stream URL: ${playbackInfo.streamUrl.substring(0, 80)}...`, 'MediaService')
     res.json(playbackInfo)
   } catch (error: any) {
     console.error('Error getting movie playback:', error.message)
@@ -193,7 +194,7 @@ router.get('/download/:itemId/:mediaSourceId', async (req: Request, res: Respons
 
     const jellyfinUrl = `${config.jellyfin.url}/Videos/${itemId}/stream.mp4?${params.toString()}`
 
-    console.log(`Download proxy: Fetching transcoded stream from Jellyfin...`)
+    logger.debug(`Fetching transcoded stream from Jellyfin...`, 'HLS')
 
     const upstream = await fetch(jellyfinUrl)
     if (!upstream.ok) {
@@ -205,7 +206,7 @@ router.get('/download/:itemId/:mediaSourceId', async (req: Request, res: Respons
     const contentType = 'video/mp4'
     const contentLength = upstream.headers.get('content-length')
 
-    console.log(`Download proxy: Content-Type=${contentType}, Content-Length=${contentLength || 'unknown (transcoding)'}`)
+    logger.debug(`Content-Type=${contentType}, Content-Length=${contentLength || 'unknown (transcoding)'}`, 'HLS')
 
     res.setHeader('Content-Type', contentType)
     if (contentLength) {

@@ -6,7 +6,9 @@ import { useAuthStore } from '@/stores/authStore'
 import { useProfileStore } from '@/stores/profileStore'
 import { useNotificationStore } from '@/stores/notificationStore'
 import { useLanguage } from '@/composables/useLanguage'
+import Button from 'primevue/button'
 import { onMounted } from 'vue'
+import { openSpotlight } from '@/composables/useSpotlightSearch'
 
 const route = useRoute()
 const router = useRouter()
@@ -51,16 +53,18 @@ const isActiveRoute = (path: string) => {
 
 <template>
   <header
-    class="fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-[#141414] shadow-lg shadow-black/30">
+    class="fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-[#141414]/80 backdrop-blur-xl backdrop-saturate-150 border-b border-white/[0.06]">
     <div class="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 h-14 flex items-center justify-between gap-2 sm:gap-4">
       <!-- Logo & Mobile Menu -->
       <div class="flex items-center gap-3 sm:gap-6">
-        <button
-          class="lg:hidden p-1.5 sm:p-2 hover:bg-white/10 rounded-lg transition-colors"
+        <Button
+          icon="pi pi-bars"
+          severity="secondary"
+          text
+          rounded
+          class="lg:!hidden !text-white hover:!bg-white/10"
           @click="emit('toggleSidebar')"
-        >
-          <i class="pi pi-bars text-lg sm:text-xl"></i>
-        </button>
+        />
 
         <RouterLink to="/" class="flex items-center gap-0.5 sm:gap-1 font-bold text-lg sm:text-xl md:text-2xl">
           <span class="text-[#e50914]">MY</span>
@@ -84,7 +88,7 @@ const isActiveRoute = (path: string) => {
             <!-- Active indicator -->
             <span
               v-if="isActiveRoute(link.path)"
-              class="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-[#e50914] rounded-full"
+              class="absolute bottom-0 left-0 right-0 mx-auto w-6 h-0.5 bg-[#e50914] rounded-full"
             ></span>
           </RouterLink>
         </nav>
@@ -98,14 +102,13 @@ const isActiveRoute = (path: string) => {
         </div>
 
         <!-- Search icon -->
-        <RouterLink
-          to="/search"
-          class="p-2 hover:bg-white/10 rounded-lg transition-colors"
-          :class="isActiveRoute('/search') ? 'text-white bg-white/10' : 'text-gray-400 hover:text-white'"
-          title="Search"
+        <button
+          class="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
+          title="Search (⌘K)"
+          @click="openSpotlight"
         >
           <i class="pi pi-search text-lg"></i>
-        </RouterLink>
+        </button>
 
         <!-- Notifications icon -->
         <RouterLink
@@ -118,7 +121,7 @@ const isActiveRoute = (path: string) => {
           <!-- Unread badge -->
           <span
             v-if="notificationStore.unreadCount > 0"
-            class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center bg-[#e50914] text-white text-[10px] font-bold rounded-full"
+            class="absolute top-0 right-0 min-w-[18px] h-[18px] px-1 flex items-center justify-center bg-[#e50914] text-white text-[10px] font-bold rounded-full"
           >
             {{ notificationStore.unreadCount > 9 ? '9+' : notificationStore.unreadCount }}
           </span>
@@ -139,14 +142,16 @@ const isActiveRoute = (path: string) => {
         </button>
 
         <!-- Logout button (only show when auth is enabled and authenticated) -->
-        <button
+        <Button
           v-if="authStore.authEnabled && authStore.isAuthenticated"
-          @click="handleLogout"
-          class="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
+          icon="pi pi-sign-out"
+          severity="secondary"
+          text
+          rounded
+          class="!text-gray-400 hover:!text-white hover:!bg-white/10"
           :title="t('nav.logout')"
-        >
-          <i class="pi pi-sign-out text-lg"></i>
-        </button>
+          @click="handleLogout"
+        />
       </div>
     </div>
   </header>

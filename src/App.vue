@@ -4,6 +4,7 @@ import { RouterView, useRoute } from 'vue-router'
 import AppHeader from '@/components/layout/AppHeader.vue'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
 import KeyboardShortcutsModal from '@/components/modals/KeyboardShortcutsModal.vue'
+import SpotlightSearch from '@/components/modals/SpotlightSearch.vue'
 import Toast from 'primevue/toast'
 import { useToast } from 'primevue/usetoast'
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
@@ -79,5 +80,6 @@ onUnmounted(() => {
 
     <!-- Global Keyboard Shortcuts Help Modal -->
     <KeyboardShortcutsModal />
+    <SpotlightSearch />
   </div>
 </template>

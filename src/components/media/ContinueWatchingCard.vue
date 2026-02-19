@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { getImageUrl } from '@/services/tmdbService'
 import { formatRemainingTime } from '@/utils/formatters'
-import type { ContinueWatchingItem } from './ContinueWatchingCarousel.vue'
+import Button from 'primevue/button'
+import type { ContinueWatchingItem } from '@/types'
 
 const props = defineProps<{
   item: ContinueWatchingItem
@@ -47,12 +48,14 @@ const displayTitle = props.item.mediaType === 'episode' && props.item.seasonNumb
       </div>
 
       <!-- Remove Button -->
-      <button
-        class="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/70 hover:bg-red-600 flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-opacity z-10"
+      <Button
+        icon="pi pi-times"
+        severity="danger"
+        text
+        rounded
+        class="!absolute top-1 right-1 !w-6 !h-6 !bg-black/70 hover:!bg-red-600 !text-white opacity-0 group-hover/card:opacity-100 !transition-opacity z-10"
         @click.stop="emit('remove')"
-      >
-        <i class="pi pi-times text-[10px] text-white"></i>
-      </button>
+      />
 
       <!-- Episode Badge -->
       <div

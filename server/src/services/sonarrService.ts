@@ -1,5 +1,6 @@
 import axios, { AxiosInstance } from 'axios'
 import { config } from '../config.js'
+import { logger } from '../utils/logger.js'
 
 interface SonarrSeries {
   id: number
@@ -112,7 +113,7 @@ class SonarrService {
   async testConnection(): Promise<boolean> {
     try {
       const response = await this.client.get('/api/v3/system/status')
-      console.log(`Sonarr: Connected to version ${response.data.version}`)
+      logger.debug(`Connected to version ${response.data.version}`, 'Sonarr')
       return true
     } catch (error) {
       console.error('Sonarr: Connection test failed:', error)
@@ -246,11 +247,11 @@ class SonarrService {
       }
 
       const response = await this.client.post('/api/v3/series', seriesData)
-      console.log(`Sonarr: Added series "${options.title}" to library`)
+      logger.debug(`Added series "${options.title}" to library`, 'Sonarr')
       return response.data
     } catch (error: any) {
       if (error.response?.status === 400 && error.response?.data?.[0]?.errorMessage?.includes('already been added')) {
-        console.log(`Sonarr: Series "${options.title}" already in library`)
+        logger.debug(`Series "${options.title}" already in library`, 'Sonarr')
         return await this.getSeriesByTvdbId(options.tvdbId)
       }
       console.error('Sonarr: Error adding series:', error.response?.data || error)

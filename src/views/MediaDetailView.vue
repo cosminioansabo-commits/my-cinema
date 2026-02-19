@@ -470,7 +470,7 @@ const goBack = () => {
 </script>
 
 <template>
-  <div class="-mx-3 sm:-mx-6 lg:-mx-10 -mt-4 sm:-mt-6">
+  <div class="full-bleed">
     <!-- Loading State -->
     <div v-if="isLoading" class="px-3 sm:px-6 lg:px-8 py-6 sm:py-8">
       <div class="h-[50vh] bg-[#181818] mb-8">
@@ -504,12 +504,14 @@ const goBack = () => {
         <div class="absolute inset-0 hero-gradient-bottom"></div>
 
         <!-- Back button -->
-        <button
-          class="absolute top-16 sm:top-20 left-3 sm:left-4 md:left-8 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center transition-colors z-10"
+        <Button
+          icon="pi pi-arrow-left"
+          severity="secondary"
+          text
+          rounded
+          class="!absolute top-16 sm:top-20 left-3 sm:left-4 md:left-8 !w-9 !h-9 sm:!w-10 sm:!h-10 !bg-black/50 hover:!bg-black/70 !text-white z-10"
           @click="goBack"
-        >
-          <i class="pi pi-arrow-left text-sm sm:text-base"></i>
-        </button>
+        />
       </div>
 
       <!-- Main content -->
@@ -521,7 +523,7 @@ const goBack = () => {
               <img
                 :src="posterUrl"
                 :alt="media.title"
-                class="w-64 rounded-lg shadow-2xl"
+                class="w-48 lg:w-64 rounded-lg shadow-2xl"
               />
             </div>
 
@@ -711,7 +713,7 @@ const goBack = () => {
 
         <!-- Seasons & Episodes Section (TV Shows only) -->
         <section v-if="mediaType === 'tv' && seasons.length > 0" class="mt-8 sm:mt-12 md:mt-16 max-w-6xl mx-auto">
-          <h2 class="row-title text-lg sm:text-xl mb-4 sm:mb-6">{{ t('media.seasonsAndEpisodes') }}</h2>
+          <h2 class="text-lg sm:text-xl font-bold mb-4 sm:mb-6 text-[#e5e5e5] hover:text-white transition-colors">{{ t('media.seasonsAndEpisodes') }}</h2>
           <SeasonEpisodes
             :tv-id="media.id"
             :seasons="seasons"
@@ -724,15 +726,15 @@ const goBack = () => {
 
         <!-- Cast Section -->
         <section v-if="cast.length > 0" class="mt-8 sm:mt-12 md:mt-16 max-w-6xl mx-auto">
-          <h2 class="row-title text-lg sm:text-xl mb-4 sm:mb-6">{{ t('media.cast') }}</h2>
+          <h2 class="text-lg sm:text-xl font-bold mb-4 sm:mb-6 text-[#e5e5e5] hover:text-white transition-colors">{{ t('media.cast') }}</h2>
           <div class="flex gap-3 sm:gap-5 overflow-x-auto pb-4 sm:pb-6 hide-scrollbar">
             <router-link
               v-for="member in cast"
               :key="member.id"
               :to="`/actor/${member.id}`"
-              class="flex-shrink-0 w-24 sm:w-30 text-center group cursor-pointer"
+              class="flex-shrink-0 w-24 sm:w-28 md:w-32 text-center group cursor-pointer"
             >
-              <div class="aspect-square rounded-xl sm:rounded-2xl overflow-hidden bg-zinc-800 mb-2 sm:mb-3 mx-auto w-24 sm:w-30 shadow-lg shadow-black/30 border border-zinc-700/50 group-hover:border-purple-500/50 transition-all duration-200">
+              <div class="aspect-square rounded-xl sm:rounded-2xl overflow-hidden bg-zinc-800 mb-2 sm:mb-3 mx-auto w-24 sm:w-28 md:w-32 shadow-lg shadow-black/30 border border-zinc-700/50 group-hover:border-purple-500/50 transition-all duration-200">
                 <img
                   v-if="member.profilePath"
                   :src="getImageUrl(member.profilePath, 'w200')"
@@ -752,7 +754,7 @@ const goBack = () => {
 
         <!-- Collection Section (Movies only) -->
         <section v-if="collectionDetails && otherCollectionParts.length > 0" class="mt-8 sm:mt-12 md:mt-16 max-w-6xl mx-auto">
-          <h2 class="row-title text-lg sm:text-xl mb-4 sm:mb-6">{{ collectionDetails.name }}</h2>
+          <h2 class="text-lg sm:text-xl font-bold mb-4 sm:mb-6 text-[#e5e5e5] hover:text-white transition-colors">{{ collectionDetails.name }}</h2>
           <div class="flex gap-3 sm:gap-4 overflow-x-auto pb-4 hide-scrollbar">
             <router-link
               v-for="part in otherCollectionParts"
@@ -782,7 +784,7 @@ const goBack = () => {
 
         <!-- Recommendations Section -->
         <section v-if="recommendations.length > 0" class="mt-8 sm:mt-12 md:mt-16 max-w-6xl mx-auto">
-          <h2 class="row-title text-lg sm:text-xl mb-4 sm:mb-6">{{ t('media.moreLikeThis') }}</h2>
+          <h2 class="text-lg sm:text-xl font-bold mb-4 sm:mb-6 text-[#e5e5e5] hover:text-white transition-colors">{{ t('media.moreLikeThis') }}</h2>
           <div class="flex gap-3 sm:gap-4 overflow-x-auto pb-4 hide-scrollbar">
             <router-link
               v-for="item in recommendations"
@@ -855,7 +857,7 @@ const goBack = () => {
   </div>
 </template>
 
-<style scoped>
+<style>
 /* Base action button styles */
 .action-btn {
   position: relative;
@@ -916,7 +918,7 @@ const goBack = () => {
   transform: translateY(0) scale(0.98);
 }
 
-.action-btn-play :deep(.p-button-icon) {
+.action-btn-play .p-button-icon {
   font-size: 1.125rem;
 }
 
@@ -943,7 +945,7 @@ const goBack = () => {
   transform: translateY(0);
 }
 
-.action-btn-trailer :deep(.pi-youtube) {
+.action-btn-trailer .pi-youtube {
   color: #ef4444 !important;
   font-size: 1.125rem;
   filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.4));
@@ -968,7 +970,7 @@ const goBack = () => {
   transform: translateY(0);
 }
 
-.action-btn-library :deep(.p-button-icon) {
+.action-btn-library .p-button-icon {
   color: rgba(255, 255, 255, 0.9);
   font-size: 1rem;
 }
@@ -988,7 +990,7 @@ const goBack = () => {
   box-shadow: 0 6px 16px rgba(34, 197, 94, 0.25) !important;
 }
 
-.action-btn-library-active :deep(.p-button-icon) {
+.action-btn-library-active .p-button-icon {
   color: #4ade80 !important;
 }
 
@@ -1015,7 +1017,7 @@ const goBack = () => {
   transform: translateY(0);
 }
 
-.action-btn-torrent :deep(.p-button-icon) {
+.action-btn-torrent .p-button-icon {
   font-size: 1rem;
 }
 

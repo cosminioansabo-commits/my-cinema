@@ -17,6 +17,8 @@ const props = withDefaults(defineProps<{
 const { trackRef, canScrollLeft, canScrollRight, cardStyle, scroll } = useCarouselScroll({
   cardWidth: props.cardWidth,
 })
+// trackRef is used in the template via ref="trackRef"
+void trackRef
 </script>
 
 <template>
@@ -26,7 +28,7 @@ const { trackRef, canScrollLeft, canScrollRight, cardStyle, scroll } = useCarous
       <component
         :is="seeAllLink ? RouterLink : 'h2'"
         :to="seeAllLink"
-        class="row-title text-base sm:text-lg md:text-xl group flex items-center gap-2 sm:gap-3"
+        class="text-base sm:text-lg md:text-xl font-bold mb-2 text-[#e5e5e5] hover:text-white transition-colors group flex items-center gap-2 sm:gap-3"
       >
         {{ title }}
         <span v-if="seeAllLink" class="text-xs sm:text-sm font-normal text-[#e50914] opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">

@@ -1023,7 +1023,7 @@ defineExpose({
     <Transition name="seek-fade">
       <div
         v-if="seekIndicator.show"
-        class="absolute top-1/2 -translate-y-1/2 pointer-events-none"
+        class="absolute inset-y-0 flex items-center pointer-events-none"
         :class="seekIndicator.side === 'left' ? 'left-16' : 'right-16'"
       >
         <div class="flex flex-col items-center gap-2">
@@ -1039,7 +1039,7 @@ defineExpose({
     <Transition name="seek-fade">
       <div
         v-if="showSpeedIndicator"
-        class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-30"
+        class="absolute inset-0 flex items-center justify-center pointer-events-none z-30"
       >
         <div class="bg-black/70 rounded-lg px-6 py-3">
           <span class="text-white text-2xl font-bold">{{ playbackSpeed }}x</span>
@@ -1051,7 +1051,7 @@ defineExpose({
     <Transition name="seek-fade">
       <div
         v-if="volumeIndicator.show"
-        class="absolute top-1/2 right-8 -translate-y-1/2 pointer-events-none z-30"
+        class="absolute inset-y-0 right-8 flex items-center pointer-events-none z-30"
       >
         <div class="bg-black/70 rounded-lg px-4 py-3 flex flex-col items-center gap-2">
           <i class="pi pi-volume-up text-white text-xl"></i>
@@ -1145,7 +1145,7 @@ defineExpose({
         <!-- Progress Bar with Buffering Indicator -->
         <div class="mb-3 relative">
           <!-- Buffered Progress (gray background bar) -->
-          <div class="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-1 bg-white/20 rounded">
+          <div class="absolute inset-y-0 my-auto left-0 right-0 h-1 bg-white/20 rounded">
             <div
               class="h-full bg-white/40 rounded transition-all duration-300"
               :style="{ width: `${bufferedProgress}%` }"

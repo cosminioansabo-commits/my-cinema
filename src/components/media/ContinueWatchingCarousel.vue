@@ -26,6 +26,8 @@ const emit = defineEmits<{
 const { trackRef, canScrollLeft, canScrollRight, cardStyle, scroll } = useCarouselScroll({
   cardWidth: props.cardWidth,
 })
+// trackRef is used in the template via ref="trackRef"
+void trackRef
 
 // Playback modal state
 const showPlayback = ref(false)
@@ -68,7 +70,7 @@ const handlePlaybackVisibilityChange = (visible: boolean) => {
   <section v-if="items.length > 0 || loading" class="carousel-section">
     <!-- Header -->
     <div class="flex items-center justify-between">
-      <h2 class="row-title text-base sm:text-lg md:text-xl flex items-center gap-2 sm:gap-3">
+      <h2 class="text-base sm:text-lg md:text-xl font-bold mb-2 text-[#e5e5e5] hover:text-white transition-colors flex items-center gap-2 sm:gap-3">
         <i class="pi pi-play-circle text-[#e50914]"></i>
         {{ title }}
       </h2>

@@ -46,7 +46,8 @@
       "Bash(expect:*)",
       "Bash(chmod:*)",
       "Bash(ssh:*)",
-      "Bash(gh secret list:*)"
+      "Bash(gh secret list:*)",
+      "WebFetch(domain:github.com)"
     ],
     "deny": [],
     "ask": []

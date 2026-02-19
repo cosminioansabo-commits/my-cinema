@@ -240,6 +240,10 @@ export const CinemaPreset = definePreset(Aura, {
       },
     },
     toast: {
+      root: {
+        maxWidth: 'calc(100vw - 2rem)',
+        width: 'auto',
+      },
       colorScheme: {
         dark: {
           root: {

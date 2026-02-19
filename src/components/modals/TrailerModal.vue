@@ -53,7 +53,7 @@ const youtubeUrl = computed(() => {
 .trailer-dialog.p-dialog {
   width: 100vw !important;
   max-width: 100vw !important;
-  max-height: 100vh !important;
+  max-height: 100dvh !important;
   margin: 0 !important;
   border: none !important;
   border-radius: 0 !important;
@@ -87,8 +87,8 @@ const youtubeUrl = computed(() => {
 @media (max-width: 639px) and (orientation: landscape) {
   .trailer-dialog.p-dialog {
     width: 100vw !important;
-    height: 100vh !important;
-    max-height: 100vh !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
   }
 
   .trailer-dialog .p-dialog-header {
@@ -110,7 +110,7 @@ const youtubeUrl = computed(() => {
   }
 
   .trailer-dialog .p-dialog-content {
-    height: 100vh !important;
+    height: 100dvh !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -119,7 +119,7 @@ const youtubeUrl = computed(() => {
   .trailer-dialog .p-dialog-content > div {
     width: 100% !important;
     height: 100% !important;
-    max-height: 100vh !important;
+    max-height: 100dvh !important;
   }
 
   .trailer-dialog .p-dialog-content iframe {

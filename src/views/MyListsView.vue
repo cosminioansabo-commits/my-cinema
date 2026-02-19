@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { profileLibraryService, type ProfileLibraryEntry } from '@/services/libraryService'
 import { getImageUrl, getPosterPath } from '@/services/tmdbService'
 import { useAuthStore } from '@/stores/authStore'
 import { useLanguage } from '@/composables/useLanguage'
 import ProgressSpinner from 'primevue/progressspinner'
-import Dropdown from 'primevue/dropdown'
+import Select from 'primevue/select'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -124,6 +124,11 @@ const goToMedia = (entry: ProfileLibraryEntry) => {
 onMounted(() => {
   fetchLibrary()
 })
+
+// Re-fetch library when the active profile changes
+watch(profileId, () => {
+  fetchLibrary()
+})
 </script>
 
 <template>
@@ -146,10 +151,13 @@ onMounted(() => {
     <!-- Filter Tabs & Sort -->
     <div class="flex flex-col sm:flex-row sm:items-center gap-4 mb-8 sm:mb-12">
       <!-- Filter Tabs (Stats Bar) -->
-      <div class="grid grid-cols-3 gap-2.5 sm:gap-4 flex-1 max-w-2xl">
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-4 flex-1 max-w-2xl">
         <button
+          v-ripple
+          role="tab"
+          :aria-selected="activeFilter === 'all'"
           @click="activeFilter = 'all'"
-          class="text-left rounded-xl sm:rounded-2xl p-3 sm:p-5 border transition-all duration-200"
+          class="text-left rounded-xl sm:rounded-2xl p-3 sm:p-5 border transition-all duration-200 relative overflow-hidden"
           :class="activeFilter === 'all'
             ? 'bg-amber-500/20 border-amber-500/50 ring-2 ring-amber-500/30'
             : 'bg-zinc-900/60 backdrop-blur-sm border-zinc-800/50 hover:border-zinc-700'"
@@ -161,8 +169,11 @@ onMounted(() => {
           <p class="text-xl sm:text-3xl font-bold text-white">{{ totalLibraryItems }}</p>
         </button>
         <button
+          v-ripple
+          role="tab"
+          :aria-selected="activeFilter === 'movies'"
           @click="activeFilter = 'movies'"
-          class="text-left rounded-xl sm:rounded-2xl p-3 sm:p-5 border transition-all duration-200"
+          class="text-left rounded-xl sm:rounded-2xl p-3 sm:p-5 border transition-all duration-200 relative overflow-hidden"
           :class="activeFilter === 'movies'
             ? 'bg-blue-500/20 border-blue-500/50 ring-2 ring-blue-500/30'
             : 'bg-zinc-900/60 backdrop-blur-sm border-zinc-800/50 hover:border-zinc-700'"
@@ -174,8 +185,11 @@ onMounted(() => {
           <p class="text-xl sm:text-3xl font-bold text-white">{{ libraryMovies.length }}</p>
         </button>
         <button
+          v-ripple
+          role="tab"
+          :aria-selected="activeFilter === 'tvShows'"
           @click="activeFilter = 'tvShows'"
-          class="text-left rounded-xl sm:rounded-2xl p-3 sm:p-5 border transition-all duration-200"
+          class="text-left rounded-xl sm:rounded-2xl p-3 sm:p-5 border transition-all duration-200 relative overflow-hidden"
           :class="activeFilter === 'tvShows'
             ? 'bg-purple-500/20 border-purple-500/50 ring-2 ring-purple-500/30'
             : 'bg-zinc-900/60 backdrop-blur-sm border-zinc-800/50 hover:border-zinc-700'"
@@ -191,7 +205,7 @@ onMounted(() => {
       <!-- Sort Dropdown -->
       <div class="flex items-center gap-2 sm:self-end">
         <i class="pi pi-sort-alt text-gray-400 text-sm"></i>
-        <Dropdown
+        <Select
           v-model="sortBy"
           :options="sortOptions"
           optionLabel="label"
@@ -203,7 +217,7 @@ onMounted(() => {
 
     <!-- Loading state -->
     <div v-if="isLoadingLibrary" class="flex items-center justify-center py-16 sm:py-24">
-      <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="4" />
+      <ProgressSpinner class="!w-[50px] !h-[50px]" strokeWidth="4" />
     </div>
 
     <!-- Library content -->

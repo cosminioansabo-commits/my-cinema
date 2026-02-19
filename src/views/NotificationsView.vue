@@ -121,12 +121,14 @@ const handleDelete = (id: string, event: Event) => {
           </div>
 
           <!-- Delete button -->
-          <button
-            class="absolute top-4 right-10 w-8 h-8 flex items-center justify-center rounded-lg opacity-0 group-hover:opacity-100 hover:bg-zinc-700 transition-all"
+          <Button
+            icon="pi pi-times"
+            severity="secondary"
+            text
+            rounded
+            class="!absolute top-4 right-10 !w-8 !h-8 !text-gray-400 opacity-0 group-hover:opacity-100 hover:!bg-zinc-700"
             @click="handleDelete(notification.id, $event)"
-          >
-            <i class="pi pi-times text-gray-400 text-sm"></i>
-          </button>
+          />
         </div>
       </div>
     </div>

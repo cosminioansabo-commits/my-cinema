@@ -14,7 +14,7 @@ export interface ShortcutGroup {
 
 // Global shortcuts - work everywhere except when typing in inputs
 export const GLOBAL_SHORTCUTS: Record<string, ShortcutAction> = {
-  '/': { action: 'focusSearch', description: 'Focus search', key: '/' },
+  '/': { action: 'focusSearch', description: 'Open search', key: '/ / \u2318K' },
   'Escape': { action: 'closeModal', description: 'Close modal/menu', key: 'Esc' },
   '?': { action: 'showHelp', description: 'Show keyboard shortcuts', key: '?' },
 }

@@ -1,6 +1,7 @@
 import axios from 'axios'
 import type { TorrentProvider, TorrentResult, SearchQuery } from '../../types/index.js'
 import { config } from '../../config.js'
+import { logger } from '../../utils/logger.js'
 
 // Sonarr API types
 interface SonarrRelease {
@@ -62,7 +63,7 @@ export const sonarrProvider: TorrentProvider = {
     }
 
     if (!config.sonarr.enabled) {
-      console.log('Sonarr: Not configured (missing API key)')
+      logger.debug('Not configured (missing API key)', 'Sonarr')
       return []
     }
 
@@ -71,7 +72,7 @@ export const sonarrProvider: TorrentProvider = {
       const headers = { 'X-Api-Key': config.sonarr.apiKey }
 
       // First, search for the series in Sonarr's database or lookup
-      console.log(`Sonarr: Searching for "${query.title}"`)
+      logger.debug(`Searching for "${query.title}"`, 'Sonarr')
 
       // Try to find the series by searching
       const lookupResponse = await axios.get(`${apiBase}/series/lookup`, {
@@ -83,7 +84,7 @@ export const sonarrProvider: TorrentProvider = {
       const series = lookupResponse.data as SonarrSeries[]
 
       if (!series.length) {
-        console.log(`Sonarr: No series found for "${query.title}"`)
+        logger.debug(`No series found for "${query.title}"`, 'Sonarr')
         return []
       }
 
@@ -96,7 +97,7 @@ export const sonarrProvider: TorrentProvider = {
         }
       }
 
-      console.log(`Sonarr: Found series "${show.title}" (${show.year}), TVDB: ${show.tvdbId}`)
+      logger.debug(`Found series "${show.title}" (${show.year}), TVDB: ${show.tvdbId}`, 'Sonarr')
 
       // Search for releases using the series' ID
       const releasesResponse = await axios.get(`${apiBase}/release`, {
@@ -105,7 +106,7 @@ export const sonarrProvider: TorrentProvider = {
         timeout: 30000
       }).catch(async () => {
         // If series isn't in Sonarr, try manual search
-        console.log('Sonarr: Series not in library, trying manual search...')
+        logger.debug('Series not in library, trying manual search...', 'Sonarr')
         return axios.get(`${apiBase}/indexer/search`, {
           params: {
             type: 'series',
@@ -119,7 +120,7 @@ export const sonarrProvider: TorrentProvider = {
       const releases = releasesResponse.data as SonarrRelease[]
 
       if (!releases.length) {
-        console.log('Sonarr: No releases found')
+        logger.debug('No releases found', 'Sonarr')
         return []
       }
 
@@ -163,7 +164,7 @@ export const sonarrProvider: TorrentProvider = {
       // Sort by seeds
       results.sort((a, b) => b.seeds - a.seeds)
 
-      console.log(`Sonarr: Found ${results.length} torrent releases`)
+      logger.debug(`Found ${results.length} torrent releases`, 'Sonarr')
       return results.slice(0, 30)
     } catch (error) {
       if (axios.isAxiosError(error)) {

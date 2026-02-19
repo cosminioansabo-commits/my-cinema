@@ -36,8 +36,6 @@ const hasError = ref(false)
 const errorMessage = ref('')
 const playbackInfo = ref<PlaybackInfo | null>(null)
 const resumePosition = ref(0)
-const isOfflineMode = computed(() => !!props.offlineItem)
-
 // Next episode composable
 const {
   nextEpisode,
@@ -97,6 +95,7 @@ const fetchPlaybackInfo = async () => {
 
       // Create playback info from offline item
       playbackInfo.value = {
+        found: true,
         streamUrl: offlineVideoUrl,
         title: props.offlineItem.episodeTitle
           ? `${props.offlineItem.title} - S${props.offlineItem.seasonNumber}E${props.offlineItem.episodeNumber} - ${props.offlineItem.episodeTitle}`
@@ -360,8 +359,8 @@ const displayTitle = computed(() => {
 .playback-dialog.p-dialog {
   width: 100vw !important;
   max-width: 100vw !important;
-  height: 100vh !important;
-  max-height: 100vh !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
   margin: 0 !important;
   border: none !important;
   border-radius: 0 !important;
@@ -375,7 +374,7 @@ const displayTitle = computed(() => {
   background-color: black !important;
   padding: 0 !important;
   border: none !important;
-  height: 100vh !important;
+  height: 100dvh !important;
   overflow: hidden !important;
 }
 

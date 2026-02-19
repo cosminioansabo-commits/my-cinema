@@ -2,6 +2,7 @@ import { radarrService } from './radarrService.js'
 import { sonarrService } from './sonarrService.js'
 import { jellyfinService } from './jellyfinService.js'
 import { config } from '../config.js'
+import { logger } from '../utils/logger.js'
 
 export interface SubtitleTrack {
   id: number
@@ -52,12 +53,12 @@ class MediaService {
     // Get movie from Radarr
     const movie = await radarrService.getMovieByTmdbId(tmdbId)
     if (!movie) {
-      console.log(`MediaService: Movie with TMDB ID ${tmdbId} not found in Radarr`)
+      logger.debug(`Movie with TMDB ID ${tmdbId} not found in Radarr`, 'MediaService')
       return null
     }
 
     if (!movie.hasFile || !movie.movieFile?.path) {
-      console.log(`MediaService: Movie "${movie.title}" has no file`)
+      logger.debug(`Movie "${movie.title}" has no file`, 'MediaService')
       return null
     }
 
@@ -73,22 +74,22 @@ class MediaService {
     // Find movie in Jellyfin
     const jellyfinItem = await jellyfinService.findMovieByPath(filePath)
     if (!jellyfinItem) {
-      console.log(`MediaService: Movie "${movie.title}" not found in Jellyfin library`)
+      logger.debug(`Movie "${movie.title}" not found in Jellyfin library`, 'MediaService')
       return null
     }
 
     // Get playback info from Jellyfin
     const playbackInfo = await jellyfinService.getPlaybackInfo(jellyfinItem.Id)
     if (!playbackInfo) {
-      console.log(`MediaService: Could not get playback info from Jellyfin for "${movie.title}"`)
+      logger.debug(`Could not get playback info from Jellyfin for "${movie.title}"`, 'MediaService')
       return null
     }
 
-    console.log(`MediaService: ${movie.title} (via Jellyfin)`)
-    console.log(`  Jellyfin ID: ${playbackInfo.jellyfinItemId}`)
-    console.log(`  Stream URL: ${playbackInfo.hlsUrl.substring(0, 80)}...`)
-    console.log(`  Audio tracks: ${playbackInfo.audioTracks.length}`)
-    console.log(`  Subtitles: ${playbackInfo.subtitles.length}`)
+    logger.debug(`${movie.title} (via Jellyfin)`, 'MediaService')
+    logger.debug(`  Jellyfin ID: ${playbackInfo.jellyfinItemId}`, 'MediaService')
+    logger.debug(`  Stream URL: ${playbackInfo.hlsUrl.substring(0, 80)}...`, 'MediaService')
+    logger.debug(`  Audio tracks: ${playbackInfo.audioTracks.length}`, 'MediaService')
+    logger.debug(`  Subtitles: ${playbackInfo.subtitles.length}`, 'MediaService')
 
     return {
       found: true,
@@ -113,13 +114,13 @@ class MediaService {
     // Sonarr uses TVDB IDs, so we need to look up via TMDB
     const lookup = await sonarrService.lookupSeriesByTmdbId(tmdbId)
     if (!lookup || !lookup.tvdbId) {
-      console.log(`MediaService: Could not lookup series with TMDB ID ${tmdbId}`)
+      logger.debug(`Could not lookup series with TMDB ID ${tmdbId}`, 'MediaService')
       return null
     }
 
     const series = await sonarrService.getSeriesByTvdbId(lookup.tvdbId)
     if (!series) {
-      console.log(`MediaService: Series with TVDB ID ${lookup.tvdbId} not found in Sonarr`)
+      logger.debug(`Series with TVDB ID ${lookup.tvdbId} not found in Sonarr`, 'MediaService')
       return null
     }
 
@@ -130,19 +131,19 @@ class MediaService {
     )
 
     if (!targetEpisode) {
-      console.log(`MediaService: Episode S${season}E${episode} not found`)
+      logger.debug(`Episode S${season}E${episode} not found`, 'MediaService')
       return null
     }
 
     if (!targetEpisode.hasFile || !targetEpisode.episodeFileId) {
-      console.log(`MediaService: Episode S${season}E${episode} has no file`)
+      logger.debug(`Episode S${season}E${episode} has no file`, 'MediaService')
       return null
     }
 
     // Get episode file info from Sonarr
     const episodeFileInfo = await this.getEpisodeFileInfo(targetEpisode.episodeFileId)
     if (!episodeFileInfo) {
-      console.log(`MediaService: Could not get episode file info`)
+      logger.debug(`Could not get episode file info`, 'MediaService')
       return null
     }
 
@@ -159,22 +160,22 @@ class MediaService {
     // Find episode in Jellyfin
     const jellyfinItem = await jellyfinService.findEpisodeByPath(filePath)
     if (!jellyfinItem) {
-      console.log(`MediaService: Episode "${title}" not found in Jellyfin library`)
+      logger.debug(`Episode "${title}" not found in Jellyfin library`, 'MediaService')
       return null
     }
 
     // Get playback info from Jellyfin
     const playbackInfo = await jellyfinService.getPlaybackInfo(jellyfinItem.Id)
     if (!playbackInfo) {
-      console.log(`MediaService: Could not get playback info from Jellyfin for "${title}"`)
+      logger.debug(`Could not get playback info from Jellyfin for "${title}"`, 'MediaService')
       return null
     }
 
-    console.log(`MediaService: ${title} (via Jellyfin)`)
-    console.log(`  Jellyfin ID: ${playbackInfo.jellyfinItemId}`)
-    console.log(`  Stream URL: ${playbackInfo.hlsUrl.substring(0, 80)}...`)
-    console.log(`  Audio tracks: ${playbackInfo.audioTracks.length}`)
-    console.log(`  Subtitles: ${playbackInfo.subtitles.length}`)
+    logger.debug(`${title} (via Jellyfin)`, 'MediaService')
+    logger.debug(`  Jellyfin ID: ${playbackInfo.jellyfinItemId}`, 'MediaService')
+    logger.debug(`  Stream URL: ${playbackInfo.hlsUrl.substring(0, 80)}...`, 'MediaService')
+    logger.debug(`  Audio tracks: ${playbackInfo.audioTracks.length}`, 'MediaService')
+    logger.debug(`  Subtitles: ${playbackInfo.subtitles.length}`, 'MediaService')
 
     return {
       found: true,

@@ -108,7 +108,7 @@ const onImageLoad = () => {
   <!-- Default variant for grids -->
   <div v-else class="media-card-wrapper">
     <RouterLink :to="`/media/${media.mediaType}/${media.id}`">
-      <Card class="hover:scale-110 transition-transform duration-300 group">
+      <Card class="hover:scale-105 transition-transform duration-300 group">
         <template #header>
           <div class="w-full h-full overflow-hidden rounded-t-2xl bg-zinc-800">
             <!-- Skeleton placeholder -->
@@ -118,7 +118,7 @@ const onImageLoad = () => {
                 :srcset="posterSrcset"
                 sizes="(max-width: 640px) 150px, (max-width: 1024px) 200px, 250px"
                 :alt="media.title"
-                class="w-full h-full object-cover rounded-t-2xl group-hover:scale-110 transition-transform duration-600"
+                class="w-full h-full object-cover rounded-t-2xl group-hover:scale-105 transition-transform duration-600"
                 :class="imageLoaded ? 'opacity-100' : 'opacity-0'"
                 loading="lazy"
                 @load="onImageLoad"
@@ -127,13 +127,13 @@ const onImageLoad = () => {
           <div class="absolute top-1 w-full flex justify-between px-2 py-1">
             <!-- Rating badge -->
             <div
-                class="bg-black/40 border border-white/20 rounded-md sm:rounded-lg px-1 flex items-center gap-1 sm:gap-1.5 backdrop-blur-sm">
+                class="bg-black/60 backdrop-blur-md rounded-md sm:rounded-lg px-1.5 py-0.5 flex items-center gap-1 sm:gap-1.5 ring-1 ring-white/10">
               <i class="pi pi-star-fill text-yellow-500 text-xs"></i>
-              <span class="text-white text-xs ">{{ rating }}</span>
+              <span class="text-white text-xs">{{ rating }}</span>
             </div>
             <!-- Media type badge -->
             <div
-                class="border border-white/20 bg-black/40 backdrop-blur-sm rounded-md sm:rounded-lg px-1 ">
+                class="bg-black/60 backdrop-blur-md rounded-md sm:rounded-lg px-1.5 py-0.5 ring-1 ring-white/10">
               <span class="text-xs text-white uppercase">{{ mediaTypeLabel }}</span>
             </div>
           </div>

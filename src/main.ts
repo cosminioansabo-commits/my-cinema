@@ -5,6 +5,7 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import PrimeVue from 'primevue/config'
 import Tooltip from 'primevue/tooltip'
+import Ripple from 'primevue/ripple'
 import ToastService from 'primevue/toastservice'
 
 import { CinemaPreset } from './theme/preset'
@@ -18,6 +19,7 @@ app.use(createPinia())
 app.use(router)
 app.use(i18n)
 app.use(PrimeVue, {
+  ripple: true,
   theme: {
     preset: CinemaPreset,
     options: {
@@ -29,5 +31,6 @@ app.use(PrimeVue, {
 app.use(ToastService)
 
 app.directive('tooltip', Tooltip)
+app.directive('ripple', Ripple)
 
 app.mount('#app')

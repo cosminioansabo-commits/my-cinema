@@ -4,6 +4,7 @@ import { useFiltersStore } from '@/stores/filtersStore'
 import { useLanguage } from '@/composables/useLanguage'
 import { getImageUrl } from '@/services/tmdbService'
 import Select from 'primevue/select'
+import SelectButton from 'primevue/selectbutton'
 import MultiSelect from 'primevue/multiselect'
 import Slider from 'primevue/slider'
 import Button from 'primevue/button'
@@ -106,32 +107,26 @@ const ratingRange = computed({
     </div>
 
     <!-- Media Type -->
-    <div class="filter-section">
-      <label class="filter-label">
+    <div class="flex flex-col gap-3">
+      <label class="flex items-center gap-2 text-sm font-semibold text-zinc-400 uppercase tracking-wide">
         <i class="pi pi-video text-xs"></i>
         {{ t('browse.type') }}
       </label>
-      <div class="grid grid-cols-3 gap-2">
-        <button
-          v-for="option in mediaTypeOptions"
-          :key="option.value"
-          class="py-2.5 px-4 rounded-xl text-sm font-medium transition-all duration-200"
-          :class="[
-            filtersStore.filters.mediaType === option.value
-              ? 'bg-[#e50914] text-white shadow-lg shadow-[#e50914]/25'
-              : 'bg-zinc-800 text-gray-300 hover:bg-zinc-700 hover:text-white border border-zinc-700/50'
-          ]"
-          @click="filtersStore.setMediaType(option.value as 'all' | 'movie' | 'tv')"
-        >
-          {{ option.label }}
-        </button>
-      </div>
+      <SelectButton
+        :modelValue="filtersStore.filters.mediaType"
+        :options="mediaTypeOptions"
+        optionLabel="label"
+        optionValue="value"
+        :allowEmpty="false"
+        class="w-full"
+        @update:modelValue="filtersStore.setMediaType($event as 'all' | 'movie' | 'tv')"
+      />
     </div>
 
     <!-- Anime Toggle -->
-    <div class="filter-section">
+    <div class="flex flex-col gap-3">
       <div class="flex items-center justify-between">
-        <label class="filter-label mb-0 flex items-center gap-2">
+        <label class="flex items-center gap-2 text-sm font-semibold text-zinc-400 uppercase tracking-wide mb-0">
           <span class="anime-icon" :class="{ 'anime-icon-active': filtersStore.filters.animeOnly }">アニメ</span>
           {{ t('browse.animeOnly') }}
         </label>
@@ -148,8 +143,8 @@ const ratingRange = computed({
     </div>
 
     <!-- Genres -->
-    <div class="filter-section">
-      <label class="filter-label">
+    <div class="flex flex-col gap-3">
+      <label class="flex items-center gap-2 text-sm font-semibold text-zinc-400 uppercase tracking-wide">
         <i class="pi pi-tag text-xs"></i>
         {{ t('browse.genres') }}
       </label>
@@ -166,8 +161,8 @@ const ratingRange = computed({
     </div>
 
     <!-- Streaming Platforms -->
-    <div class="filter-section">
-      <label class="filter-label">
+    <div class="flex flex-col gap-3">
+      <label class="flex items-center gap-2 text-sm font-semibold text-zinc-400 uppercase tracking-wide">
         <i class="pi pi-desktop text-xs"></i>
         {{ t('browse.streamingOn') }}
       </label>
@@ -191,9 +186,9 @@ const ratingRange = computed({
     </div>
 
     <!-- Year Range -->
-    <div class="filter-section">
+    <div class="flex flex-col gap-3">
       <div class="flex items-center justify-between mb-3">
-        <label class="filter-label mb-0">
+        <label class="flex items-center gap-2 text-sm font-semibold text-zinc-400 uppercase tracking-wide mb-0">
           <i class="pi pi-calendar text-xs"></i>
           {{ t('browse.year') }}
         </label>
@@ -213,9 +208,9 @@ const ratingRange = computed({
     </div>
 
     <!-- Rating Range -->
-    <div class="filter-section">
+    <div class="flex flex-col gap-3">
       <div class="flex items-center justify-between mb-3">
-        <label class="filter-label mb-0">
+        <label class="flex items-center gap-2 text-sm font-semibold text-zinc-400 uppercase tracking-wide mb-0">
           <i class="pi pi-star text-xs"></i>
           {{ t('browse.rating') }}
         </label>
@@ -237,8 +232,8 @@ const ratingRange = computed({
     </div>
 
     <!-- Sort By -->
-    <div class="filter-section">
-      <label class="filter-label">
+    <div class="flex flex-col gap-3">
+      <label class="flex items-center gap-2 text-sm font-semibold text-zinc-400 uppercase tracking-wide">
         <i class="pi pi-sort-alt text-xs"></i>
         {{ t('browse.sortBy') }}
       </label>

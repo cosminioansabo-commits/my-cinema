@@ -8,6 +8,7 @@ import {
   type PersonDetails,
   type PersonCombinedCredits,
 } from '@/services/tmdbService'
+import Button from 'primevue/button'
 import Skeleton from 'primevue/skeleton'
 
 const route = useRoute()
@@ -151,19 +152,21 @@ const profileUrl = computed(() => {
     <!-- Content -->
     <div v-else-if="person">
       <!-- Back button -->
-      <button
-        class="mb-4 sm:mb-6 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-zinc-800 hover:bg-zinc-700 flex items-center justify-center transition-colors"
+      <Button
+        icon="pi pi-arrow-left"
+        severity="secondary"
+        text
+        rounded
+        class="!mb-4 sm:!mb-6 !w-9 !h-9 sm:!w-10 sm:!h-10 !bg-zinc-800 hover:!bg-zinc-700 !text-white"
         @click="goBack"
-      >
-        <i class="pi pi-arrow-left text-sm sm:text-base"></i>
-      </button>
+      />
 
       <div class="max-w-6xl mx-auto">
         <!-- Header -->
         <div class="flex flex-col md:flex-row gap-6 md:gap-10 mb-8 sm:mb-12">
           <!-- Profile Image -->
           <div class="flex-shrink-0 mx-auto md:mx-0">
-            <div class="w-48 sm:w-64 aspect-2/3 rounded-2xl overflow-hidden bg-zinc-800 shadow-2xl">
+            <div class="w-48 sm:w-64 aspect-2/3 rounded-2xl overflow-hidden bg-zinc-800 shadow-2xl shadow-purple-500/10 ring-2 ring-white/10">
               <img
                 v-if="profileUrl"
                 :src="profileUrl"
@@ -222,7 +225,10 @@ const profileUrl = computed(() => {
 
         <!-- Known For Section -->
         <section v-if="knownFor.length > 0" class="mb-8 sm:mb-12">
-          <h2 class="text-lg sm:text-2xl font-bold text-white mb-4 sm:mb-6">Known For</h2>
+          <div class="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
+            <div class="w-1 h-6 sm:h-8 bg-purple-500 rounded-full"></div>
+            <h2 class="text-lg sm:text-2xl font-bold text-white">Known For</h2>
+          </div>
           <div class="flex gap-3 sm:gap-4 overflow-x-auto pb-4 hide-scrollbar">
             <div
               v-for="item in knownFor"
@@ -248,7 +254,10 @@ const profileUrl = computed(() => {
 
         <!-- Filmography Section -->
         <section v-if="filmography.length > 0">
-          <h2 class="text-lg sm:text-2xl font-bold text-white mb-4 sm:mb-6">Filmography</h2>
+          <div class="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
+            <div class="w-1 h-6 sm:h-8 bg-purple-500 rounded-full"></div>
+            <h2 class="text-lg sm:text-2xl font-bold text-white">Filmography</h2>
+          </div>
           <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3 sm:gap-4">
             <div
               v-for="credit in filmography"

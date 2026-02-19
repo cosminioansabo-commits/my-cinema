@@ -2,6 +2,7 @@ import { Router, Response } from 'express'
 import { profileLibraryService } from '../services/profileLibraryService.js'
 import { profileService } from '../services/profileService.js'
 import { AuthenticatedRequest } from '../middleware/auth.js'
+import { logger } from '../utils/logger.js'
 
 const router = Router()
 
@@ -155,7 +156,7 @@ router.patch('/:profileId/library/:mediaType/:tmdbId/poster', async (req: Authen
  */
 router.post('/admin/repair-library', async (req: AuthenticatedRequest, res: Response) => {
   try {
-    console.log('Starting library data repair...')
+    logger.debug('Starting library data repair...', 'ProfileLibrary')
     const result = await profileLibraryService.repairMigrationData()
     res.json({
       success: true,

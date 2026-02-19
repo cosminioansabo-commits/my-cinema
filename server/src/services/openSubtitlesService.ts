@@ -1,4 +1,5 @@
 import axios, { AxiosInstance } from 'axios'
+import { logger } from '../utils/logger.js'
 
 const OPENSUBTITLES_API_URL = 'https://api.opensubtitles.com/api/v1'
 
@@ -76,7 +77,7 @@ class OpenSubtitlesService {
       this.token = response.data.token
       // Token is valid for 24 hours, refresh after 23
       this.tokenExpiry = Date.now() + 23 * 60 * 60 * 1000
-      console.log('OpenSubtitles: Logged in successfully')
+      logger.debug('Logged in successfully', 'OpenSubtitles')
       return true
     } catch (error: any) {
       console.error('OpenSubtitles login error:', error.response?.data || error.message)
@@ -97,7 +98,7 @@ class OpenSubtitlesService {
     episodeNumber?: number
   }): Promise<SubtitleSearchResult[]> {
     if (!this.apiKey) {
-      console.log('OpenSubtitles: API key not configured')
+      logger.debug('API key not configured', 'OpenSubtitles')
       return []
     }
 
@@ -123,7 +124,7 @@ class OpenSubtitlesService {
         searchParams.type = 'movie'
       }
 
-      console.log('OpenSubtitles: Searching with params:', searchParams)
+      logger.debug(`Searching with params: ${JSON.stringify(searchParams)}`, 'OpenSubtitles')
 
       const response = await this.client.get('/subtitles', { params: searchParams })
       const results = response.data.data || []
@@ -162,7 +163,7 @@ class OpenSubtitlesService {
     }
 
     try {
-      console.log('OpenSubtitles: Requesting download link for file:', fileId)
+      logger.debug(`Requesting download link for file: ${fileId}`, 'OpenSubtitles')
       const response = await this.client.post(
         '/download',
         { file_id: fileId },
@@ -173,7 +174,7 @@ class OpenSubtitlesService {
         }
       )
 
-      console.log('OpenSubtitles: Download link response:', response.data)
+      logger.debug(`Download link response: ${JSON.stringify(response.data)}`, 'OpenSubtitles')
       return response.data.link || null
     } catch (error: any) {
       console.error('OpenSubtitles download link error:', error.response?.status, error.response?.data || error.message)

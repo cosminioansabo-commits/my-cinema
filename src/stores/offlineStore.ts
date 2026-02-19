@@ -132,7 +132,7 @@ export const useOfflineStore = defineStore('offline', () => {
     return offlineStorageService.getCachedImageUrl(metadata.posterCacheKey)
   }
 
-  async function getOfflineSubtitles(id: string): Promise<{ id: number; streamIndex: number; language: string; languageCode: string; displayTitle: string; url: string }[]> {
+  async function getOfflineSubtitles(id: string): Promise<{ id: number; streamIndex: number; language: string; languageCode: string; displayTitle: string; format: string; url: string }[]> {
     const metadata = await offlineStorageService.getMediaMetadata(id)
     if (!metadata?.subtitles) return []
 
@@ -146,6 +146,7 @@ export const useOfflineStore = defineStore('offline', () => {
           language: sub.language,
           languageCode: sub.languageCode,
           displayTitle: sub.displayTitle,
+          format: sub.format || 'srt',
           url,
         })
       }

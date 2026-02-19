@@ -79,9 +79,9 @@ function handleLogout() {
 
 <template>
   <div class="min-h-screen flex flex-col items-center justify-center bg-[#141414] p-6">
-    <div class="fixed inset-0 bg-gradient-to-br from-[#1a1a2e] via-[#141414] to-[#0f0f0f] -z-10"></div>
+    <div class="fixed inset-0 bg-gradient-to-br from-[#1a1a2e] via-[#141414] to-[#0f0f0f] z-0"></div>
 
-    <div class="w-full max-w-3xl">
+    <div class="relative z-10 w-full max-w-3xl">
       <!-- Logo -->
       <div class="text-center mb-10">
         <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[#e50914] to-[#b20710] flex items-center justify-center shadow-lg shadow-[#e50914]/20">
@@ -101,7 +101,8 @@ function handleLogout() {
         <button
           v-for="profile in profileStore.profiles"
           :key="profile.id"
-          class="group flex flex-col items-center gap-3 p-4 rounded-xl transition-all duration-200 hover:bg-white/5"
+          v-ripple
+          class="group flex flex-col items-center gap-3 p-4 rounded-xl transition-all duration-200 hover:bg-white/5 relative overflow-hidden"
           :class="{ 'ring-2 ring-white/30': isManaging }"
           @click="isManaging ? handleManageProfile(profile) : handleSelectProfile(profile)"
         >

@@ -63,7 +63,7 @@ watch(languageChangeCounter, () => {
 
 <template>
     <!-- Hero Section -->
-    <section class="relative h-[55vh] sm:h-[65vh] md:h-[70vh] min-h-[380px] sm:min-h-[450px] md:min-h-[500px] max-h-[800px] -mx-4 overflow-hidden">
+    <section class="relative h-[55vh] sm:h-[65vh] md:h-[70vh] min-h-[380px] sm:min-h-[450px] md:min-h-[500px] max-h-[800px] full-bleed overflow-hidden">
       <!-- Background -->
       <div class="absolute inset-0">
         <template v-if="isLoadingHero">

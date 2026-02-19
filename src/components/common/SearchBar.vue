@@ -3,6 +3,7 @@ import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDebounce } from '@/composables/useDebounce'
 import InputText from 'primevue/inputtext'
+import Button from 'primevue/button'
 
 const props = defineProps<{
   modelValue?: string
@@ -52,7 +53,7 @@ const clearSearch = () => {
 <template>
   <div class="relative group">
     <!-- Search icon with subtle animation -->
-    <div class="absolute left-3 sm:left-5 top-1/2 -translate-y-1/2 pointer-events-none">
+    <div class="absolute left-3 sm:left-5 inset-y-0 flex items-center pointer-events-none">
       <i class="pi pi-search text-gray-400 text-base sm:text-lg group-focus-within:text-[#e50914] transition-colors duration-200"></i>
     </div>
 
@@ -66,12 +67,14 @@ const clearSearch = () => {
     />
 
     <!-- Clear button with better styling -->
-    <button
+    <Button
       v-if="localQuery"
-      class="absolute right-2.5 sm:right-4 top-1/2 -translate-y-1/2 w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-full bg-zinc-700/50 text-gray-400 hover:bg-zinc-600 hover:text-white transition-all duration-200"
+      icon="pi pi-times"
+      severity="secondary"
+      text
+      rounded
+      class="!absolute right-2.5 sm:right-4 inset-y-0 !my-auto !w-7 !h-7 sm:!w-8 sm:!h-8 !bg-zinc-700/50 !text-gray-400 hover:!bg-zinc-600 hover:!text-white"
       @click="clearSearch"
-    >
-      <i class="pi pi-times text-xs sm:text-sm"></i>
-    </button>
+    />
   </div>
 </template>

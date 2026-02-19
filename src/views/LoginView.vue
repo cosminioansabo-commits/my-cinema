@@ -34,10 +34,10 @@ const handleKeyPress = (e: KeyboardEvent) => {
 <template>
   <div class="min-h-screen flex items-center justify-center bg-[#141414] p-6">
     <!-- Background gradient -->
-    <div class="fixed inset-0 bg-gradient-to-br from-[#1a1a2e] via-[#141414] to-[#0f0f0f] -z-10"></div>
+    <div class="fixed inset-0 bg-gradient-to-br from-[#1a1a2e] via-[#141414] to-[#0f0f0f] z-0"></div>
 
     <!-- Login Card -->
-    <div class="w-full max-w-md">
+    <div class="relative z-10 w-full max-w-md">
       <!-- Logo/Brand -->
       <div class="text-center mb-8">
         <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[#e50914] to-[#b20710] flex items-center justify-center shadow-lg shadow-[#e50914]/20">
@@ -76,6 +76,12 @@ const handleKeyPress = (e: KeyboardEvent) => {
                 toggleMask
                 class="w-full"
                 inputClass="w-full !bg-zinc-800 !border-zinc-700 !text-white focus:!border-[#e50914] !rounded-lg !py-3 !px-4"
+                :pt="{
+                  root: { class: 'w-full' },
+                  pcInput: { root: { class: 'w-full !bg-zinc-800 !border-zinc-700 !text-white focus:!border-[#e50914] focus:!shadow-[0_0_0_1px_#e50914] !rounded-lg !py-3 !px-4' } },
+                  maskIcon: { class: '!text-gray-400' },
+                  unmaskIcon: { class: '!text-gray-400' }
+                }"
                 @keypress="handleKeyPress"
                 :disabled="authStore.isLoading"
                 autofocus
@@ -129,26 +135,5 @@ const handleKeyPress = (e: KeyboardEvent) => {
   cursor: not-allowed !important;
 }
 
-/* Override PrimeVue Password component styles */
-:deep(.p-password) {
-  width: 100%;
-}
-
-:deep(.p-password-input) {
-  width: 100%;
-  background: rgb(39 39 42) !important;
-  border-color: rgb(63 63 70) !important;
-  color: white !important;
-  border-radius: 0.5rem !important;
-  padding: 0.75rem 1rem !important;
-}
-
-:deep(.p-password-input:focus) {
-  border-color: #e50914 !important;
-  box-shadow: 0 0 0 1px #e50914 !important;
-}
-
-:deep(.p-password-toggle-icon) {
-  color: rgb(156 163 175) !important;
-}
+/* Password component styling now handled via pt props */
 </style>

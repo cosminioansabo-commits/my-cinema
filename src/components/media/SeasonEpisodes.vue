@@ -293,7 +293,7 @@ const isEpisodeAired = (airDate: string | null): boolean => {
   <div class="seasons-episodes">
     <!-- Loading state for Sonarr data -->
     <div v-if="loadingSonarrData" class="flex items-center gap-3 py-4 text-gray-400">
-      <ProgressSpinner style="width: 24px; height: 24px" strokeWidth="4" />
+      <ProgressSpinner class="!w-6 !h-6" strokeWidth="4" />
       <span class="text-sm">{{ t('media.loadingSeasonData') }}</span>
     </div>
 
@@ -303,8 +303,17 @@ const isEpisodeAired = (airDate: string | null): boolean => {
         :key="season.seasonNumber"
         :value="index"
         class="mb-3"
+        :pt="{
+          root: { class: 'bg-zinc-900/60 rounded-xl border border-zinc-800/50 overflow-hidden' }
+        }"
       >
-        <AccordionHeader class="season-header">
+        <AccordionHeader
+          class="season-header"
+          :pt="{
+            root: { class: 'bg-transparent border-none p-4 transition-colors hover:bg-zinc-800/50' },
+            toggleicon: { class: 'text-gray-400' }
+          }"
+        >
           <div class="flex items-center gap-4 w-full">
             <!-- Season poster thumbnail -->
             <div class="w-12 h-18 rounded overflow-hidden bg-zinc-800 flex-shrink-0">
@@ -353,10 +362,16 @@ const isEpisodeAired = (airDate: string | null): boolean => {
           </div>
         </AccordionHeader>
 
-        <AccordionContent class="season-content">
+        <AccordionContent
+          class="season-content"
+          :pt="{
+            root: { class: 'bg-transparent' },
+            content: { class: 'bg-transparent border-t border-zinc-800/50 p-4' }
+          }"
+        >
           <!-- Loading state -->
           <div v-if="isSeasonLoading(season.seasonNumber)" class="flex justify-center py-8">
-            <ProgressSpinner style="width: 40px; height: 40px" strokeWidth="4" />
+            <ProgressSpinner class="!w-10 !h-10" strokeWidth="4" />
           </div>
 
           <!-- Episodes list -->
@@ -478,33 +493,7 @@ const isEpisodeAired = (airDate: string | null): boolean => {
 </template>
 
 <style scoped>
-.seasons-accordion :deep(.p-accordionpanel) {
-  background-color: rgb(24 24 27 / 0.6);
-  border-radius: 0.75rem;
-  border: 1px solid rgb(39 39 42 / 0.5);
-  overflow: hidden;
-}
-
-.seasons-accordion :deep(.p-accordionheader) {
-  background-color: transparent;
-  border: none;
-  padding: 1rem;
-  transition: background-color 0.2s ease;
-}
-
-.seasons-accordion :deep(.p-accordionheader:hover) {
-  background-color: rgb(39 39 42 / 0.5);
-}
-
-.seasons-accordion :deep(.p-accordionheader-toggle-icon) {
-  color: rgb(156 163 175);
-}
-
-.seasons-accordion :deep(.p-accordioncontent-content) {
-  background-color: transparent;
-  border-top: 1px solid rgb(39 39 42 / 0.5);
-  padding: 1rem;
-}
+/* Accordion styling now handled via pt props */
 
 .episode-item {
   padding-top: 1rem;

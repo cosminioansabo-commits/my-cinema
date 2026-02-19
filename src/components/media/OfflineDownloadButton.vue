@@ -169,7 +169,7 @@ const handleClick = async () => {
   </div>
 </template>
 
-<style scoped>
+<style>
 .offline-download-button {
   position: relative;
   display: inline-flex;
@@ -264,7 +264,7 @@ const handleClick = async () => {
   transform: translateY(0);
 }
 
-.action-btn-offline :deep(.p-button-icon) {
+.action-btn-offline .p-button-icon {
   font-size: 1rem;
   color: #06b6d4 !important;
 }
@@ -285,7 +285,7 @@ const handleClick = async () => {
   border-color: rgba(239, 68, 68, 0.5) !important;
 }
 
-.action-btn-downloading :deep(.p-button-icon) {
+.action-btn-downloading .p-button-icon {
   color: #22d3ee !important;
 }
 
@@ -311,7 +311,7 @@ const handleClick = async () => {
   cursor: default !important;
 }
 
-.action-btn-downloaded :deep(.p-button-icon) {
+.action-btn-downloaded .p-button-icon {
   color: #4ade80 !important;
 }
 

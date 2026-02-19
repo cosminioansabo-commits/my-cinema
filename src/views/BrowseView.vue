@@ -87,10 +87,17 @@ const hasMore = () => {
 
     <!-- Main Content -->
     <main class="flex-1 min-w-0">
-      <div class="flex items-center justify-between mb-4 sm:mb-6">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-6 mb-6 sm:mb-10">
         <div>
-          <h1 class="text-xl sm:text-2xl font-bold">{{ t('browse.title') }}</h1>
-          <p class="text-gray-400 text-xs sm:text-sm mt-0.5 sm:mt-1">
+          <div class="flex items-center gap-3 sm:gap-4 mb-2 sm:mb-3">
+            <div class="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center shadow-lg shadow-teal-500/20">
+              <i class="pi pi-compass text-lg sm:text-2xl text-white"></i>
+            </div>
+            <h1 class="text-2xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
+              {{ t('browse.title') }}
+            </h1>
+          </div>
+          <p class="text-gray-400 text-sm sm:text-lg ml-0 sm:ml-[4.5rem]">
             {{ t('browse.results', { count: mediaStore.totalResults.toLocaleString() }) }}
           </p>
         </div>

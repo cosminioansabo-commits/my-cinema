@@ -27,7 +27,7 @@ import {
 import { profileLibraryService } from '@/services/libraryService'
 import { progressService } from '@/services/progressService'
 import { useAuthStore } from '@/stores/authStore'
-import type { ContinueWatchingItem } from '@/components/media/ContinueWatchingCarousel.vue'
+import type { ContinueWatchingItem } from '@/types'
 
 export function useHomeContent() {
   // Hero

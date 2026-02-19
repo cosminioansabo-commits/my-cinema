@@ -1,6 +1,7 @@
 import db from '../db/index.js'
 import { radarrService } from './radarrService.js'
 import { sonarrService } from './sonarrService.js'
+import { logger } from '../utils/logger.js'
 
 export interface ProfileLibraryEntry {
   id: number
@@ -303,7 +304,7 @@ class ProfileLibraryService {
     const defaultProfile = db.prepare("SELECT id FROM profiles WHERE is_default = 1").get() as { id: string } | undefined
     if (!defaultProfile) return
 
-    console.log('Running initial library migration to default profile...')
+    logger.info('Running initial library migration to default profile...', 'ProfileLibrary')
 
     // Import movies from Radarr
     try {
@@ -316,7 +317,7 @@ class ProfileLibraryService {
           VALUES (?, 'movie', ?, ?, ?, ?, ?)
         `).run(defaultProfile.id, movie.tmdbId, movie.title, movie.year, posterPath, movie.id)
       }
-      console.log(`Migrated ${movies.length} movies to default profile`)
+      logger.info(`Migrated ${movies.length} movies to default profile`, 'ProfileLibrary')
     } catch (error) {
       console.error('Failed to migrate movies from Radarr:', error)
     }
@@ -332,7 +333,7 @@ class ProfileLibraryService {
         const tmdbId = show.tmdbId || 0
 
         if (tmdbId === 0) {
-          console.warn(`Migration: TV show "${show.title}" has no TMDB ID (tvdbId: ${show.tvdbId}) — skipping to avoid UNIQUE constraint collision`)
+          logger.warn(`Migration: TV show "${show.title}" has no TMDB ID (tvdbId: ${show.tvdbId}) — skipping to avoid UNIQUE constraint collision`, 'ProfileLibrary')
           continue
         }
 
@@ -343,7 +344,7 @@ class ProfileLibraryService {
         `).run(defaultProfile.id, tmdbId, show.title, show.year, posterPath, show.id, show.tvdbId)
         successCount++
       }
-      console.log(`Migrated ${successCount} TV shows to default profile`)
+      logger.info(`Migrated ${successCount} TV shows to default profile`, 'ProfileLibrary')
     } catch (error) {
       console.error('Failed to migrate TV shows from Sonarr:', error)
     }
@@ -365,7 +366,7 @@ class ProfileLibraryService {
     ).all() as ProfileLibraryRow[]
 
     if (moviesWithoutPoster.length > 0) {
-      console.log(`Repairing ${moviesWithoutPoster.length} movies missing poster_path...`)
+      logger.debug(`Repairing ${moviesWithoutPoster.length} movies missing poster_path...`, 'ProfileLibrary')
       for (const movie of moviesWithoutPoster) {
         try {
           const radarrMovie = movie.radarr_id
@@ -390,7 +391,7 @@ class ProfileLibraryService {
     // Get default profile for re-importing missing shows
     const defaultProfile = db.prepare("SELECT id FROM profiles WHERE is_default = 1").get() as { id: string } | undefined
     if (!defaultProfile) {
-      console.log('No default profile found, skipping TV show repair')
+      logger.debug('No default profile found, skipping TV show repair', 'ProfileLibrary')
       return { moviesFixed, showsFixed, showsImported, showsFailed }
     }
 
@@ -418,7 +419,7 @@ class ProfileLibraryService {
         // Show is missing from profile_library — re-import it
         const tmdbId = show.tmdbId || 0
         if (tmdbId === 0) {
-          console.warn(`Repair: TV show "${show.title}" has no TMDB ID (tvdbId: ${show.tvdbId}) — cannot import`)
+          logger.warn(`Repair: TV show "${show.title}" has no TMDB ID (tvdbId: ${show.tvdbId}) — cannot import`, 'ProfileLibrary')
           showsFailed.push(show.title)
           continue
         }
@@ -432,7 +433,7 @@ class ProfileLibraryService {
             VALUES (?, 'tv', ?, ?, ?, ?, ?, ?)
           `).run(defaultProfile.id, tmdbId, show.title, show.year, posterPath, show.id, show.tvdbId)
           showsImported++
-          console.log(`Repair: Re-imported TV show "${show.title}" (tmdbId: ${tmdbId})`)
+          logger.debug(`Repair: Re-imported TV show "${show.title}" (tmdbId: ${tmdbId})`, 'ProfileLibrary')
         } catch (error) {
           console.error(`Failed to re-import TV show "${show.title}":`, error)
           showsFailed.push(show.title)
@@ -491,9 +492,9 @@ class ProfileLibraryService {
       }
     }
 
-    console.log(`Repair complete: ${moviesFixed} movies fixed, ${showsFixed} shows fixed, ${showsImported} shows re-imported, ${showsFailed.length} shows failed`)
+    logger.info(`Repair complete: ${moviesFixed} movies fixed, ${showsFixed} shows fixed, ${showsImported} shows re-imported, ${showsFailed.length} shows failed`, 'ProfileLibrary')
     if (showsFailed.length > 0) {
-      console.log(`Failed shows: ${showsFailed.join(', ')}`)
+      logger.info(`Failed shows: ${showsFailed.join(', ')}`, 'ProfileLibrary')
     }
     return { moviesFixed, showsFixed, showsImported, showsFailed }
   }

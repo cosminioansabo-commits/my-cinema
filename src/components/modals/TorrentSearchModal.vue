@@ -113,6 +113,7 @@ async function handleDownload(torrent: TorrentResult) {
     class="torrent-search-modal"
     :pt="{
       root: { class: 'torrent-dialog-root' },
+      mask: { class: 'torrent-dialog-mask' },
       header: { class: 'torrent-dialog-header' },
       content: { class: 'torrent-dialog-content' },
       closeButton: { class: 'torrent-dialog-close' }
@@ -138,6 +139,8 @@ async function handleDownload(torrent: TorrentResult) {
           @click="handleSearchWithNewQuery"
         />
       </div>
+      <!-- Gradient divider -->
+      <div class="h-px mt-3 sm:mt-4 bg-gradient-to-r from-transparent via-zinc-600/50 to-transparent"></div>
     </div>
 
     <!-- Loading -->
@@ -196,12 +199,22 @@ async function handleDownload(torrent: TorrentResult) {
 </template>
 
 <style>
+/* ── Backdrop ── */
+.torrent-dialog-mask {
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  background: rgba(0, 0, 0, 0.5) !important;
+}
+
 /* Dialog root */
 .torrent-search-modal .p-dialog {
-  border: 1px solid #2a2a2a !important;
+  border: none !important;
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 24px 60px -12px rgba(0, 0, 0, 0.75) !important;
+  animation: torrent-dialog-enter 0.2s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 @media (max-width: 640px) {
@@ -220,8 +233,10 @@ async function handleDownload(torrent: TorrentResult) {
 
 /* Header */
 .torrent-dialog-header {
-  background: #1a1a1a !important;
-  border-bottom: 1px solid #2a2a2a !important;
+  background: rgba(24, 24, 27, 0.97) !important;
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
   padding: 0.875rem 1rem !important;
   font-size: 0.9375rem !important;
   font-weight: 600 !important;
@@ -236,7 +251,7 @@ async function handleDownload(torrent: TorrentResult) {
 
 /* Close button */
 .torrent-dialog-close {
-  color: #666 !important;
+  color: #71717a !important;
   width: 2rem !important;
   height: 2rem !important;
   border-radius: 8px !important;
@@ -249,15 +264,28 @@ async function handleDownload(torrent: TorrentResult) {
 
 /* Content */
 .torrent-dialog-content {
-  background: #141414 !important;
+  background: rgba(24, 24, 27, 0.97) !important;
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-top: none !important;
+  border-radius: 0 0 16px 16px !important;
   padding: 0 !important;
+}
+
+/* ── Kill PrimeVue form field focus styles ── */
+.torrent-search-modal input,
+.torrent-search-modal input:focus,
+.torrent-search-modal input:focus-visible {
+  border-color: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
 /* Search container */
 .search-container {
   padding: 0.75rem;
-  background: #1a1a1a;
-  border-bottom: 1px solid #2a2a2a;
+  background: transparent;
 }
 
 @media (min-width: 640px) {
@@ -270,19 +298,19 @@ async function handleDownload(torrent: TorrentResult) {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: #252525;
+  background: rgba(255, 255, 255, 0.05);
   border-radius: 10px;
   padding: 0.375rem 0.5rem 0.375rem 0.75rem;
-  border: 1px solid #333;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   transition: border-color 0.2s;
 }
 
 .search-input-wrapper:focus-within {
-  border-color: #4a4a4a;
+  border-color: rgba(255, 255, 255, 0.15);
 }
 
 .search-icon {
-  color: #666;
+  color: #71717a;
   font-size: 0.875rem;
   flex-shrink: 0;
 }
@@ -298,7 +326,7 @@ async function handleDownload(torrent: TorrentResult) {
 }
 
 .search-input::placeholder {
-  color: #666;
+  color: #52525b;
 }
 
 .search-btn {
@@ -318,8 +346,8 @@ async function handleDownload(torrent: TorrentResult) {
 .state-icon-wrapper {
   width: 3rem;
   height: 3rem;
-  border-radius: 50%;
-  background: #252525;
+  border-radius: 1rem;
+  background: rgba(39, 39, 42, 0.8);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -327,13 +355,13 @@ async function handleDownload(torrent: TorrentResult) {
 }
 
 .state-text {
-  color: #888;
+  color: #a1a1aa;
   font-size: 0.8125rem;
   margin-top: 0.75rem;
 }
 
 .state-hint {
-  color: #555;
+  color: #52525b;
   font-size: 0.6875rem;
   margin-top: 0.25rem;
 }
@@ -352,8 +380,8 @@ async function handleDownload(torrent: TorrentResult) {
 
 .results-header {
   padding: 0.5rem 0.75rem;
-  background: #1a1a1a;
-  border-bottom: 1px solid #2a2a2a;
+  background: rgba(24, 24, 27, 0.6);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -367,7 +395,7 @@ async function handleDownload(torrent: TorrentResult) {
 
 .results-count {
   font-size: 0.6875rem;
-  color: #666;
+  color: #52525b;
   text-transform: uppercase;
   letter-spacing: 0.025em;
 }
@@ -383,6 +411,18 @@ async function handleDownload(torrent: TorrentResult) {
   .results-list {
     padding: 0.75rem 1rem;
     gap: 0.5rem;
+  }
+}
+
+/* ── Entry animation ── */
+@keyframes torrent-dialog-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.98) translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
   }
 }
 </style>

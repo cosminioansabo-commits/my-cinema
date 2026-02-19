@@ -1,6 +1,7 @@
 import axios from 'axios'
 import type { TorrentProvider, TorrentResult, SearchQuery } from '../../types/index.js'
 import { config } from '../../config.js'
+import { logger } from '../../utils/logger.js'
 
 // Radarr API types
 interface RadarrRelease {
@@ -59,7 +60,7 @@ export const radarrProvider: TorrentProvider = {
     }
 
     if (!config.radarr.enabled) {
-      console.log('Radarr: Not configured (missing API key)')
+      logger.debug('Not configured (missing API key)', 'Radarr')
       return []
     }
 
@@ -68,7 +69,7 @@ export const radarrProvider: TorrentProvider = {
       const headers = { 'X-Api-Key': config.radarr.apiKey }
 
       // First, search for the movie in Radarr's database or lookup
-      console.log(`Radarr: Searching for "${query.title}"`)
+      logger.debug(`Searching for "${query.title}"`, 'Radarr')
 
       // Try to find the movie by searching
       const lookupResponse = await axios.get(`${apiBase}/movie/lookup`, {
@@ -80,7 +81,7 @@ export const radarrProvider: TorrentProvider = {
       const movies = lookupResponse.data as RadarrMovie[]
 
       if (!movies.length) {
-        console.log(`Radarr: No movie found for "${query.title}"`)
+        logger.debug(`No movie found for "${query.title}"`, 'Radarr')
         return []
       }
 
@@ -93,7 +94,7 @@ export const radarrProvider: TorrentProvider = {
         }
       }
 
-      console.log(`Radarr: Found movie "${movie.title}" (${movie.year}), TMDB: ${movie.tmdbId}`)
+      logger.debug(`Found movie "${movie.title}" (${movie.year}), TMDB: ${movie.tmdbId}`, 'Radarr')
 
       // Search for releases using the movie's TMDB ID
       const releasesResponse = await axios.get(`${apiBase}/release`, {
@@ -102,7 +103,7 @@ export const radarrProvider: TorrentProvider = {
         timeout: 30000
       }).catch(async () => {
         // If movie isn't in Radarr, try manual search
-        console.log('Radarr: Movie not in library, trying manual search...')
+        logger.debug('Movie not in library, trying manual search...', 'Radarr')
         return axios.get(`${apiBase}/indexer/search`, {
           params: {
             type: 'movie',
@@ -116,7 +117,7 @@ export const radarrProvider: TorrentProvider = {
       const releases = releasesResponse.data as RadarrRelease[]
 
       if (!releases.length) {
-        console.log('Radarr: No releases found')
+        logger.debug('No releases found', 'Radarr')
         return []
       }
 
@@ -154,7 +155,7 @@ export const radarrProvider: TorrentProvider = {
       // Sort by seeds
       results.sort((a, b) => b.seeds - a.seeds)
 
-      console.log(`Radarr: Found ${results.length} torrent releases`)
+      logger.debug(`Found ${results.length} torrent releases`, 'Radarr')
       return results.slice(0, 30)
     } catch (error) {
       if (axios.isAxiosError(error)) {

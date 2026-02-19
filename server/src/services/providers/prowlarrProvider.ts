@@ -1,6 +1,7 @@
 import axios from 'axios'
 import type { TorrentProvider, TorrentResult, SearchQuery } from '../../types/index.js'
 import { config } from '../../config.js'
+import { logger } from '../../utils/logger.js'
 
 // Prowlarr API types
 interface ProwlarrRelease {
@@ -42,7 +43,7 @@ export const prowlarrProvider: TorrentProvider = {
 
   async search(query: SearchQuery): Promise<TorrentResult[]> {
     if (!config.prowlarr.enabled) {
-      console.log('Prowlarr: Not configured (missing API key)')
+      logger.debug('Not configured (missing API key)', 'Prowlarr')
       return []
     }
 
@@ -56,7 +57,7 @@ export const prowlarrProvider: TorrentProvider = {
         ? `${query.title} ${query.year}`
         : query.title
 
-      console.log(`Prowlarr: Searching for "${searchTerm}" (type: ${query.type || 'any'})`)
+      logger.debug(`Searching for "${searchTerm}" (type: ${query.type || 'any'})`, 'Prowlarr')
 
       // Build params with categories for better results
       // Categories: 2000 = Movies, 5000 = TV
@@ -80,7 +81,7 @@ export const prowlarrProvider: TorrentProvider = {
       const releases = searchResponse.data as ProwlarrRelease[]
 
       if (!releases.length) {
-        console.log('Prowlarr: No releases found')
+        logger.debug('No releases found', 'Prowlarr')
         return []
       }
 
@@ -126,7 +127,7 @@ export const prowlarrProvider: TorrentProvider = {
       // Sort by seeds
       results.sort((a, b) => b.seeds - a.seeds)
 
-      console.log(`Prowlarr: Found ${results.length} torrent releases`)
+      logger.debug(`Found ${results.length} torrent releases`, 'Prowlarr')
       return results.slice(0, 100)
     } catch (error) {
       if (axios.isAxiosError(error)) {

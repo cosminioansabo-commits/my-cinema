@@ -4,6 +4,7 @@ import path from 'path'
 import type { Download, DownloadRequest, ProgressUpdate } from '../types/index.js'
 import { config } from '../config.js'
 import { qbittorrentService } from './qbittorrentService.js'
+import { logger } from '../utils/logger.js'
 
 type ProgressCallback = (update: ProgressUpdate) => void
 
@@ -84,7 +85,7 @@ class DownloadManager {
           }
         }
 
-        console.log(`Loaded ${this.downloads.size} downloads from state`)
+        logger.debug(`Loaded ${this.downloads.size} downloads from state`, 'DownloadManager')
       }
     } catch (error) {
       console.error('Error loading state:', error)
@@ -151,7 +152,7 @@ class DownloadManager {
                 this.hashToId.set(hash, id)
                 this.saveState()
                 downloadId = id
-                console.log(`Matched download "${download.name}" to torrent hash ${hash}`)
+                logger.debug(`Matched download "${download.name}" to torrent hash ${hash}`, 'DownloadManager')
                 break
               }
             }
@@ -194,7 +195,7 @@ class DownloadManager {
               downloadId,
               data: { status: 'completed', progress: 100 }
             })
-            console.log(`Download completed: ${download.name}`)
+            logger.debug(`Download completed: ${download.name}`, 'DownloadManager')
           } else if (newStatus === 'error' && statusChanged) {
             this.emitProgress({
               type: 'error',
@@ -261,9 +262,9 @@ class DownloadManager {
       if (infoHash) {
         download.infoHash = infoHash
         this.hashToId.set(infoHash, id)
-        console.log(`Extracted info hash: ${infoHash}`)
+        logger.debug(`Extracted info hash: ${infoHash}`, 'DownloadManager')
       } else {
-        console.warn(`Could not extract info hash from magnet link`)
+        logger.warn(`Could not extract info hash from magnet link`, 'DownloadManager')
       }
 
       download.status = 'downloading'
@@ -275,7 +276,7 @@ class DownloadManager {
         data: { status: 'downloading', name: download.name }
       })
 
-      console.log(`Started download: ${download.name} (category: ${category || 'none'})`)
+      logger.debug(`Started download: ${download.name} (category: ${category || 'none'})`, 'DownloadManager')
       return download
     } catch (error) {
       download.status = 'error'
@@ -339,7 +340,7 @@ class DownloadManager {
         data: { status: 'downloading', name: download.name }
       })
 
-      console.log(`Started download from URL: ${download.name} (category: ${category || 'none'})`)
+      logger.debug(`Started download from URL: ${download.name} (category: ${category || 'none'})`, 'DownloadManager')
       return download
     } catch (error) {
       download.status = 'error'

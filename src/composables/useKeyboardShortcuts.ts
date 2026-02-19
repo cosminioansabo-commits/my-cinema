@@ -5,6 +5,7 @@ import {
   NAVIGATION_SHORTCUTS,
   isInputElement,
 } from '@/config/keyboardShortcuts'
+import { openSpotlight, closeSpotlight } from '@/composables/useSpotlightSearch'
 
 // Track pending key sequence (for multi-key shortcuts like 'g h')
 const pendingKey = ref<string | null>(null)
@@ -17,6 +18,13 @@ export function useKeyboardShortcuts() {
   const router = useRouter()
 
   const handleGlobalKeydown = (e: KeyboardEvent) => {
+    // Cmd+K / Ctrl+K opens spotlight search (works even in inputs)
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault()
+      openSpotlight()
+      return
+    }
+
     // Don't handle shortcuts when typing in inputs
     if (isInputElement(document.activeElement)) {
       // Allow Escape to blur inputs
@@ -82,18 +90,12 @@ export function useKeyboardShortcuts() {
   const handleGlobalAction = (action: string) => {
     switch (action) {
       case 'focusSearch':
-        // Focus the search input, or navigate to search page first
-        const searchInput = document.querySelector<HTMLInputElement>('[data-search-input]')
-        if (searchInput) {
-          searchInput.focus()
-        } else {
-          // Navigate to search page
-          router.push('/search')
-        }
+        openSpotlight()
         break
       case 'closeModal':
         // Close any open modal or menu
         showKeyboardHelp.value = false
+        closeSpotlight()
         // Emit a global close event that modals can listen to
         document.dispatchEvent(new CustomEvent('keyboard:closeModal'))
         break

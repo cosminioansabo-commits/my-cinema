@@ -60,8 +60,17 @@ const handleDeleteOffline = (_item: OfflineMediaItem) => {
 
 <template>
   <div class="downloads-view max-w-4xl mx-auto py-6">
-    <div class="flex items-center justify-between mb-4 sm:mb-6">
-      <h1 class="text-xl sm:text-2xl font-bold text-white">Downloads</h1>
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6 mb-6 sm:mb-10">
+      <div>
+        <div class="flex items-center gap-3 sm:gap-4 mb-2 sm:mb-3">
+          <div class="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-green-500/20">
+            <i class="pi pi-download text-lg sm:text-2xl text-white"></i>
+          </div>
+          <h1 class="text-2xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
+            Downloads
+          </h1>
+        </div>
+      </div>
 
       <div class="flex items-center gap-2 text-xs sm:text-sm">
         <span
@@ -75,27 +84,53 @@ const handleDeleteOffline = (_item: OfflineMediaItem) => {
     </div>
 
     <div class="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
-      <Tabs value="active" class="downloads-tabs">
-        <TabList class="bg-zinc-900 border-b border-zinc-800 px-2 sm:px-4">
-          <Tab value="active" class="downloads-tab">
+      <Tabs value="active">
+        <TabList
+          :pt="{
+            root: { class: '!bg-zinc-900 !border-b !border-zinc-800 px-2 sm:px-4' },
+            activeBar: { class: '!hidden' }
+          }"
+        >
+          <Tab
+            value="active"
+            :pt="{
+              root: { class: '!bg-transparent !border-none !text-gray-400 hover:!text-gray-200 !py-2.5 sm:!py-3 !px-3 sm:!px-4 !text-xs sm:!text-sm data-[p-active=true]:!text-purple-400 data-[p-active=true]:!border-b-2 data-[p-active=true]:!border-purple-500' }
+            }"
+          >
             Active
             <span v-if="activeDownloads.length" class="ml-1.5 sm:ml-2 text-[10px] sm:text-xs bg-purple-600 text-white px-1.5 sm:px-2 py-0.5 rounded-full">
               {{ activeDownloads.length }}
             </span>
           </Tab>
-          <Tab value="completed" class="downloads-tab">
+          <Tab
+            value="completed"
+            :pt="{
+              root: { class: '!bg-transparent !border-none !text-gray-400 hover:!text-gray-200 !py-2.5 sm:!py-3 !px-3 sm:!px-4 !text-xs sm:!text-sm data-[p-active=true]:!text-purple-400 data-[p-active=true]:!border-b-2 data-[p-active=true]:!border-purple-500' }
+            }"
+          >
             Completed
             <span v-if="completedDownloads.length" class="ml-1.5 sm:ml-2 text-[10px] sm:text-xs bg-green-600 text-white px-1.5 sm:px-2 py-0.5 rounded-full">
               {{ completedDownloads.length }}
             </span>
           </Tab>
-          <Tab value="failed" class="downloads-tab">
+          <Tab
+            value="failed"
+            :pt="{
+              root: { class: '!bg-transparent !border-none !text-gray-400 hover:!text-gray-200 !py-2.5 sm:!py-3 !px-3 sm:!px-4 !text-xs sm:!text-sm data-[p-active=true]:!text-purple-400 data-[p-active=true]:!border-b-2 data-[p-active=true]:!border-purple-500' }
+            }"
+          >
             Failed
             <span v-if="failedDownloads.length" class="ml-1.5 sm:ml-2 text-[10px] sm:text-xs bg-red-600 text-white px-1.5 sm:px-2 py-0.5 rounded-full">
               {{ failedDownloads.length }}
             </span>
           </Tab>
-          <Tab v-if="offlineStore.isDownloadSupported" value="offline" class="downloads-tab">
+          <Tab
+            v-if="offlineStore.isDownloadSupported"
+            value="offline"
+            :pt="{
+              root: { class: '!bg-transparent !border-none !text-gray-400 hover:!text-gray-200 !py-2.5 sm:!py-3 !px-3 sm:!px-4 !text-xs sm:!text-sm data-[p-active=true]:!text-purple-400 data-[p-active=true]:!border-b-2 data-[p-active=true]:!border-purple-500' }
+            }"
+          >
             {{ t('offline.title') }}
             <span v-if="offlineStore.offlineMedia.length" class="ml-1.5 sm:ml-2 text-[10px] sm:text-xs bg-blue-600 text-white px-1.5 sm:px-2 py-0.5 rounded-full">
               {{ offlineStore.offlineMedia.length }}
@@ -103,7 +138,7 @@ const handleDeleteOffline = (_item: OfflineMediaItem) => {
           </Tab>
         </TabList>
 
-        <TabPanels class="bg-zinc-900">
+        <TabPanels :pt="{ root: { class: '!bg-zinc-900 !p-0' } }">
           <!-- Active Downloads -->
           <TabPanel value="active" class="p-3 sm:p-4">
             <div v-if="activeDownloads.length === 0" class="text-center py-10 sm:py-16">
@@ -209,7 +244,7 @@ const handleDeleteOffline = (_item: OfflineMediaItem) => {
                     <div class="relative w-16 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-zinc-700">
                       <img
                         v-if="download.media.posterPath"
-                        :src="getImageUrl(download.media.posterPath, 'w185') || ''"
+                        :src="getImageUrl(download.media.posterPath, 'w200') || ''"
                         :alt="download.media.title"
                         class="w-full h-full object-cover"
                       />
@@ -348,48 +383,4 @@ const handleDeleteOffline = (_item: OfflineMediaItem) => {
   </div>
 </template>
 
-<style>
-/* Dark mode styling for tabs */
-.downloads-tabs .p-tablist {
-  background: transparent !important;
-  border: none !important;
-}
-
-.downloads-tabs .p-tab {
-  background: transparent !important;
-  border: none !important;
-  color: #9ca3af !important;
-  padding: 0.75rem 1rem !important;
-  font-size: 0.875rem !important;
-  transition: all 0.2s !important;
-}
-
-@media (max-width: 640px) {
-  .downloads-tabs .p-tab {
-    padding: 0.625rem 0.75rem !important;
-    font-size: 0.75rem !important;
-  }
-}
-
-.downloads-tabs .p-tab:hover {
-  color: #e5e7eb !important;
-}
-
-.downloads-tabs .p-tab[data-p-active="true"] {
-  color: #a855f7 !important;
-  border-bottom: 2px solid #a855f7 !important;
-}
-
-.downloads-tabs .p-tablist-active-bar {
-  display: none !important;
-}
-
-.downloads-tabs .p-tabpanels {
-  background: transparent !important;
-  padding: 0 !important;
-}
-
-.downloads-tabs .p-tabpanel {
-  padding: 0 !important;
-}
-</style>
+<!-- Tab styling now handled via pt props -->

@@ -2,6 +2,7 @@ import dotenv from 'dotenv'
 import path from 'path'
 import fs from 'fs'
 import { fileURLToPath } from 'url'
+import { logger } from './utils/logger.js'
 
 // Get the directory of this file to find .env relative to it
 const __filename = fileURLToPath(import.meta.url)
@@ -11,7 +12,7 @@ const envPath = path.resolve(__dirname, '../../.env')
 // Try to load .env from server directory
 const result = dotenv.config({ path: envPath })
 if (result.error) {
-  console.warn(`Warning: Could not load .env from ${envPath}`)
+  logger.warn(`Could not load .env from ${envPath}`)
 }
 
 const downloadPath = process.env.DOWNLOAD_PATH || path.join(process.env.HOME || '/tmp', 'Downloads', 'my-cinema')

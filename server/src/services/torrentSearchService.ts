@@ -3,6 +3,7 @@ import { config } from '../config.js'
 import { prowlarrProvider } from './providers/prowlarrProvider.js'
 import { torrentioProvider } from './providers/torrentioProvider.js'
 import { ytsProvider } from './providers/ytsProvider.js'
+import { logger } from '../utils/logger.js'
 
 // Map of available providers
 const availableProviders: Record<string, TorrentProvider> = {
@@ -21,12 +22,12 @@ function getEnabledProviders(): TorrentProvider[] {
     if (provider) {
       providers.push(provider)
     } else {
-      console.warn(`Unknown provider in config: ${name}`)
+      logger.warn(`Unknown provider in config: ${name}`, 'TorrentSearch')
     }
   }
 
   if (providers.length === 0) {
-    console.warn('No providers configured, using defaults (prowlarr, torrentio)')
+    logger.warn('No providers configured, using defaults (prowlarr, torrentio)', 'TorrentSearch')
     return [prowlarrProvider, torrentioProvider]
   }
 
@@ -35,8 +36,8 @@ function getEnabledProviders(): TorrentProvider[] {
 
 export async function searchTorrents(query: SearchQuery): Promise<TorrentResult[]> {
   const providers = getEnabledProviders()
-  console.log(`Searching torrents for: "${query.title}" (year: ${query.year}, type: ${query.type})`)
-  console.log(`Using providers: ${providers.map(p => p.name).join(', ')}`)
+  logger.debug(`Searching torrents for: "${query.title}" (year: ${query.year}, type: ${query.type})`, 'TorrentSearch')
+  logger.debug(`Using providers: ${providers.map(p => p.name).join(', ')}`, 'TorrentSearch')
 
   // Search all providers in parallel
   const searchPromises = providers.map(provider =>
@@ -75,7 +76,7 @@ export async function searchTorrents(query: SearchQuery): Promise<TorrentResult[
     return seedDiff
   })
 
-  console.log(`Found ${allResults.length} results`)
+  logger.debug(`Found ${allResults.length} results`, 'TorrentSearch')
   return allResults
 }
 

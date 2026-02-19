@@ -1,9 +1,20 @@
 import Database, { Database as DatabaseType } from 'better-sqlite3'
 import path from 'path'
 import fs from 'fs'
+import { logger } from '../utils/logger.js'
 
-// Database file location - use data directory for persistence in Docker
-const DB_DIR = process.env.DB_PATH || '/data'
+// Database file location - DB_PATH env var, or /data (Docker), or ./data (local dev)
+function resolveDbDir(): string {
+  if (process.env.DB_PATH) return process.env.DB_PATH
+  // In Docker, /data is mounted as a volume
+  try {
+    fs.accessSync('/data', fs.constants.W_OK)
+    return '/data'
+  } catch {
+    return './data'
+  }
+}
+const DB_DIR = resolveDbDir()
 const DB_FILE = path.join(DB_DIR, 'my-cinema.db')
 
 // Ensure directory exists
@@ -117,10 +128,10 @@ const initSchema = () => {
       INSERT INTO profiles (id, name, avatar_color, avatar_icon, is_default)
       VALUES ('default', 'Default', '#e50914', 'pi-user', 1)
     `).run()
-    console.log('Created default profile')
+    logger.info('Created default profile', 'Database')
   }
 
-  console.log('Database initialized:', DB_FILE)
+  logger.info(`Database initialized: ${DB_FILE}`, 'Database')
 }
 
 // Initialize on import

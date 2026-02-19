@@ -16,6 +16,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isLoading = ref(false)
   const error = ref<string | null>(null)
   const authEnabled = ref<boolean | null>(null) // null = not yet checked
+  const activeProfileIdRef = ref<string | null>(localStorage.getItem(PROFILE_KEY))
 
   // Getters
   const isAuthenticated = computed(() => {
@@ -39,9 +40,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   })
 
-  const activeProfileId = computed(() => {
-    return localStorage.getItem(PROFILE_KEY) || null
-  })
+  const activeProfileId = computed(() => activeProfileIdRef.value)
 
   // Actions
   async function checkAuthStatus(): Promise<boolean> {
@@ -111,6 +110,7 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.setItem(EXPIRES_KEY, newExpiresAt.toString())
     if (profileId) {
       localStorage.setItem(PROFILE_KEY, profileId)
+      activeProfileIdRef.value = profileId
     }
   }
 
@@ -120,6 +120,7 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(EXPIRES_KEY)
     localStorage.removeItem(PROFILE_KEY)
+    activeProfileIdRef.value = null
   }
 
   function getAuthHeader(): { Authorization: string } | {} {
@@ -136,6 +137,7 @@ export const useAuthStore = defineStore('auth', () => {
     if (!authEnabled.value) {
       if (!localStorage.getItem(PROFILE_KEY)) {
         localStorage.setItem(PROFILE_KEY, 'default')
+        activeProfileIdRef.value = 'default'
       }
       return
     }

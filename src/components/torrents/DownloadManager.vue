@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import Badge from 'primevue/badge'
 import Button from 'primevue/button'
-import OverlayPanel from 'primevue/overlaypanel'
+import Popover from 'primevue/popover'
 import { ref } from 'vue'
 import DownloadProgress from './DownloadProgress.vue'
 import { useTorrentsStore } from '@/stores/torrentsStore'
@@ -42,21 +41,19 @@ function goToDownloads() {
 
 <template>
   <div class="download-manager relative">
-    <button
-      @click="toggle"
-      class="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
+    <Button
+      icon="pi pi-download"
+      severity="secondary"
+      text
+      rounded
+      :badge="activeCount > 0 ? String(activeCount) : undefined"
+      badgeSeverity="success"
+      class="!text-gray-400 hover:!text-white hover:!bg-white/10"
       title="Downloads"
-    >
-      <i class="pi pi-download text-lg"></i>
-    </button>
-    <Badge
-      v-if="activeCount > 0"
-      :value="activeCount"
-      severity="success"
-      class="absolute -top-1 -right-1 !text-[10px] sm:!text-xs !min-w-[18px] !h-[18px] !flex !items-center !justify-center pointer-events-none"
+      @click="toggle"
     />
 
-    <OverlayPanel
+    <Popover
       ref="op"
       class="!w-[calc(100vw-24px)] sm:!w-[400px]"
     >
@@ -108,7 +105,7 @@ function goToDownloads() {
           + {{ torrentsStore.downloads.length - 5 }} more downloads
         </p>
       </div>
-    </OverlayPanel>
+    </Popover>
   </div>
 </template>
 

@@ -16,7 +16,7 @@ const SORT_OPTIONS = [
   { value: 'release_date.asc', label: 'Oldest First' },
   { value: 'title.asc', label: 'Title A-Z' },
   { value: 'title.desc', label: 'Title Z-A' },
-] as const
+]
 
 const DEFAULT_FILTERS: FilterOptions = {
   mediaType: 'all',

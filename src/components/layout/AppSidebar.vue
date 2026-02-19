@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import Drawer from 'primevue/drawer'
+import Button from 'primevue/button'
 import LanguageSelector from '@/components/common/LanguageSelector.vue'
 import { useLanguage } from '@/composables/useLanguage'
 import { useProfileStore } from '@/stores/profileStore'
+import { openSpotlight } from '@/composables/useSpotlightSearch'
 
 const props = defineProps<{
   visible: boolean
@@ -23,10 +25,14 @@ const handleSwitchProfile = () => {
   router.push({ name: 'profiles' })
 }
 
+const handleOpenSearch = () => {
+  closeSidebar()
+  openSpotlight()
+}
+
 const navLinks = [
   { path: '/', labelKey: 'nav.home', icon: 'pi-home' },
   { path: '/browse', labelKey: 'nav.browse', icon: 'pi-compass' },
-  { path: '/search', labelKey: 'nav.search', icon: 'pi-search' },
   { path: '/my-library', labelKey: 'nav.myLibrary', icon: 'pi-database' },
   { path: '/calendar', labelKey: 'nav.calendar', icon: 'pi-calendar' },
   { path: '/notifications', labelKey: 'notifications.title', icon: 'pi-bell' },
@@ -56,18 +62,29 @@ const closeSidebar = () => {
           <span class="text-[#e50914]">MY</span>
           <span class="text-white">CINEMA</span>
         </RouterLink>
-        <button
-          class="w-10 h-10 flex items-center justify-center hover:bg-white/10 rounded-xl transition-colors"
+        <Button
+          icon="pi pi-times"
+          severity="secondary"
+          text
+          rounded
+          class="!w-10 !h-10 !text-gray-400 hover:!bg-white/10"
           @click="closeSidebar"
-        >
-          <i class="pi pi-times text-gray-400"></i>
-        </button>
+        />
       </div>
     </template>
 
 
       <!-- Main Navigation -->
       <nav class="flex flex-col p-4 gap-2">
+        <!-- Search (opens Spotlight overlay) -->
+        <button
+          class="flex items-center gap-4 p-3 rounded-xl transition-all duration-200 text-gray-300 hover:bg-zinc-800 hover:text-white"
+          @click="handleOpenSearch"
+        >
+          <i class="pi pi-search text-lg"></i>
+          <span class="font-medium">{{ t('nav.search') }}</span>
+        </button>
+
         <RouterLink
           v-for="link in navLinks"
           :key="link.path"

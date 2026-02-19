@@ -1,5 +1,6 @@
 import axios from 'axios'
 import type { TorrentProvider, TorrentResult, SearchQuery } from '../../types/index.js'
+import { logger } from '../../utils/logger.js'
 
 // Torrentio is a Stremio addon that aggregates torrents from multiple sources
 // It requires IMDB ID, but we can search by title using cinemeta first
@@ -87,18 +88,18 @@ export const torrentioProvider: TorrentProvider = {
       const cinemetaResult = await searchCinemeta(query.title, mediaType)
 
       if (!cinemetaResult) {
-        console.log(`Torrentio: No Cinemeta result for "${query.title}"`)
+        logger.debug(`No Cinemeta result for "${query.title}"`, 'Torrentio')
         return []
       }
 
       // Filter by year if provided
       if (query.year && cinemetaResult.year && parseInt(cinemetaResult.year) !== query.year) {
         // Try to find exact match
-        console.log(`Torrentio: Year mismatch (${cinemetaResult.year} vs ${query.year})`)
+        logger.debug(`Year mismatch (${cinemetaResult.year} vs ${query.year})`, 'Torrentio')
       }
 
       const imdbId = cinemetaResult.imdb_id || cinemetaResult.id
-      console.log(`Torrentio: Found IMDB ID ${imdbId} for "${query.title}"`)
+      logger.debug(`Found IMDB ID ${imdbId} for "${query.title}"`, 'Torrentio')
 
       // Now search Torrentio for streams
       // For movies: /stream/movie/{imdbId}.json
@@ -109,7 +110,7 @@ export const torrentioProvider: TorrentProvider = {
       const response = await axios.get(streamUrl, { timeout: 10000 })
 
       if (!response.data?.streams?.length) {
-        console.log(`Torrentio: No streams found for ${imdbId}`)
+        logger.debug(`No streams found for ${imdbId}`, 'Torrentio')
         return []
       }
 
@@ -148,7 +149,7 @@ export const torrentioProvider: TorrentProvider = {
       // Sort by seeds
       results.sort((a, b) => b.seeds - a.seeds)
 
-      console.log(`Torrentio: Found ${results.length} results`)
+      logger.debug(`Found ${results.length} results`, 'Torrentio')
       return results.slice(0, 20) // Limit results
     } catch (error) {
       console.error('Torrentio search error:', error)

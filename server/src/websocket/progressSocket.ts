@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken'
 import type { ProgressUpdate, WSMessage } from '../types/index.js'
 import { downloadManager } from '../services/downloadManagerService.js'
 import { config } from '../config.js'
+import { logger } from '../utils/logger.js'
 
 function verifyToken(token: string): boolean {
   try {
@@ -30,13 +31,13 @@ export function setupWebSocket(server: Server): WebSocketServer {
       const token = url.searchParams.get('token')
 
       if (!token || !verifyToken(token)) {
-        console.log('WebSocket connection rejected: Invalid or missing token')
+        logger.debug('Connection rejected: Invalid or missing token', 'WebSocket')
         ws.close(4001, 'Unauthorized')
         return
       }
     }
 
-    console.log('WebSocket client connected')
+    logger.debug('Client connected', 'WebSocket')
 
     // Send current state of all downloads
     const downloads = downloadManager.getAllDownloads()
@@ -55,7 +56,7 @@ export function setupWebSocket(server: Server): WebSocketServer {
     })
 
     ws.on('close', () => {
-      console.log('WebSocket client disconnected')
+      logger.debug('Client disconnected', 'WebSocket')
     })
 
     ws.on('error', (error) => {
@@ -74,7 +75,7 @@ function handleMessage(ws: WebSocket, message: WSMessage): void {
     case 'unsubscribe':
       break
     default:
-      console.log('Unknown message type:', message.type)
+      logger.debug(`Unknown message type: ${message.type}`, 'WebSocket')
   }
 }
 

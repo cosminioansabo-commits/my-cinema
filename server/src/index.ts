@@ -15,6 +15,7 @@ import { authMiddleware } from './middleware/auth.js'
 import { setupWebSocket } from './websocket/progressSocket.js'
 import { downloadManager } from './services/downloadManagerService.js'
 import { profileLibraryService } from './services/profileLibraryService.js'
+import { logger } from './utils/logger.js'
 
 const app = express()
 const server = createServer(app)
@@ -67,14 +68,14 @@ setupWebSocket(server)
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
-  console.log('\nShutting down...')
+  logger.info('Shutting down...')
   await downloadManager.destroy()
   server.close()
   process.exit(0)
 })
 
 process.on('SIGTERM', async () => {
-  console.log('\nShutting down...')
+  logger.info('Shutting down...')
   await downloadManager.destroy()
   server.close()
   process.exit(0)
@@ -82,13 +83,13 @@ process.on('SIGTERM', async () => {
 
 // Start server
 server.listen(config.port, async () => {
-  console.log(`Server running on http://localhost:${config.port}`)
-  console.log(`Download path: ${config.downloadPath}`)
-  console.log(`CORS origin: ${config.corsOrigin}`)
-  console.log(`Auth enabled: ${config.auth.enabled}`)
-  console.log(`Jellyfin enabled: ${config.jellyfin.enabled}`)
-  console.log(`Radarr enabled: ${config.radarr.enabled}`)
-  console.log(`Sonarr enabled: ${config.sonarr.enabled}`)
+  logger.info(`Server running on http://localhost:${config.port}`)
+  logger.info(`Download path: ${config.downloadPath}`)
+  logger.info(`CORS origin: ${config.corsOrigin}`)
+  logger.info(`Auth enabled: ${config.auth.enabled}`)
+  logger.info(`Jellyfin enabled: ${config.jellyfin.enabled}`)
+  logger.info(`Radarr enabled: ${config.radarr.enabled}`)
+  logger.info(`Sonarr enabled: ${config.sonarr.enabled}`)
 
   // Run initial library migration (imports existing Radarr/Sonarr content into default profile)
   try {

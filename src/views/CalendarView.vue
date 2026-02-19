@@ -153,14 +153,14 @@ const isAired = (airDateUtc: string | undefined): boolean => {
       <div>
         <div class="flex items-center gap-4 mb-3">
           <div
-              class="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center shadow-lg shadow-purple-500/20">
-            <i class="pi pi-calendar text-2xl text-white"></i>
+              class="w-10 h-10 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center shadow-lg shadow-purple-500/20">
+            <i class="pi pi-calendar text-xl sm:text-2xl text-white"></i>
           </div>
-          <h1 class="text-4xl md:text-5xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
+          <h1 class="text-2xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
             {{ t('calendar.title') }}
           </h1>
         </div>
-        <p class="text-gray-400 text-lg ml-0 sm:ml-[4.5rem]">{{ t('calendar.subtitle') }}</p>
+        <p class="text-gray-400 text-sm sm:text-lg ml-0 sm:ml-[4.5rem]">{{ t('calendar.subtitle') }}</p>
       </div>
 
       <div class="flex items-center gap-4">
@@ -196,7 +196,7 @@ const isAired = (airDateUtc: string | undefined): boolean => {
 
     <!-- Loading State -->
     <div v-if="isLoading" class="flex items-center justify-center py-24">
-      <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="4"/>
+      <ProgressSpinner class="!w-[50px] !h-[50px]" strokeWidth="4"/>
     </div>
 
     <!-- Error State -->
@@ -326,11 +326,3 @@ const isAired = (airDateUtc: string | undefined): boolean => {
   </div>
 </template>
 
-<style scoped>
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-</style>

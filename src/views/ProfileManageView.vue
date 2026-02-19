@@ -89,9 +89,9 @@ function goBack() {
 
 <template>
   <div class="min-h-screen flex flex-col items-center justify-center bg-[#141414] p-6">
-    <div class="fixed inset-0 bg-gradient-to-br from-[#1a1a2e] via-[#141414] to-[#0f0f0f] -z-10"></div>
+    <div class="fixed inset-0 bg-gradient-to-br from-[#1a1a2e] via-[#141414] to-[#0f0f0f] z-0"></div>
 
-    <div class="w-full max-w-md">
+    <div class="relative z-10 w-full max-w-md">
       <!-- Header -->
       <div class="text-center mb-8">
         <h1 class="text-2xl font-bold text-white mb-2">{{ t('profiles.editProfile') }}</h1>
@@ -130,7 +130,8 @@ function goBack() {
             <button
               v-for="color in avatarColors"
               :key="color"
-              class="w-10 h-10 rounded-full transition-all duration-150"
+              v-ripple
+              class="w-10 h-10 rounded-full transition-all duration-150 relative overflow-hidden"
               :style="{ backgroundColor: color }"
               :class="avatarColor === color ? 'ring-2 ring-white ring-offset-2 ring-offset-zinc-900 scale-110' : 'hover:scale-110'"
               @click="avatarColor = color"
@@ -145,7 +146,8 @@ function goBack() {
             <button
               v-for="icon in avatarIcons"
               :key="icon"
-              class="w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-150"
+              v-ripple
+              class="w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-150 relative overflow-hidden"
               :class="avatarIcon === icon ? 'bg-white/20 ring-2 ring-white/50 scale-110' : 'bg-white/5 hover:bg-white/10 hover:scale-110'"
               @click="avatarIcon = icon"
             >
