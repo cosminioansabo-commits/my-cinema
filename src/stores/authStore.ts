@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import axios from 'axios'
 
-const API_BASE = import.meta.env.VITE_TORRENT_API_URL || 'http://localhost:3001'
+const API_BASE = import.meta.env.VITE_TORRENT_API_URL || ''
 const TOKEN_KEY = 'my-cinema-auth-token'
 const EXPIRES_KEY = 'my-cinema-auth-expires'
 const PROFILE_KEY = 'my-cinema-active-profile'

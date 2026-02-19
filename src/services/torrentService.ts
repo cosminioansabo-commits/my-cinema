@@ -3,7 +3,7 @@ import type { TorrentResult, Download, SearchQuery, ProgressUpdate } from '@/typ
 import { setupAuthInterceptor } from '@/composables/useAuthInterceptor'
 import { useAuthStore } from '@/stores/authStore'
 
-const API_BASE = import.meta.env.VITE_TORRENT_API_URL || 'http://localhost:3001'
+const API_BASE = import.meta.env.VITE_TORRENT_API_URL || ''
 
 const api = axios.create({
   baseURL: `${API_BASE}/api/torrents`,

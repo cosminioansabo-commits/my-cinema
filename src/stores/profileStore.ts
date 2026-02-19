@@ -3,7 +3,7 @@ import { ref, computed } from 'vue'
 import axios from 'axios'
 import { useAuthStore } from './authStore'
 
-const API_BASE = import.meta.env.VITE_TORRENT_API_URL || 'http://localhost:3001'
+const API_BASE = import.meta.env.VITE_TORRENT_API_URL || ''
 
 export interface Profile {
   id: string

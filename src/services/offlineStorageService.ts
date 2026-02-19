@@ -326,7 +326,7 @@ class OfflineStorageService {
     let fetchUrl = url
     const tmdbMatch = url.match(/image\.tmdb\.org\/t\/p\/(w\d+|original)\/(.+)/)
     if (tmdbMatch) {
-      const apiBase = import.meta.env.VITE_TORRENT_API_URL || 'http://localhost:3001'
+      const apiBase = import.meta.env.VITE_TORRENT_API_URL || ''
       fetchUrl = `${apiBase}/api/proxy/image/tmdb/${tmdbMatch[1]}/${tmdbMatch[2]}`
     }
 

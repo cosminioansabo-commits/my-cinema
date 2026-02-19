@@ -16,12 +16,11 @@ COPY . .
 
 # Build args for environment variables (set at build time)
 ARG VITE_TMDB_API_KEY
-ARG VITE_TORRENT_API_URL
 ARG VITE_OMDB_API_KEY
 
-# Create .env file for build
+# Create .env file for build (VITE_TORRENT_API_URL intentionally omitted —
+# empty value makes the app use relative URLs, which works behind the reverse proxy)
 RUN echo "VITE_TMDB_API_KEY=${VITE_TMDB_API_KEY}" > .env && \
-    echo "VITE_TORRENT_API_URL=${VITE_TORRENT_API_URL}" >> .env && \
     echo "VITE_OMDB_API_KEY=${VITE_OMDB_API_KEY}" >> .env
 
 # Build the app

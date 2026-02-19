@@ -45,7 +45,8 @@
       "Bash(done)",
       "Bash(expect:*)",
       "Bash(chmod:*)",
-      "Bash(ssh:*)"
+      "Bash(ssh:*)",
+      "Bash(gh secret list:*)"
     ],
     "deny": [],
     "ask": []
