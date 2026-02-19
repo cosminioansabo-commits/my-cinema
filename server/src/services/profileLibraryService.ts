@@ -260,6 +260,16 @@ class ProfileLibraryService {
   }
 
   /**
+   * Update the poster_path for a library entry.
+   * Called by the frontend when it resolves a missing poster from TMDB.
+   */
+  updatePosterPath(profileId: string, mediaType: string, tmdbId: number, posterPath: string): void {
+    db.prepare(
+      'UPDATE profile_library SET poster_path = ? WHERE profile_id = ? AND media_type = ? AND tmdb_id = ?'
+    ).run(posterPath, profileId, mediaType, tmdbId)
+  }
+
+  /**
    * Extract TMDB poster path from Radarr/Sonarr images array.
    * Radarr/Sonarr images have remoteUrl like: https://image.tmdb.org/t/p/original/posterpath.jpg
    * We extract just the path portion (e.g. /posterpath.jpg) for use with TMDB image CDN.

@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { profileLibraryService, type ProfileLibraryEntry } from '@/services/libraryService'
-import { getImageUrl } from '@/services/tmdbService'
+import { getImageUrl, getPosterPath } from '@/services/tmdbService'
 import { useAuthStore } from '@/stores/authStore'
 import { useLanguage } from '@/composables/useLanguage'
 import ProgressSpinner from 'primevue/progressspinner'
@@ -33,10 +33,42 @@ const fetchLibrary = async () => {
   isLoadingLibrary.value = true
   try {
     libraryEntries.value = await profileLibraryService.getLibrary(profileId.value)
+    // Resolve missing poster paths from TMDB in background
+    resolveMissingPosters()
   } catch (error) {
     console.error('Error fetching library:', error)
   } finally {
     isLoadingLibrary.value = false
+  }
+}
+
+/**
+ * For library entries missing posterPath, fetch from TMDB and update locally.
+ * Also persists the poster path to the backend so it doesn't need to be fetched again.
+ */
+const resolveMissingPosters = async () => {
+  const entriesMissingPoster = libraryEntries.value.filter(e => !e.posterPath && e.tmdbId)
+  if (entriesMissingPoster.length === 0) return
+
+  console.log(`Resolving ${entriesMissingPoster.length} missing poster paths from TMDB...`)
+
+  // Fetch posters in parallel (batches of 5 to avoid rate limits)
+  const batchSize = 5
+  for (let i = 0; i < entriesMissingPoster.length; i += batchSize) {
+    const batch = entriesMissingPoster.slice(i, i + batchSize)
+    await Promise.all(batch.map(async (entry) => {
+      try {
+        const posterPath = await getPosterPath(entry.mediaType, entry.tmdbId)
+        if (posterPath) {
+          // Update local state reactively
+          entry.posterPath = posterPath
+          // Persist to backend in background (fire-and-forget)
+          profileLibraryService.updatePosterPath(profileId.value, entry.mediaType, entry.tmdbId, posterPath).catch(() => {})
+        }
+      } catch (error) {
+        // Silent fail — poster will just show placeholder
+      }
+    }))
   }
 }
 

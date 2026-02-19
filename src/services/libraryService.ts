@@ -139,6 +139,10 @@ export const profileLibraryService = {
   async checkAvailability(mediaType: string, tmdbId: number): Promise<{ available: boolean; hasFile: boolean }> {
     const response = await profileApi.get(`/library/available/${mediaType}/${tmdbId}`)
     return response.data
+  },
+
+  async updatePosterPath(profileId: string, mediaType: string, tmdbId: number, posterPath: string): Promise<void> {
+    await profileApi.patch(`/${profileId}/library/${mediaType}/${tmdbId}/poster`, { posterPath })
   }
 }
 

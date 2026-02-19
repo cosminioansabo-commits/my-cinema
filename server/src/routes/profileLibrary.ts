@@ -126,6 +126,29 @@ router.get('/library/available/:mediaType/:tmdbId', async (req: AuthenticatedReq
 })
 
 /**
+ * Update poster path for a library entry
+ * PATCH /api/profiles/:profileId/library/:mediaType/:tmdbId/poster
+ * Body: { posterPath }
+ */
+router.patch('/:profileId/library/:mediaType/:tmdbId/poster', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { profileId, mediaType, tmdbId } = req.params
+    const { posterPath } = req.body
+
+    if (!posterPath || typeof posterPath !== 'string') {
+      res.status(400).json({ error: 'posterPath is required' })
+      return
+    }
+
+    profileLibraryService.updatePosterPath(profileId, mediaType, parseInt(tmdbId, 10), posterPath)
+    res.json({ success: true })
+  } catch (error) {
+    console.error('Error updating poster path:', error)
+    res.status(500).json({ error: 'Failed to update poster path' })
+  }
+})
+
+/**
  * Repair migration data (fix missing poster_path and tmdb_id = 0)
  * POST /api/profiles/admin/repair-library
  * This is an admin action to fix data from the initial migration.
