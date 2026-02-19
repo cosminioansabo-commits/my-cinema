@@ -5,7 +5,8 @@ import { useMediaStore } from '@/stores/mediaStore'
 import { useLanguage } from '@/composables/useLanguage'
 import type { MediaType, Video, CollectionDetails } from '@/types'
 import { getImageUrl, getBackdropUrl, getCollectionDetails } from '@/services/tmdbService'
-import { libraryService } from '@/services/libraryService'
+import { libraryService, profileLibraryService } from '@/services/libraryService'
+import { useAuthStore } from '@/stores/authStore'
 import { getExternalRatings, type ExternalRatings } from '@/services/omdbService'
 import { progressService, type WatchProgress } from '@/services/progressService'
 import type { SonarrEpisode } from '@/services/libraryService'
@@ -21,8 +22,11 @@ import { useToast } from 'primevue/usetoast'
 const route = useRoute()
 const router = useRouter()
 const mediaStore = useMediaStore()
+const authStore = useAuthStore()
 const toast = useToast()
 const { languageChangeCounter, t } = useLanguage()
+
+const profileId = computed(() => authStore.activeProfileId || 'default')
 
 const showTorrentModal = ref(false)
 const showTrailerModal = ref(false)
@@ -31,8 +35,9 @@ const torrentSearchQuery = ref('')
 const torrentSearchSeason = ref<number | undefined>()
 const torrentSearchEpisode = ref<number | undefined>()
 
-// Library state
+// Library state — inLibrary = in current profile's library, hasFile = downloaded by any profile
 const libraryStatus = ref<{ inLibrary: boolean; enabled: boolean; id?: number; hasFile?: boolean }>({ inLibrary: false, enabled: false })
+const inProfileLibrary = ref(false)
 const isAddingToLibrary = ref(false)
 
 // Collection state
@@ -211,24 +216,33 @@ const checkLibraryStatus = async () => {
   if (!media.value) return
 
   try {
+    // Check if in current profile's library
+    inProfileLibrary.value = await profileLibraryService.checkInLibrary(
+      profileId.value, mediaType.value, media.value.id
+    )
+
+    // Check Radarr/Sonarr status for playback/download availability
     if (mediaType.value === 'movie') {
       const result = await libraryService.checkMovieInLibrary(media.value.id)
       libraryStatus.value = {
-        inLibrary: result.inLibrary,
+        inLibrary: inProfileLibrary.value,
         enabled: result.enabled,
         id: result.movie?.id,
         hasFile: result.movie?.hasFile
       }
     } else {
-      // For TV shows, we need the external IDs to get TVDB ID
-      // For now, try to lookup by TMDB ID
       const series = await libraryService.lookupSeriesByTmdbId(media.value.id)
       if (series) {
         const result = await libraryService.checkSeriesInLibrary(series.tvdbId)
         libraryStatus.value = {
-          inLibrary: result.inLibrary,
+          inLibrary: inProfileLibrary.value,
           enabled: result.enabled,
           id: result.series?.id
+        }
+      } else {
+        libraryStatus.value = {
+          inLibrary: inProfileLibrary.value,
+          enabled: true
         }
       }
     }
@@ -242,17 +256,16 @@ const toggleLibrary = async () => {
 
   isAddingToLibrary.value = true
   try {
-    if (libraryStatus.value.inLibrary && libraryStatus.value.id) {
-      // Remove from library
-      let success: boolean
-      if (mediaType.value === 'movie') {
-        success = await libraryService.deleteMovie(libraryStatus.value.id, libraryStatus.value.hasFile)
-      } else {
-        success = await libraryService.deleteSeries(libraryStatus.value.id, libraryStatus.value.hasFile)
-      }
-
-      if (success) {
-        libraryStatus.value = { ...libraryStatus.value, inLibrary: false, id: undefined }
+    if (inProfileLibrary.value) {
+      // Remove from profile library (reference counting handles Radarr/Sonarr deletion)
+      const result = await profileLibraryService.removeFromLibrary(
+        profileId.value, mediaType.value, media.value.id
+      )
+      if (result.removed) {
+        inProfileLibrary.value = false
+        libraryStatus.value = { ...libraryStatus.value, inLibrary: false }
+        // Re-check availability (might have been deleted from disk)
+        await checkLibraryStatus()
         toast.add({
           severity: 'info',
           summary: t('media.removedFromLibrary'),
@@ -261,45 +274,46 @@ const toggleLibrary = async () => {
         })
       }
     } else {
-      // Add to library
-      if (mediaType.value === 'movie') {
-        const movie = await libraryService.addMovie(
-          media.value.id,
-          media.value.title,
-          year.value ? Number(year.value) : undefined
-        )
-        if (movie) {
-          libraryStatus.value = { inLibrary: true, enabled: true, id: movie.id }
-          toast.add({
-            severity: 'success',
-            summary: t('media.addedToLibrary'),
-            detail: t('media.hasBeenAddedTo', { title: media.value.title, service: 'Radarr' }),
-            life: 3000
-          })
-        }
-      } else {
-        // For TV shows, lookup first to get TVDB ID
+      // Add to profile library (handles Radarr/Sonarr add if needed)
+      let tvdbId: number | undefined
+      if (mediaType.value === 'tv') {
         const lookup = await libraryService.lookupSeriesByTmdbId(media.value.id)
-        if (lookup) {
-          const series = await libraryService.addSeries(lookup.tvdbId, media.value.title)
-          if (series) {
-            libraryStatus.value = { inLibrary: true, enabled: true, id: series.id }
-            toast.add({
-              severity: 'success',
-              summary: t('media.addedToLibrary'),
-              detail: t('media.hasBeenAddedTo', { title: media.value.title, service: 'Sonarr' }),
-              life: 3000
-            })
-          }
-        } else {
+        if (!lookup) {
           toast.add({
             severity: 'error',
             summary: t('errors.notFound'),
             detail: t('media.notFoundInSonarr'),
             life: 3000
           })
+          isAddingToLibrary.value = false
+          return
         }
+        tvdbId = lookup.tvdbId
       }
+
+      await profileLibraryService.addToLibrary(
+        profileId.value,
+        mediaType.value,
+        media.value.id,
+        media.value.title,
+        year.value ? Number(year.value) : undefined,
+        media.value.posterPath || undefined,
+        tvdbId
+      )
+
+      inProfileLibrary.value = true
+      libraryStatus.value = { ...libraryStatus.value, inLibrary: true }
+      // Re-check full status to get Radarr/Sonarr IDs
+      await checkLibraryStatus()
+      toast.add({
+        severity: 'success',
+        summary: t('media.addedToLibrary'),
+        detail: t('media.hasBeenAddedTo', {
+          title: media.value.title,
+          service: mediaType.value === 'movie' ? 'Radarr' : 'Sonarr'
+        }),
+        life: 3000
+      })
     }
   } catch (error) {
     toast.add({

@@ -22,8 +22,10 @@ const toggleSidebar = () => {
   sidebarVisible.value = !sidebarVisible.value
 }
 
-// Hide header/sidebar on login page
-const showLayout = computed(() => route.name !== 'login')
+// Hide header/sidebar on login, profile select, and profile manage pages
+const showLayout = computed(() => {
+  return route.name !== 'login' && route.name !== 'profiles' && route.name !== 'profile-manage'
+})
 
 // Listen for in-app notification fallback events
 const handleAppNotification = (e: Event) => {

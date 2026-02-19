@@ -8,15 +8,15 @@
 #   2. Login to GitHub Container Registry:
 #      echo "YOUR_GITHUB_TOKEN" | docker login ghcr.io -u YOUR_USERNAME --password-stdin
 #   3. Create .env file from .env.my-cinema.example
+#   4. Deploy nginx-proxy for HTTPS access:
+#      docker compose -f docker-compose.nginx-proxy.yml up -d
 #
 # Usage:
 #   docker compose -f docker-compose.my-cinema.yml up -d
 #
 # Access:
-#   Local:  http://NAS_IP:8081
-#   Remote: http://your-domain:8081 (requires port forwarding)
-#
-# For remote video playback, also forward port 8096 (Jellyfin)
+#   Local:  http://NAS_IP:8081 (direct) or https://co-sa-srv.go.ro (via proxy)
+#   Remote: https://co-sa-srv.go.ro (via nginx reverse proxy)
 # =============================================================================
 
 services:
@@ -26,6 +26,8 @@ services:
     restart: unless-stopped
     ports:
       - "8081:80"
+    expose:
+      - "80"
     depends_on:
       - my-cinema-backend
     labels:
@@ -37,12 +39,14 @@ services:
     restart: unless-stopped
     ports:
       - "3001:3001"
+    expose:
+      - "3001"
     environment:
       # Server
       - PORT=3001
-      - CORS_ORIGIN=http://${NAS_IP}
+      - CORS_ORIGIN=${CORS_ORIGIN:-https://co-sa-srv.go.ro}
       - DOWNLOAD_PATH=/data/downloads
-      - BACKEND_EXTERNAL_URL=${BACKEND_EXTERNAL_URL:-http://${NAS_IP}:3001}
+      - BACKEND_EXTERNAL_URL=${BACKEND_EXTERNAL_URL:-https://co-sa-srv.go.ro}
       # Torrent services (use container names)
       - PROWLARR_URL=http://prowlarr:9696
       - PROWLARR_API_KEY=${PROWLARR_API_KEY}

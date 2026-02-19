@@ -51,6 +51,39 @@ const initSchema = () => {
     )
   `)
 
+  // Profiles table — multi-user profile system
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS profiles (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      avatar_color TEXT NOT NULL DEFAULT '#e50914',
+      avatar_icon TEXT NOT NULL DEFAULT 'pi-user',
+      is_default BOOLEAN NOT NULL DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+
+  // Per-profile library — associates profiles with media in Radarr/Sonarr
+  // Reference counting: media files are only deleted when no profile references them
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS profile_library (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      profile_id TEXT NOT NULL,
+      media_type TEXT NOT NULL CHECK (media_type IN ('movie', 'tv')),
+      tmdb_id INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      year INTEGER,
+      poster_path TEXT,
+      radarr_id INTEGER,
+      sonarr_id INTEGER,
+      tvdb_id INTEGER,
+      added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(profile_id, media_type, tmdb_id),
+      FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE
+    )
+  `)
+
   // Create indexes
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_progress_user_media
@@ -66,6 +99,26 @@ const initSchema = () => {
     CREATE INDEX IF NOT EXISTS idx_progress_user_updated
     ON watch_progress(user_id, updated_at DESC)
   `)
+
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_profile_library_profile
+    ON profile_library(profile_id)
+  `)
+
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_profile_library_media
+    ON profile_library(media_type, tmdb_id)
+  `)
+
+  // Migration: create default profile if none exists
+  const profileCount = db.prepare('SELECT COUNT(*) as count FROM profiles').get() as { count: number }
+  if (profileCount.count === 0) {
+    db.prepare(`
+      INSERT INTO profiles (id, name, avatar_color, avatar_icon, is_default)
+      VALUES ('default', 'Default', '#e50914', 'pi-user', 1)
+    `).run()
+    console.log('Created default profile')
+  }
 
   console.log('Database initialized:', DB_FILE)
 }

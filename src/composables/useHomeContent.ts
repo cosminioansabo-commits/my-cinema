@@ -22,11 +22,11 @@ import {
   getDocumentaries,
   getKoreanDramas,
   getBackdropUrl,
-  findByExternalId,
   getMediaDetails,
 } from '@/services/tmdbService'
-import { libraryService, type RadarrMovie, type SonarrSeries } from '@/services/libraryService'
+import { profileLibraryService } from '@/services/libraryService'
 import { progressService } from '@/services/progressService'
+import { useAuthStore } from '@/stores/authStore'
 import type { ContinueWatchingItem } from '@/components/media/ContinueWatchingCarousel.vue'
 
 export function useHomeContent() {
@@ -137,53 +137,26 @@ export function useHomeContent() {
     }
   }
 
-  // Load library items
+  // Load library items from profile library
   const loadLibraryItems = async () => {
     try {
-      const [movies, series] = await Promise.all([
-        libraryService.getMovies(),
-        libraryService.getSeries(),
-      ])
+      const authStore = useAuthStore()
+      const profileId = authStore.activeProfileId || 'default'
+      const entries = await profileLibraryService.getLibrary(profileId)
 
-      const movieMedia = await Promise.all(
-        movies.slice(0, 10).map(async (movie: RadarrMovie) => {
-          const tmdb = await findByExternalId(movie.tmdbId, 'imdb_id').catch(() => null)
-          return {
-            id: movie.tmdbId,
-            title: movie.title,
-            posterPath: tmdb?.posterPath || movie.images?.find((i: { coverType: string }) => i.coverType === 'poster')?.remoteUrl || null,
-            releaseDate: movie.year ? `${movie.year}-01-01` : '',
-            voteAverage: movie.ratings?.tmdb?.value || 0,
-            mediaType: 'movie' as const,
-            overview: movie.overview || '',
-            backdropPath: null,
-            voteCount: 0,
-            genreIds: [],
-            popularity: 0,
-          }
-        })
-      )
-
-      const seriesMedia = await Promise.all(
-        series.slice(0, 10).map(async (s: SonarrSeries) => {
-          const tmdb = await findByExternalId(s.tvdbId, 'tvdb_id').catch(() => null)
-          return {
-            id: tmdb?.id || s.tvdbId,
-            title: s.title,
-            posterPath: tmdb?.posterPath || s.images?.find((i: { coverType: string }) => i.coverType === 'poster')?.remoteUrl || null,
-            releaseDate: s.year ? `${s.year}-01-01` : '',
-            voteAverage: s.ratings?.value || 0,
-            mediaType: 'tv' as const,
-            overview: s.overview || '',
-            backdropPath: null,
-            voteCount: 0,
-            genreIds: [],
-            popularity: 0,
-          }
-        })
-      )
-
-      libraryItems.value = [...movieMedia, ...seriesMedia].slice(0, 20)
+      libraryItems.value = entries.slice(0, 20).map((entry) => ({
+        id: entry.tmdbId,
+        title: entry.title,
+        posterPath: entry.posterPath || null,
+        releaseDate: entry.year ? `${entry.year}-01-01` : '',
+        voteAverage: 0,
+        mediaType: entry.mediaType as 'movie' | 'tv',
+        overview: '',
+        backdropPath: null,
+        voteCount: 0,
+        genreIds: [],
+        popularity: 0,
+      }))
     } catch (error) {
       console.error('Failed to load library items:', error)
     }

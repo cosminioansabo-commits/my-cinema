@@ -3,17 +3,32 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import DownloadManager from '@/components/torrents/DownloadManager.vue'
 import LanguageSelector from '@/components/common/LanguageSelector.vue'
 import { useAuthStore } from '@/stores/authStore'
+import { useProfileStore } from '@/stores/profileStore'
 import { useNotificationStore } from '@/stores/notificationStore'
 import { useLanguage } from '@/composables/useLanguage'
+import { onMounted } from 'vue'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const profileStore = useProfileStore()
 const notificationStore = useNotificationStore()
 const { t } = useLanguage()
 
+onMounted(async () => {
+  if (authStore.hasProfile && profileStore.profiles.length === 0) {
+    await profileStore.fetchProfiles()
+    profileStore.setActiveFromToken()
+  }
+})
+
+const handleSwitchProfile = () => {
+  router.push({ name: 'profiles' })
+}
+
 const handleLogout = () => {
   authStore.logout()
+  profileStore.clearActive()
   router.push({ name: 'login' })
 }
 
@@ -112,12 +127,23 @@ const isActiveRoute = (path: string) => {
         <!-- Download Manager -->
         <DownloadManager />
 
+        <!-- Profile Avatar (switch profile) -->
+        <button
+          v-if="profileStore.activeProfile"
+          @click="handleSwitchProfile"
+          class="w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:ring-2 hover:ring-white/30"
+          :style="{ backgroundColor: profileStore.activeProfile.avatarColor }"
+          :title="profileStore.activeProfile.name"
+        >
+          <i :class="['pi', profileStore.activeProfile.avatarIcon, 'text-sm text-white']"></i>
+        </button>
+
         <!-- Logout button (only show when auth is enabled and authenticated) -->
         <button
           v-if="authStore.authEnabled && authStore.isAuthenticated"
           @click="handleLogout"
           class="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
-          title="Logout"
+          :title="t('nav.logout')"
         >
           <i class="pi pi-sign-out text-lg"></i>
         </button>

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { RouterLink, useRoute } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import Drawer from 'primevue/drawer'
 import LanguageSelector from '@/components/common/LanguageSelector.vue'
 import { useLanguage } from '@/composables/useLanguage'
+import { useProfileStore } from '@/stores/profileStore'
 
 const props = defineProps<{
   visible: boolean
@@ -13,7 +14,14 @@ const emit = defineEmits<{
 }>()
 
 const route = useRoute()
+const router = useRouter()
+const profileStore = useProfileStore()
 const { t } = useLanguage()
+
+const handleSwitchProfile = () => {
+  closeSidebar()
+  router.push({ name: 'profiles' })
+}
 
 const navLinks = [
   { path: '/', labelKey: 'nav.home', icon: 'pi-home' },
@@ -77,13 +85,34 @@ const closeSidebar = () => {
         </RouterLink>
       </nav>
 
-      <!-- Language Selector -->
-      <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-zinc-700">
-        <div class="flex items-center gap-3">
-          <i class="pi pi-globe text-gray-400"></i>
-          <span class="text-gray-400 text-sm">{{ t('settings.language') }}</span>
-          <div class="ml-auto">
-            <LanguageSelector />
+      <!-- Bottom section -->
+      <div class="absolute bottom-0 left-0 right-0 border-t border-zinc-700">
+        <!-- Profile Switcher -->
+        <button
+          v-if="profileStore.activeProfile"
+          class="w-full flex items-center gap-3 p-4 hover:bg-zinc-800 transition-colors"
+          @click="handleSwitchProfile"
+        >
+          <div
+            class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+            :style="{ backgroundColor: profileStore.activeProfile.avatarColor }"
+          >
+            <i :class="['pi', profileStore.activeProfile.avatarIcon, 'text-sm text-white']"></i>
+          </div>
+          <div class="flex-1 text-left">
+            <p class="text-white text-sm font-medium">{{ profileStore.activeProfile.name }}</p>
+            <p class="text-gray-500 text-xs">{{ t('profiles.switchProfile') }}</p>
+          </div>
+          <i class="pi pi-chevron-right text-gray-500 text-xs"></i>
+        </button>
+        <!-- Language Selector -->
+        <div class="p-4 border-t border-zinc-700">
+          <div class="flex items-center gap-3">
+            <i class="pi pi-globe text-gray-400"></i>
+            <span class="text-gray-400 text-sm">{{ t('settings.language') }}</span>
+            <div class="ml-auto">
+              <LanguageSelector />
+            </div>
           </div>
         </div>
       </div>

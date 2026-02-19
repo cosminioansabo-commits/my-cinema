@@ -4,6 +4,8 @@ import bcrypt from 'bcryptjs'
 import rateLimit from 'express-rate-limit'
 import { config } from '../config.js'
 import { logAuthEvent, getClientIp } from '../utils/authLogger.js'
+import { authMiddleware, AuthenticatedRequest } from '../middleware/auth.js'
+import { profileService } from '../services/profileService.js'
 
 // Helper to create JWT with proper typing
 const createToken = (payload: object): string => {
@@ -118,6 +120,38 @@ router.post('/verify', (req: Request, res: Response) => {
     res.json({ valid: true })
   } catch {
     res.json({ valid: false })
+  }
+})
+
+// POST /api/auth/select-profile
+// Requires a valid JWT. Issues a new JWT with the selected profileId.
+// Enables profile switching without re-entering the password.
+router.post('/select-profile', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { profileId } = req.body
+
+    if (!profileId) {
+      return res.status(400).json({ error: 'profileId is required' })
+    }
+
+    // Verify profile exists
+    const profile = profileService.getById(profileId)
+    if (!profile) {
+      return res.status(404).json({ error: 'Profile not found' })
+    }
+
+    // Issue new JWT with profileId included
+    const token = createToken({ authenticated: true, profileId })
+    const decoded = jwt.decode(token) as { exp: number }
+
+    res.json({
+      token,
+      expiresAt: decoded.exp * 1000,
+      profile
+    })
+  } catch (error) {
+    console.error('Profile selection error:', error)
+    res.status(500).json({ error: 'Failed to select profile' })
   }
 })
 

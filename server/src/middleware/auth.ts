@@ -5,6 +5,7 @@ import { config } from '../config.js'
 export interface AuthenticatedRequest extends Request {
   user?: {
     authenticated: boolean
+    profileId?: string
     iat: number
     exp: number
   }
@@ -38,6 +39,7 @@ export const authMiddleware = (req: AuthenticatedRequest, res: Response, next: N
   try {
     const decoded = jwt.verify(token, config.auth.jwtSecret) as {
       authenticated: boolean
+      profileId?: string
       iat: number
       exp: number
     }

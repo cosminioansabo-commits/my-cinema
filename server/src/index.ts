@@ -9,9 +9,12 @@ import mediaRoutes from './routes/media.js'
 import progressRoutes from './routes/progress.js'
 import hlsProxyRoutes from './routes/hlsProxy.js'
 import subtitleRoutes from './routes/subtitles.js'
+import profileRoutes from './routes/profiles.js'
+import profileLibraryRoutes from './routes/profileLibrary.js'
 import { authMiddleware } from './middleware/auth.js'
 import { setupWebSocket } from './websocket/progressSocket.js'
 import { downloadManager } from './services/downloadManagerService.js'
+import { profileLibraryService } from './services/profileLibraryService.js'
 
 const app = express()
 const server = createServer(app)
@@ -46,6 +49,8 @@ app.use('/api/auth', authRoutes)
 app.use('/api/proxy', hlsProxyRoutes) // HLS proxy for Jellyfin streams (no auth - HLS.js can't send headers)
 
 // Protected routes (auth required)
+app.use('/api/profiles', authMiddleware, profileRoutes)
+app.use('/api/profiles', authMiddleware, profileLibraryRoutes)
 app.use('/api/torrents', authMiddleware, torrentRoutes)
 app.use('/api/library', authMiddleware, libraryRoutes)
 app.use('/api/media', authMiddleware, mediaRoutes)
@@ -76,7 +81,7 @@ process.on('SIGTERM', async () => {
 })
 
 // Start server
-server.listen(config.port, () => {
+server.listen(config.port, async () => {
   console.log(`Server running on http://localhost:${config.port}`)
   console.log(`Download path: ${config.downloadPath}`)
   console.log(`CORS origin: ${config.corsOrigin}`)
@@ -84,4 +89,11 @@ server.listen(config.port, () => {
   console.log(`Jellyfin enabled: ${config.jellyfin.enabled}`)
   console.log(`Radarr enabled: ${config.radarr.enabled}`)
   console.log(`Sonarr enabled: ${config.sonarr.enabled}`)
+
+  // Run initial library migration (imports existing Radarr/Sonarr content into default profile)
+  try {
+    await profileLibraryService.runInitialMigration()
+  } catch (error) {
+    console.error('Failed to run initial library migration:', error)
+  }
 })

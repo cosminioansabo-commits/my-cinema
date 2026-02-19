@@ -203,7 +203,7 @@
   },
   "library": {
     "title": "Biblioteca mea",
-    "subtitle": "Filme și seriale din biblioteca Radarr/Sonarr",
+    "subtitle": "Filme și seriale din biblioteca ta",
     "movies": "Filme",
     "tvShows": "Seriale TV",
     "total": "Total",
@@ -299,6 +299,20 @@
     "emptyHint": "Când descărcările se finalizează sau apar alte evenimente, vor apărea aici",
     "markAllRead": "Marchează toate citite",
     "clearAll": "Șterge tot"
+  },
+  "profiles": {
+    "whoIsWatching": "Cine se uită?",
+    "addProfile": "Adaugă profil",
+    "manageProfiles": "Gestionează profiluri",
+    "editProfile": "Editează profil",
+    "deleteProfile": "Șterge profil",
+    "name": "Nume",
+    "namePlaceholder": "Numele profilului",
+    "color": "Culoare",
+    "icon": "Iconiță",
+    "deleteConfirm": "Sigur vrei sa stergi profilul \"{name}\"? Aceasta actiune nu poate fi anulata.",
+    "deleteWarning": "Stergerea acestui profil va elimina permanent {movies} film(e) si {shows} serial(e) care nu sunt in biblioteca altui profil.",
+    "switchProfile": "Schimbă profil"
   },
   "offline": {
     "title": "Offline",

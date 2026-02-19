@@ -91,6 +91,57 @@ export interface CalendarEpisode extends SonarrEpisode {
   series: SonarrSeries | null
 }
 
+// Profile library API (uses profile-scoped endpoints)
+const profileApi = axios.create({
+  baseURL: `${API_BASE}/api/profiles`,
+  timeout: 30000
+})
+
+setupAuthInterceptor(profileApi)
+
+export interface ProfileLibraryEntry {
+  id: number
+  profileId: string
+  mediaType: 'movie' | 'tv'
+  tmdbId: number
+  title: string
+  year?: number
+  posterPath?: string
+  radarrId?: number
+  sonarrId?: number
+  tvdbId?: number
+  addedAt: string
+}
+
+export const profileLibraryService = {
+  async getLibrary(profileId: string): Promise<ProfileLibraryEntry[]> {
+    const response = await profileApi.get(`/${profileId}/library`)
+    return response.data.library
+  },
+
+  async addToLibrary(profileId: string, mediaType: string, tmdbId: number, title: string, year?: number, posterPath?: string, tvdbId?: number): Promise<ProfileLibraryEntry> {
+    const response = await profileApi.post(`/${profileId}/library`, {
+      mediaType, tmdbId, title, year, posterPath, tvdbId
+    })
+    return response.data
+  },
+
+  async removeFromLibrary(profileId: string, mediaType: string, tmdbId: number): Promise<{ removed: boolean; filesDeleted: boolean }> {
+    const response = await profileApi.delete(`/${profileId}/library/${mediaType}/${tmdbId}`)
+    return response.data
+  },
+
+  async checkInLibrary(profileId: string, mediaType: string, tmdbId: number): Promise<boolean> {
+    const response = await profileApi.get(`/${profileId}/library/check/${mediaType}/${tmdbId}`)
+    return response.data.inLibrary
+  },
+
+  async checkAvailability(mediaType: string, tmdbId: number): Promise<{ available: boolean; hasFile: boolean }> {
+    const response = await profileApi.get(`/library/available/${mediaType}/${tmdbId}`)
+    return response.data
+  }
+}
+
 export const libraryService = {
   // Service status
   async getStatus(): Promise<ServiceStatus> {

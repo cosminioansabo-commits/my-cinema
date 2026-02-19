@@ -203,7 +203,7 @@
   },
   "library": {
     "title": "My Library",
-    "subtitle": "Movies and TV shows in your Radarr/Sonarr library",
+    "subtitle": "Movies and TV shows in your library",
     "movies": "Movies",
     "tvShows": "TV Shows",
     "total": "Total",
@@ -299,6 +299,20 @@
     "emptyHint": "When downloads complete or other events occur, they'll appear here",
     "markAllRead": "Mark all read",
     "clearAll": "Clear All"
+  },
+  "profiles": {
+    "whoIsWatching": "Who's Watching?",
+    "addProfile": "Add Profile",
+    "manageProfiles": "Manage Profiles",
+    "editProfile": "Edit Profile",
+    "deleteProfile": "Delete Profile",
+    "name": "Name",
+    "namePlaceholder": "Profile name",
+    "color": "Color",
+    "icon": "Icon",
+    "deleteConfirm": "Are you sure you want to delete the profile \"{name}\"? This action cannot be undone.",
+    "deleteWarning": "Deleting this profile will permanently remove {movies} movie(s) and {shows} TV show(s) that are not in any other profile's library.",
+    "switchProfile": "Switch Profile"
   },
   "offline": {
     "title": "Offline",

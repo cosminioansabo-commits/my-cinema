@@ -1,25 +1,23 @@
-import { Router, Request, Response } from 'express'
+import { Router, Response } from 'express'
 import { progressService } from '../services/progressService.js'
+import { AuthenticatedRequest } from '../middleware/auth.js'
 
 const router = Router()
 
-// Extended request type with user from auth middleware
-// Note: This is a single-user system, so we use a default userId
-// The auth middleware verifies the token is valid, but doesn't provide a userId
-interface AuthRequest extends Request {
-  user?: { authenticated: boolean }
-}
-
-// Default user ID for single-user system
+// Fallback user ID for old tokens without profileId
 const DEFAULT_USER_ID = 'default'
+
+// Extract profile ID from JWT, falling back to default for backward compatibility
+const getProfileId = (req: AuthenticatedRequest): string => {
+  return req.user?.profileId || DEFAULT_USER_ID
+}
 
 /**
  * Save/update watch progress
  * POST /api/progress
  */
-router.post('/', async (req: AuthRequest, res: Response) => {
-  // Auth middleware already verified the token, use default user
-  const userId = DEFAULT_USER_ID
+router.post('/', async (req: AuthenticatedRequest, res: Response) => {
+  const userId = getProfileId(req)
 
   const { mediaType, tmdbId, seasonNumber, episodeNumber, positionMs, durationMs } = req.body
 
@@ -54,8 +52,8 @@ router.post('/', async (req: AuthRequest, res: Response) => {
  * Get progress for a movie
  * GET /api/progress/movie/:tmdbId
  */
-router.get('/movie/:tmdbId', async (req: AuthRequest, res: Response) => {
-  const userId = DEFAULT_USER_ID
+router.get('/movie/:tmdbId', async (req: AuthenticatedRequest, res: Response) => {
+  const userId = getProfileId(req)
 
   const tmdbId = parseInt(req.params.tmdbId, 10)
   const progress = progressService.getMovieProgress(userId, tmdbId)
@@ -67,8 +65,8 @@ router.get('/movie/:tmdbId', async (req: AuthRequest, res: Response) => {
  * Get progress for an episode
  * GET /api/progress/episode/:tmdbId/:season/:episode
  */
-router.get('/episode/:tmdbId/:season/:episode', async (req: AuthRequest, res: Response) => {
-  const userId = DEFAULT_USER_ID
+router.get('/episode/:tmdbId/:season/:episode', async (req: AuthenticatedRequest, res: Response) => {
+  const userId = getProfileId(req)
 
   const tmdbId = parseInt(req.params.tmdbId, 10)
   const season = parseInt(req.params.season, 10)
@@ -83,8 +81,8 @@ router.get('/episode/:tmdbId/:season/:episode', async (req: AuthRequest, res: Re
  * Get all progress for a TV show
  * GET /api/progress/show/:tmdbId
  */
-router.get('/show/:tmdbId', async (req: AuthRequest, res: Response) => {
-  const userId = DEFAULT_USER_ID
+router.get('/show/:tmdbId', async (req: AuthenticatedRequest, res: Response) => {
+  const userId = getProfileId(req)
 
   const tmdbId = parseInt(req.params.tmdbId, 10)
   const progress = progressService.getShowProgress(userId, tmdbId)
@@ -96,8 +94,8 @@ router.get('/show/:tmdbId', async (req: AuthRequest, res: Response) => {
  * Get continue watching list
  * GET /api/progress/continue-watching
  */
-router.get('/continue-watching', async (req: AuthRequest, res: Response) => {
-  const userId = DEFAULT_USER_ID
+router.get('/continue-watching', async (req: AuthenticatedRequest, res: Response) => {
+  const userId = getProfileId(req)
 
   const limit = parseInt(req.query.limit as string, 10) || 20
   const items = progressService.getContinueWatching(userId, limit)
@@ -109,8 +107,8 @@ router.get('/continue-watching', async (req: AuthRequest, res: Response) => {
  * Mark as watched
  * POST /api/progress/watched
  */
-router.post('/watched', async (req: AuthRequest, res: Response) => {
-  const userId = DEFAULT_USER_ID
+router.post('/watched', async (req: AuthenticatedRequest, res: Response) => {
+  const userId = getProfileId(req)
 
   const { mediaType, tmdbId, seasonNumber, episodeNumber } = req.body
 
@@ -138,8 +136,8 @@ router.post('/watched', async (req: AuthRequest, res: Response) => {
  * Clear all watch progress
  * DELETE /api/progress/all
  */
-router.delete('/all', async (req: AuthRequest, res: Response) => {
-  const userId = DEFAULT_USER_ID
+router.delete('/all', async (req: AuthenticatedRequest, res: Response) => {
+  const userId = getProfileId(req)
   const success = progressService.clearAllProgress(userId)
 
   if (success) {
@@ -153,8 +151,8 @@ router.delete('/all', async (req: AuthRequest, res: Response) => {
  * Remove progress (mark as unwatched)
  * DELETE /api/progress/:mediaType/:tmdbId
  */
-router.delete('/:mediaType/:tmdbId', async (req: AuthRequest, res: Response) => {
-  const userId = DEFAULT_USER_ID
+router.delete('/:mediaType/:tmdbId', async (req: AuthenticatedRequest, res: Response) => {
+  const userId = getProfileId(req)
 
   const mediaType = req.params.mediaType as 'movie' | 'episode'
   const tmdbId = parseInt(req.params.tmdbId, 10)

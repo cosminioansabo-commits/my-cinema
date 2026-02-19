@@ -11,6 +11,18 @@ const router = createRouter({
       meta: { public: true }
     },
     {
+      path: '/profiles',
+      name: 'profiles',
+      component: () => import('@/views/ProfileSelectView.vue'),
+      meta: { requiresAuth: true, skipProfile: true }
+    },
+    {
+      path: '/profiles/:id/manage',
+      name: 'profile-manage',
+      component: () => import('@/views/ProfileManageView.vue'),
+      meta: { requiresAuth: true, skipProfile: true }
+    },
+    {
       path: '/',
       name: 'home',
       component: () => import('@/views/HomeView.vue'),
@@ -78,10 +90,9 @@ router.beforeEach(async (to, _from, next) => {
     authInitialized = true
   }
 
-  // If auth is not enabled, allow all routes
+  // If auth is not enabled, allow all routes (skip profile selection too)
   if (authStore.authEnabled === false) {
-    // If on login page but auth is disabled, redirect to home
-    if (to.name === 'login') {
+    if (to.name === 'login' || to.name === 'profiles' || to.name === 'profile-manage') {
       return next({ name: 'home' })
     }
     return next()
@@ -89,9 +100,8 @@ router.beforeEach(async (to, _from, next) => {
 
   // Public routes don't need auth
   if (to.meta.public) {
-    // If already authenticated and trying to access login, redirect to home
     if (to.name === 'login' && authStore.isAuthenticated) {
-      return next({ name: 'home' })
+      return next(authStore.hasProfile ? { name: 'home' } : { name: 'profiles' })
     }
     return next()
   }
@@ -99,6 +109,16 @@ router.beforeEach(async (to, _from, next) => {
   // Protected routes need auth
   if (!authStore.isAuthenticated) {
     return next({ name: 'login' })
+  }
+
+  // Profile selection pages — allow even without profile
+  if (to.meta.skipProfile) {
+    return next()
+  }
+
+  // All other routes require a profile to be selected
+  if (!authStore.hasProfile) {
+    return next({ name: 'profiles' })
   }
 
   next()

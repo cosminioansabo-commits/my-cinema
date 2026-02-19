@@ -5,6 +5,7 @@ import axios from 'axios'
 const API_BASE = import.meta.env.VITE_TORRENT_API_URL || 'http://localhost:3001'
 const TOKEN_KEY = 'my-cinema-auth-token'
 const EXPIRES_KEY = 'my-cinema-auth-expires'
+const PROFILE_KEY = 'my-cinema-active-profile'
 
 export const useAuthStore = defineStore('auth', () => {
   // State
@@ -26,6 +27,20 @@ export const useAuthStore = defineStore('auth', () => {
   const tokenExpiresIn = computed(() => {
     if (!expiresAt.value) return 0
     return Math.max(0, expiresAt.value - Date.now())
+  })
+
+  const hasProfile = computed(() => {
+    if (!token.value) return false
+    try {
+      const payload = JSON.parse(atob(token.value.split('.')[1]))
+      return !!payload.profileId
+    } catch {
+      return false
+    }
+  })
+
+  const activeProfileId = computed(() => {
+    return localStorage.getItem(PROFILE_KEY) || null
   })
 
   // Actions
@@ -89,11 +104,22 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  function updateToken(newToken: string, newExpiresAt: number, profileId?: string) {
+    token.value = newToken
+    expiresAt.value = newExpiresAt
+    localStorage.setItem(TOKEN_KEY, newToken)
+    localStorage.setItem(EXPIRES_KEY, newExpiresAt.toString())
+    if (profileId) {
+      localStorage.setItem(PROFILE_KEY, profileId)
+    }
+  }
+
   function logout() {
     token.value = null
     expiresAt.value = null
     localStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(EXPIRES_KEY)
+    localStorage.removeItem(PROFILE_KEY)
   }
 
   function getAuthHeader(): { Authorization: string } | {} {
@@ -106,8 +132,13 @@ export const useAuthStore = defineStore('auth', () => {
     // First check if auth is enabled
     await checkAuthStatus()
 
-    // If auth is not enabled, we're good
-    if (!authEnabled.value) return
+    // If auth is not enabled, auto-set default profile for library/progress
+    if (!authEnabled.value) {
+      if (!localStorage.getItem(PROFILE_KEY)) {
+        localStorage.setItem(PROFILE_KEY, 'default')
+      }
+      return
+    }
 
     // If we have a token, verify it's still valid
     if (token.value) {
@@ -128,10 +159,13 @@ export const useAuthStore = defineStore('auth', () => {
     // Getters
     isAuthenticated,
     tokenExpiresIn,
+    hasProfile,
+    activeProfileId,
     // Actions
     checkAuthStatus,
     login,
     verifyToken,
+    updateToken,
     logout,
     getAuthHeader,
     initialize

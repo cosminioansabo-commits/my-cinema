@@ -43,7 +43,8 @@
       "Bash(grep:*)",
       "Bash(for file in /Users/sabocosmin/workspace/my-cinema/src/composables/*.ts)",
       "Bash(done)",
-      "Bash(expect:*)"
+      "Bash(expect:*)",
+      "Bash(chmod:*)"
     ],
     "deny": [],
     "ask": []
