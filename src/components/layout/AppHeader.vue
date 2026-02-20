@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useProfileStore } from '@/stores/profileStore'
 import { useNotificationStore } from '@/stores/notificationStore'
 import { useLanguage } from '@/composables/useLanguage'
+import ProfileAvatar from '@/components/profile/ProfileAvatar.vue'
 import Button from 'primevue/button'
 import { onMounted } from 'vue'
 import { openSpotlight } from '@/composables/useSpotlightSearch'
@@ -127,18 +128,24 @@ const isActiveRoute = (path: string) => {
           </span>
         </RouterLink>
 
-        <!-- Download Manager -->
-        <DownloadManager />
+        <!-- Download Manager (Desktop only) -->
+        <div class="hidden lg:block">
+          <DownloadManager />
+        </div>
 
         <!-- Profile Avatar (switch profile) -->
         <button
           v-if="profileStore.activeProfile"
           @click="handleSwitchProfile"
-          class="w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:ring-2 hover:ring-white/30"
-          :style="{ backgroundColor: profileStore.activeProfile.avatarColor }"
+          class="transition-all hover:ring-2 hover:ring-white/30 rounded-lg"
           :title="profileStore.activeProfile.name"
         >
-          <i :class="['pi', profileStore.activeProfile.avatarIcon, 'text-sm text-white']"></i>
+          <ProfileAvatar
+            :color="profileStore.activeProfile.avatarColor"
+            :icon="profileStore.activeProfile.avatarIcon"
+            size="xs"
+            :glow="false"
+          />
         </button>
 
         <!-- Logout button (only show when auth is enabled and authenticated) -->

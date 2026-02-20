@@ -792,7 +792,7 @@ const goBack = () => {
               :to="`/media/${item.mediaType}/${item.id}`"
               class="flex-shrink-0 w-28 sm:w-40 group cursor-pointer"
             >
-              <div class="aspect-2/3 rounded-lg sm:rounded-xl overflow-hidden bg-zinc-800 mb-2 sm:mb-3 shadow-lg shadow-black/30 border border-zinc-700/50 group-hover:border-purple-500/50 transition-all duration-200">
+              <div class="relative aspect-2/3 rounded-lg sm:rounded-xl overflow-hidden bg-zinc-800 mb-2 sm:mb-3 shadow-lg shadow-black/30 border border-zinc-700/50 group-hover:border-purple-500/50 transition-all duration-200">
                 <img
                   v-if="item.posterPath"
                   :src="getImageUrl(item.posterPath, 'w300')"
@@ -802,6 +802,27 @@ const goBack = () => {
                 />
                 <div v-else class="w-full h-full flex items-center justify-center">
                   <i class="pi pi-video text-2xl sm:text-4xl text-gray-600"></i>
+                </div>
+                <!-- Rating badge overlay -->
+                <div class="absolute top-1.5 left-1.5 sm:top-2 sm:left-2">
+                  <div
+                    v-if="item.voteAverage > 0"
+                    class="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-black/70 backdrop-blur-sm ring-1 ring-white/10 text-[10px] sm:text-xs font-semibold"
+                    :class="item.voteAverage >= 7 ? 'text-green-400' : item.voteAverage >= 5 ? 'text-yellow-400' : 'text-red-400'"
+                  >
+                    <i class="pi pi-star-fill text-[8px] sm:text-[10px] text-yellow-500"></i>
+                    {{ item.voteAverage.toFixed(1) }}
+                  </div>
+                </div>
+                <!-- Media type badge -->
+                <div v-if="item.mediaType !== mediaType" class="absolute top-1.5 right-1.5 sm:top-2 sm:right-2">
+                  <span class="px-1.5 py-0.5 rounded-md bg-black/70 backdrop-blur-sm ring-1 ring-white/10 text-[9px] sm:text-[10px] font-medium text-gray-300 uppercase">
+                    {{ item.mediaType === 'tv' ? 'TV' : 'Film' }}
+                  </span>
+                </div>
+                <!-- Hover overlay -->
+                <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-2 sm:p-3">
+                  <i class="pi pi-play-circle text-white text-lg sm:text-xl"></i>
                 </div>
               </div>
               <p class="font-medium text-xs sm:text-sm text-white truncate">{{ item.title }}</p>

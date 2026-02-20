@@ -6,7 +6,7 @@ import { useLanguage } from '@/composables/useLanguage'
 import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
 import SelectButton from 'primevue/selectbutton'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -144,6 +144,44 @@ const isAired = (airDateUtc: string | undefined): boolean => {
   if (!airDateUtc) return false
   return new Date(airDateUtc) <= new Date()
 }
+
+// ── Live Countdown ──
+const now = ref(new Date())
+let countdownInterval: ReturnType<typeof setInterval> | null = null
+
+onMounted(() => {
+  countdownInterval = setInterval(() => {
+    now.value = new Date()
+  }, 1000)
+})
+
+onUnmounted(() => {
+  if (countdownInterval) clearInterval(countdownInterval)
+})
+
+const getCountdown = (airDateUtc: string | undefined): { label: string; isReleased: boolean } => {
+  if (!airDateUtc) return { label: '', isReleased: false }
+
+  const airTime = new Date(airDateUtc).getTime()
+  const diff = airTime - now.value.getTime()
+
+  if (diff <= 0) {
+    return { label: '', isReleased: true }
+  }
+
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+
+  const parts: string[] = []
+  if (days > 0) parts.push(`${days}${t('calendar.countdownDays')}`)
+  if (hours > 0 || days > 0) parts.push(`${hours}${t('calendar.countdownHours')}`)
+  if (days === 0) parts.push(`${minutes}${t('calendar.countdownMinutes')}`)
+  if (days === 0 && hours === 0) parts.push(`${seconds}${t('calendar.countdownSeconds')}`)
+
+  return { label: parts.join(' '), isReleased: false }
+}
 </script>
 
 <template>
@@ -271,7 +309,7 @@ const isAired = (airDateUtc: string | undefined): boolean => {
                   </div>
 
                   <!-- Status Badge -->
-                  <div class="flex items-center gap-2">
+                  <div class="flex items-center gap-2 flex-shrink-0">
                     <span
                         v-if="episode.hasFile"
                         class="px-2 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400"
@@ -279,16 +317,22 @@ const isAired = (airDateUtc: string | undefined): boolean => {
                     </span>
                     <span
                         v-else-if="isAired(episode.airDateUtc)"
-                        class="px-2 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400"
+                        class="px-2 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400 flex items-center gap-1.5"
                     >
-                      {{ t('calendar.aired') }}
+                      <span class="relative flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-400"></span>
+                      </span>
+                      {{ t('calendar.nowAiring') }}
                     </span>
-                    <span
-                        v-else
-                        class="px-2 py-1 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-400"
-                    >
-                      {{ t('calendar.upcoming') }}
-                    </span>
+                    <template v-else>
+                      <span
+                          class="px-2.5 py-1 rounded-full text-xs font-medium bg-purple-500/15 text-purple-300 tabular-nums flex items-center gap-1.5"
+                      >
+                        <i class="pi pi-clock text-[10px]"></i>
+                        {{ getCountdown(episode.airDateUtc).label }}
+                      </span>
+                    </template>
                   </div>
                 </div>
 

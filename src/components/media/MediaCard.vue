@@ -18,6 +18,7 @@ const imageLoaded = ref(false)
 
 const posterUrl = computed(() => getImageUrl(props.media.posterPath, 'w300'))
 const posterSrcset = computed(() => getPosterSrcset(props.media.posterPath))
+const thumbUrl = computed(() => props.media.posterPath ? getImageUrl(props.media.posterPath, 'w200') : '')
 
 const year = computed(() => {
   if (!props.media.releaseDate) return ''
@@ -74,14 +75,21 @@ const onImageLoad = () => {
     >
       <template #content>
         <div class="aspect-2/3 relative overflow-hidden bg-zinc-800">
-          <!-- Skeleton placeholder -->
-          <div v-if="!imageLoaded" class="absolute inset-0 animate-pulse bg-gradient-to-br from-zinc-800 to-zinc-900" />
+          <!-- Blur-up placeholder -->
+          <img
+              v-if="thumbUrl && !imageLoaded"
+              :src="thumbUrl"
+              :alt="media.title"
+              class="absolute inset-0 w-full h-full object-cover blur-lg scale-110"
+              aria-hidden="true"
+          />
+          <div v-else-if="!imageLoaded" class="absolute inset-0 animate-pulse bg-gradient-to-br from-zinc-800 to-zinc-900" />
           <img
               :src="posterUrl"
               :srcset="posterSrcset"
               sizes="(max-width: 640px) 150px, (max-width: 1024px) 180px, 200px"
               :alt="media.title"
-              class="w-full h-full object-cover transition-opacity duration-300"
+              class="w-full h-full object-cover transition-opacity duration-500"
               :class="imageLoaded ? 'opacity-100' : 'opacity-0'"
               loading="lazy"
               @load="onImageLoad"
@@ -110,15 +118,22 @@ const onImageLoad = () => {
     <RouterLink :to="`/media/${media.mediaType}/${media.id}`">
       <Card class="hover:scale-105 transition-transform duration-300 group">
         <template #header>
-          <div class="w-full h-full overflow-hidden rounded-t-2xl bg-zinc-800">
-            <!-- Skeleton placeholder -->
-            <div v-if="!imageLoaded" class="absolute inset-0 animate-pulse bg-gradient-to-br from-zinc-800 to-zinc-900 rounded-t-2xl" />
+          <div class="w-full h-full overflow-hidden rounded-t-2xl bg-zinc-800 relative">
+            <!-- Blur-up placeholder -->
+            <img
+                v-if="thumbUrl && !imageLoaded"
+                :src="thumbUrl"
+                :alt="media.title"
+                class="absolute inset-0 w-full h-full object-cover rounded-t-2xl blur-lg scale-110"
+                aria-hidden="true"
+            />
+            <div v-else-if="!imageLoaded" class="absolute inset-0 animate-pulse bg-gradient-to-br from-zinc-800 to-zinc-900 rounded-t-2xl" />
             <img
                 :src="posterUrl"
                 :srcset="posterSrcset"
                 sizes="(max-width: 640px) 150px, (max-width: 1024px) 200px, 250px"
                 :alt="media.title"
-                class="w-full h-full object-cover rounded-t-2xl group-hover:scale-105 transition-transform duration-600"
+                class="w-full h-full object-cover rounded-t-2xl group-hover:scale-105 transition-all duration-600"
                 :class="imageLoaded ? 'opacity-100' : 'opacity-0'"
                 loading="lazy"
                 @load="onImageLoad"

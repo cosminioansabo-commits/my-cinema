@@ -126,10 +126,16 @@ function ratingColor(rating: number) {
         <input
           ref="inputRef"
           v-model="query"
-          type="text"
+          type="search"
+          inputmode="search"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+          spellcheck="false"
           placeholder="Search movies & TV shows..."
           class="spotlight-input"
           @keydown="handleKeydown"
+          @compositionend="query = ($event.target as HTMLInputElement).value"
         />
         <kbd
           v-if="!query"
@@ -265,7 +271,7 @@ function ratingColor(rating: number) {
 /* ── Dialog shell ── */
 .spotlight-dialog.p-dialog {
   width: 95vw !important;
-  max-width: 960px !important;
+  max-width: 860px !important;
   margin-top: 12vh !important;
   margin-bottom: auto !important;
   border-radius: 16px !important;
@@ -316,6 +322,14 @@ function ratingColor(rating: number) {
 
 .spotlight-input::placeholder {
   color: #52525b;
+}
+
+.spotlight-input::-webkit-search-decoration,
+.spotlight-input::-webkit-search-cancel-button,
+.spotlight-input::-webkit-search-results-button,
+.spotlight-input::-webkit-search-results-decoration {
+  display: none;
+  -webkit-appearance: none;
 }
 
 /* ── Results container ── */

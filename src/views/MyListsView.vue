@@ -5,7 +5,6 @@ import { profileLibraryService, type ProfileLibraryEntry } from '@/services/libr
 import { getImageUrl, getPosterPath } from '@/services/tmdbService'
 import { useAuthStore } from '@/stores/authStore'
 import { useLanguage } from '@/composables/useLanguage'
-import ProgressSpinner from 'primevue/progressspinner'
 import Select from 'primevue/select'
 
 const router = useRouter()
@@ -215,9 +214,21 @@ watch(profileId, () => {
       <!-- Sort Dropdown -->
     </div>
 
-    <!-- Loading state -->
-    <div v-if="isLoadingLibrary" class="flex items-center justify-center py-16 sm:py-24">
-      <ProgressSpinner class="!w-[50px] !h-[50px]" strokeWidth="4" />
+    <!-- Loading state (skeleton grid) -->
+    <div v-if="isLoadingLibrary" class="space-y-8 sm:space-y-12">
+      <section v-for="section in 2" :key="section">
+        <div class="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
+          <div class="w-1 h-6 sm:h-8 rounded-full bg-zinc-700 animate-pulse"></div>
+          <div class="h-5 sm:h-7 w-24 sm:w-32 bg-zinc-800 rounded-lg animate-pulse"></div>
+        </div>
+        <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2.5 sm:gap-4">
+          <div v-for="i in 8" :key="i" class="animate-pulse">
+            <div class="aspect-2/3 rounded-md sm:rounded-lg bg-zinc-800 mb-1.5 sm:mb-2"></div>
+            <div class="h-3 sm:h-4 bg-zinc-800 rounded w-3/4 mb-1"></div>
+            <div class="h-2.5 sm:h-3 bg-zinc-800/60 rounded w-1/2"></div>
+          </div>
+        </div>
+      </section>
     </div>
 
     <!-- Library content -->

@@ -4,13 +4,19 @@ import { useRouter } from 'vue-router'
 import { useProfileStore, type Profile } from '@/stores/profileStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useLanguage } from '@/composables/useLanguage'
+import { getPrimaryColor } from '@/config/avatarOptions'
+import ProfileAvatar from '@/components/profile/ProfileAvatar.vue'
+import IconPicker from '@/components/profile/IconPicker.vue'
+import ColorPicker from '@/components/profile/ColorPicker.vue'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
+import { useToast } from 'primevue/usetoast'
 
 const router = useRouter()
 const profileStore = useProfileStore()
 const authStore = useAuthStore()
+const toast = useToast()
 const { t } = useLanguage()
 
 const isManaging = ref(false)
@@ -19,16 +25,7 @@ const newProfileName = ref('')
 const selectedColor = ref('#e50914')
 const selectedIcon = ref('pi-user')
 const isCreating = ref(false)
-
-const avatarColors = [
-  '#e50914', '#e87c03', '#e5b100', '#2cb67d',
-  '#0ea5e9', '#7c3aed', '#db2777', '#6366f1'
-]
-
-const avatarIcons = [
-  'pi-user', 'pi-star', 'pi-heart', 'pi-bolt',
-  'pi-sun', 'pi-moon', 'pi-crown', 'pi-flag'
-]
+const hoveredColor = ref<string | null>(null)
 
 onMounted(async () => {
   await profileStore.fetchProfiles()
@@ -56,6 +53,12 @@ async function handleCreateProfile() {
     newProfileName.value = ''
     selectedColor.value = '#e50914'
     selectedIcon.value = 'pi-user'
+    toast.add({
+      severity: 'success',
+      summary: t('profiles.profileCreated'),
+      detail: t('profiles.profileCreatedDetail', { name: profile.name }),
+      life: 3000
+    })
   }
 }
 
@@ -75,13 +78,20 @@ function handleLogout() {
   authStore.logout()
   router.push({ name: 'login' })
 }
+
+function glowColor(): string {
+  return hoveredColor.value ? getPrimaryColor(hoveredColor.value) : '#e50914'
+}
 </script>
 
 <template>
   <div class="min-h-screen flex flex-col items-center justify-center bg-[#141414] p-6">
     <div class="fixed inset-0 bg-gradient-to-br from-[#1a1a2e] via-[#141414] to-[#0f0f0f] z-0"></div>
-    <!-- Ambient glow -->
-    <div class="fixed top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-[#e50914]/[0.03] rounded-full blur-[120px] z-0 pointer-events-none"></div>
+    <!-- Reactive ambient glow -->
+    <div
+      class="fixed top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] rounded-full blur-[120px] z-0 pointer-events-none transition-colors duration-700"
+      :style="{ backgroundColor: glowColor() + '08' }"
+    ></div>
 
     <div class="relative z-10 w-full max-w-3xl profile-select-enter">
       <!-- Logo -->
@@ -98,21 +108,26 @@ function handleLogout() {
       </div>
 
       <!-- Profile Grid -->
-      <div v-else class="flex flex-wrap justify-center gap-6 mb-8">
+      <div v-else class="flex flex-wrap justify-center gap-8 mb-8">
         <!-- Existing Profiles -->
         <button
-          v-for="profile in profileStore.profiles"
+          v-for="(profile, index) in profileStore.profiles"
           :key="profile.id"
           v-ripple
-          class="group flex flex-col items-center gap-3 p-4 rounded-2xl transition-all duration-200 hover:bg-white/[0.04] relative overflow-hidden"
+          class="group flex flex-col items-center gap-3 p-4 rounded-2xl transition-all duration-200 hover:bg-white/[0.04] relative overflow-hidden profile-card-stagger"
           :class="{ 'ring-2 ring-white/30': isManaging }"
+          :style="{ animationDelay: `${index * 60}ms` }"
           @click="isManaging ? handleManageProfile(profile) : handleSelectProfile(profile)"
+          @mouseenter="hoveredColor = profile.avatarColor"
+          @mouseleave="hoveredColor = null"
         >
-          <div
-            class="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl flex items-center justify-center transition-all duration-200 group-hover:scale-105 group-hover:shadow-lg relative ring-1 ring-white/10"
-            :style="{ backgroundColor: profile.avatarColor, boxShadow: `0 8px 24px ${profile.avatarColor}30` }"
-          >
-            <i :class="['pi', profile.avatarIcon, 'text-4xl sm:text-5xl text-white drop-shadow-sm']"></i>
+          <div class="relative">
+            <ProfileAvatar
+              :color="profile.avatarColor"
+              :icon="profile.avatarIcon"
+              size="lg"
+              class="group-hover:scale-105 transition-transform duration-200"
+            />
             <!-- Edit overlay when managing -->
             <div
               v-if="isManaging"
@@ -129,7 +144,8 @@ function handleLogout() {
         <!-- Add Profile Button -->
         <button
           v-if="profileStore.profileCount < 8"
-          class="group flex flex-col items-center gap-3 p-4 rounded-2xl transition-all duration-200 hover:bg-white/[0.04]"
+          class="group flex flex-col items-center gap-3 p-4 rounded-2xl transition-all duration-200 hover:bg-white/[0.04] profile-card-stagger"
+          :style="{ animationDelay: `${profileStore.profiles.length * 60}ms` }"
           @click="openCreateDialog"
         >
           <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl flex items-center justify-center border-2 border-dashed border-zinc-700 group-hover:border-zinc-500 transition-all duration-200 group-hover:scale-105 bg-zinc-900/40">
@@ -169,7 +185,7 @@ function handleLogout() {
       v-model:visible="showCreateDialog"
       :header="t('profiles.addProfile')"
       modal
-      :style="{ width: '28rem' }"
+      :style="{ width: '36rem', maxWidth: '95vw' }"
       :pt="{
         root: { class: 'profile-dialog-root' },
         mask: { class: 'profile-dialog-mask' },
@@ -178,14 +194,15 @@ function handleLogout() {
       }"
     >
       <div class="space-y-6 pt-2">
-        <!-- Preview -->
+        <!-- Animated Preview -->
         <div class="flex justify-center">
-          <div
-            class="w-20 h-20 rounded-2xl flex items-center justify-center transition-all ring-1 ring-white/10"
-            :style="{ backgroundColor: selectedColor, boxShadow: `0 8px 24px ${selectedColor}30` }"
-          >
-            <i :class="['pi', selectedIcon, 'text-3xl text-white drop-shadow-sm']"></i>
-          </div>
+          <ProfileAvatar
+            :key="`${selectedColor}-${selectedIcon}`"
+            :color="selectedColor"
+            :icon="selectedIcon"
+            size="xl"
+            animated
+          />
         </div>
 
         <!-- Name -->
@@ -201,35 +218,16 @@ function handleLogout() {
           />
         </div>
 
-        <!-- Color -->
+        <!-- Color Picker -->
         <div>
           <label class="block text-sm font-medium text-gray-300 mb-2">{{ t('profiles.color') }}</label>
-          <div class="flex gap-3 flex-wrap">
-            <button
-              v-for="color in avatarColors"
-              :key="color"
-              class="w-10 h-10 rounded-full transition-all duration-150"
-              :style="{ backgroundColor: color }"
-              :class="selectedColor === color ? 'ring-2 ring-white ring-offset-2 ring-offset-zinc-900 scale-110' : 'hover:scale-110'"
-              @click="selectedColor = color"
-            />
-          </div>
+          <ColorPicker v-model="selectedColor" />
         </div>
 
-        <!-- Icon -->
+        <!-- Icon Picker -->
         <div>
           <label class="block text-sm font-medium text-gray-300 mb-2">{{ t('profiles.icon') }}</label>
-          <div class="flex gap-3 flex-wrap">
-            <button
-              v-for="icon in avatarIcons"
-              :key="icon"
-              class="w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-150"
-              :class="selectedIcon === icon ? 'bg-white/20 ring-2 ring-white/50 scale-110' : 'bg-white/5 hover:bg-white/10 hover:scale-110'"
-              @click="selectedIcon = icon"
-            >
-              <i :class="['pi', icon, 'text-lg text-white']"></i>
-            </button>
-          </div>
+          <IconPicker v-model="selectedIcon" />
         </div>
 
         <!-- Error -->
@@ -266,10 +264,26 @@ function handleLogout() {
   animation: profile-enter 0.5s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
+/* Staggered card entry */
+.profile-card-stagger {
+  animation: profile-card-pop 0.4s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
 @keyframes profile-enter {
   from {
     opacity: 0;
     transform: scale(0.96) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes profile-card-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(16px);
   }
   to {
     opacity: 1;

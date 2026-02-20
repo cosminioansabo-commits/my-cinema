@@ -3,13 +3,19 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useProfileStore } from '@/stores/profileStore'
 import { useLanguage } from '@/composables/useLanguage'
+import { getPrimaryColor } from '@/config/avatarOptions'
+import ProfileAvatar from '@/components/profile/ProfileAvatar.vue'
+import IconPicker from '@/components/profile/IconPicker.vue'
+import ColorPicker from '@/components/profile/ColorPicker.vue'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Dialog from 'primevue/dialog'
+import { useToast } from 'primevue/usetoast'
 
 const route = useRoute()
 const router = useRouter()
 const profileStore = useProfileStore()
+const toast = useToast()
 const { t } = useLanguage()
 
 const profileId = computed(() => route.params.id as string)
@@ -20,16 +26,6 @@ const isSaving = ref(false)
 const isDeleting = ref(false)
 const showDeleteDialog = ref(false)
 const uniqueMedia = ref<{ movies: number; shows: number } | null>(null)
-
-const avatarColors = [
-  '#e50914', '#e87c03', '#e5b100', '#2cb67d',
-  '#0ea5e9', '#7c3aed', '#db2777', '#6366f1'
-]
-
-const avatarIcons = [
-  'pi-user', 'pi-star', 'pi-heart', 'pi-bolt',
-  'pi-sun', 'pi-moon', 'pi-crown', 'pi-flag'
-]
 
 const profile = computed(() => profileStore.profiles.find(p => p.id === profileId.value))
 
@@ -63,6 +59,12 @@ async function handleSave() {
   })
   isSaving.value = false
   if (result) {
+    toast.add({
+      severity: 'success',
+      summary: t('profiles.profileUpdated'),
+      detail: t('profiles.profileUpdatedDetail', { name: name.value.trim() }),
+      life: 3000
+    })
     router.push({ name: 'profiles' })
   }
 }
@@ -78,6 +80,12 @@ async function handleDelete() {
   isDeleting.value = false
   if (success) {
     showDeleteDialog.value = false
+    toast.add({
+      severity: 'info',
+      summary: t('profiles.profileDeleted'),
+      detail: t('profiles.profileDeletedDetail'),
+      life: 3000
+    })
     router.push({ name: 'profiles' })
   }
 }
@@ -90,10 +98,13 @@ function goBack() {
 <template>
   <div class="min-h-screen flex flex-col items-center justify-center bg-[#141414] p-6">
     <div class="fixed inset-0 bg-gradient-to-br from-[#1a1a2e] via-[#141414] to-[#0f0f0f] z-0"></div>
-    <!-- Ambient glow -->
-    <div class="fixed top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[400px] bg-[#7c3aed]/[0.03] rounded-full blur-[120px] z-0 pointer-events-none"></div>
+    <!-- Reactive ambient glow -->
+    <div
+      class="fixed top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[400px] rounded-full blur-[120px] z-0 pointer-events-none transition-colors duration-700"
+      :style="{ backgroundColor: getPrimaryColor(avatarColor) + '08' }"
+    ></div>
 
-    <div class="relative z-10 w-full max-w-md profile-manage-enter">
+    <div class="relative z-10 w-full max-w-lg profile-manage-enter">
       <!-- Header -->
       <div class="text-center mb-8">
         <h1 class="text-2xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent mb-2">{{ t('profiles.editProfile') }}</h1>
@@ -104,14 +115,15 @@ function goBack() {
       </div>
 
       <div v-else class="bg-zinc-900/70 backdrop-blur-xl rounded-2xl border border-white/[0.08] p-8 space-y-6 shadow-2xl shadow-black/40">
-        <!-- Preview -->
+        <!-- Animated Preview -->
         <div class="flex justify-center">
-          <div
-            class="w-24 h-24 rounded-2xl flex items-center justify-center transition-all ring-1 ring-white/10"
-            :style="{ backgroundColor: avatarColor, boxShadow: `0 8px 24px ${avatarColor}30` }"
-          >
-            <i :class="['pi', avatarIcon, 'text-4xl text-white drop-shadow-sm']"></i>
-          </div>
+          <ProfileAvatar
+            :key="`${avatarColor}-${avatarIcon}`"
+            :color="avatarColor"
+            :icon="avatarIcon"
+            size="xl"
+            animated
+          />
         </div>
 
         <!-- Name -->
@@ -125,37 +137,16 @@ function goBack() {
           />
         </div>
 
-        <!-- Color -->
+        <!-- Color Picker -->
         <div>
           <label class="block text-sm font-medium text-gray-300 mb-2">{{ t('profiles.color') }}</label>
-          <div class="flex gap-3 flex-wrap">
-            <button
-              v-for="color in avatarColors"
-              :key="color"
-              v-ripple
-              class="w-10 h-10 rounded-full transition-all duration-150 relative overflow-hidden"
-              :style="{ backgroundColor: color }"
-              :class="avatarColor === color ? 'ring-2 ring-white ring-offset-2 ring-offset-zinc-900 scale-110' : 'hover:scale-110'"
-              @click="avatarColor = color"
-            />
-          </div>
+          <ColorPicker v-model="avatarColor" />
         </div>
 
-        <!-- Icon -->
+        <!-- Icon Picker -->
         <div>
           <label class="block text-sm font-medium text-gray-300 mb-2">{{ t('profiles.icon') }}</label>
-          <div class="flex gap-3 flex-wrap">
-            <button
-              v-for="icon in avatarIcons"
-              :key="icon"
-              v-ripple
-              class="w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-150 relative overflow-hidden"
-              :class="avatarIcon === icon ? 'bg-white/20 ring-2 ring-white/50 scale-110' : 'bg-white/5 hover:bg-white/10 hover:scale-110'"
-              @click="avatarIcon = icon"
-            >
-              <i :class="['pi', icon, 'text-lg text-white']"></i>
-            </button>
-          </div>
+          <IconPicker v-model="avatarIcon" />
         </div>
 
         <!-- Error -->

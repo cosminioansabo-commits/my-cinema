@@ -97,7 +97,9 @@ export default defineConfig({
         manualChunks: {
           'vue-vendor': ['vue', 'vue-router', 'pinia'],
           'ui-vendor': ['primevue'],
-          'player': ['hls.js']
+          'player': ['hls.js'],
+          'i18n': ['vue-i18n'],
+          'http': ['axios'],
         }
       }
     }
