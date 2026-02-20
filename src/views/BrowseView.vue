@@ -3,6 +3,7 @@ import { onMounted, watch, ref } from 'vue'
 import { useMediaStore } from '@/stores/mediaStore'
 import { useFiltersStore } from '@/stores/filtersStore'
 import { useLanguage } from '@/composables/useLanguage'
+import { useInfiniteScroll } from '@/composables/useInfiniteScroll'
 import MediaGrid from '@/components/media/MediaGrid.vue'
 import MediaFilters from '@/components/media/MediaFilters.vue'
 import Button from 'primevue/button'
@@ -38,9 +39,15 @@ watch(
   { deep: true }
 )
 
+const sentinel = ref<HTMLElement | null>(null)
+
 const loadMore = () => {
-  mediaStore.loadMoreBrowseResults()
+  if (mediaStore.currentPage < mediaStore.totalPages && !mediaStore.isLoadingBrowse) {
+    mediaStore.loadMoreBrowseResults()
+  }
 }
+
+useInfiniteScroll(sentinel, loadMore)
 
 const hasMore = () => {
   return mediaStore.currentPage < mediaStore.totalPages
@@ -108,27 +115,18 @@ const hasMore = () => {
         :loading="mediaStore.isLoadingBrowse && mediaStore.browseResults.length === 0"
       />
 
-      <!-- Load More -->
-      <div
-        v-if="hasMore() && !mediaStore.isLoadingBrowse"
-        class="flex justify-center mt-6 sm:mt-8"
-      >
-        <Button
-          :label="t('browse.loadMore')"
-          icon="pi pi-arrow-down"
-          severity="secondary"
-          outlined
-          class="!text-xs sm:!text-sm"
-          @click="loadMore"
-        />
-      </div>
-
-      <!-- Loading indicator for load more -->
-      <div
-        v-if="mediaStore.isLoadingBrowse && mediaStore.browseResults.length > 0"
-        class="flex justify-center mt-6 sm:mt-8"
-      >
-        <i class="pi pi-spin pi-spinner text-xl sm:text-2xl text-purple-500"></i>
+      <!-- Infinite scroll sentinel -->
+      <div ref="sentinel" class="flex justify-center py-8">
+        <i
+          v-if="mediaStore.isLoadingBrowse && mediaStore.browseResults.length > 0"
+          class="pi pi-spin pi-spinner text-xl sm:text-2xl text-purple-500"
+        ></i>
+        <span
+          v-else-if="!hasMore() && mediaStore.browseResults.length > 0"
+          class="text-zinc-600 text-xs tracking-wide"
+        >
+          {{ t('browse.endOfResults', 'End of results') }}
+        </span>
       </div>
     </main>
   </div>

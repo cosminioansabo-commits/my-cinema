@@ -11,7 +11,7 @@
     "hash-password": "node -e \"const b=require('bcryptjs');console.log(b.hashSync(process.argv[1],10));\""
   },
   "dependencies": {
-    "axios": "^1.7.0",
+    "axios": "1.13.5",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.5.0",
     "cheerio": "^1.0.0",

@@ -151,7 +151,7 @@ watch(profileId, () => {
     <!-- Filter Tabs & Sort -->
     <div class="flex flex-col sm:flex-row sm:items-center gap-4 mb-8 sm:mb-12">
       <!-- Filter Tabs (Stats Bar) -->
-      <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-4 flex-1 max-w-2xl">
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4 flex-1">
         <button
           v-ripple
           role="tab"
@@ -200,10 +200,7 @@ watch(profileId, () => {
           </div>
           <p class="text-xl sm:text-3xl font-bold text-white">{{ librarySeries.length }}</p>
         </button>
-      </div>
-
-      <!-- Sort Dropdown -->
-      <div class="flex items-center gap-2 sm:self-end">
+      <div class="flex items-center gap-2 sm:self-end justify-center h-full">
         <i class="pi pi-sort-alt text-gray-400 text-sm"></i>
         <Select
           v-model="sortBy"
@@ -213,6 +210,9 @@ watch(profileId, () => {
           class="w-40 sm:w-48"
         />
       </div>
+      </div>
+
+      <!-- Sort Dropdown -->
     </div>
 
     <!-- Loading state -->

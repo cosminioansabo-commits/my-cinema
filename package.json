@@ -39,5 +39,8 @@
   },
   "optionalDependencies": {
     "sharp": "^0.34.5"
+  },
+  "overrides": {
+    "minimatch": ">=10.2.1"
   }
 }

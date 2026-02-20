@@ -47,7 +47,10 @@
       "Bash(chmod:*)",
       "Bash(ssh:*)",
       "Bash(gh secret list:*)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(npm audit:*)",
+      "Bash(npm view:*)",
+      "Bash(npm info:*)"
     ],
     "deny": [],
     "ask": []

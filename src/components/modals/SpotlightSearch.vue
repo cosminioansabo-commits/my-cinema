@@ -163,7 +163,7 @@ function ratingColor(rating: number) {
       </div>
 
       <!-- Results -->
-      <div v-else-if="displayResults.length > 0" class="p-2">
+      <div v-else-if="displayResults.length > 0" class="flex flex-col gap-4 p-2">
         <button
           v-for="(item, index) in displayResults"
           :key="`${item.mediaType}-${item.id}`"
@@ -176,7 +176,7 @@ function ratingColor(rating: number) {
           <img
             :src="item.posterUrl"
             :alt="item.title"
-            class="w-11 h-[66px] object-cover rounded-lg bg-zinc-800 flex-shrink-0 ring-1 ring-white/[0.08]"
+            class="w-14 h-18 object-cover rounded-lg bg-zinc-800 flex-shrink-0 ring-1 ring-white/[0.08]"
           />
           <!-- Title and metadata -->
           <div class="flex-1 min-w-0">
@@ -265,7 +265,7 @@ function ratingColor(rating: number) {
 /* ── Dialog shell ── */
 .spotlight-dialog.p-dialog {
   width: 95vw !important;
-  max-width: 580px !important;
+  max-width: 960px !important;
   margin-top: 12vh !important;
   margin-bottom: auto !important;
   border-radius: 16px !important;
@@ -320,7 +320,7 @@ function ratingColor(rating: number) {
 
 /* ── Results container ── */
 .spotlight-results {
-  max-height: 420px;
+  max-height: 560px;
   overflow-y: auto;
   overscroll-behavior: contain;
 }
@@ -344,7 +344,7 @@ function ratingColor(rating: number) {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 10px 14px;
+  padding: 2px 4px;
   border-radius: 12px;
   border-left: 2px solid transparent;
   text-align: left;
