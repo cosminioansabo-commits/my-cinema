@@ -1126,6 +1126,7 @@ defineExpose({
         <button
           v-if="!isPlaying && !isLoading"
           class="w-20 h-20 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
+          :aria-label="t('player.play')"
           @click="togglePlay"
         >
           <i class="pi pi-play text-4xl text-white ml-1"></i>

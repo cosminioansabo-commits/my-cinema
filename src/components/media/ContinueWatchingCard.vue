@@ -56,7 +56,7 @@ const displayTitle = props.item.mediaType === 'episode' && props.item.seasonNumb
         severity="danger"
         text
         rounded
-        class="!absolute top-1 right-1 !w-6 !h-6 !bg-black/70 hover:!bg-red-600 !text-white opacity-0 group-hover/card:opacity-100 !transition-opacity z-10"
+        class="!absolute top-0.5 right-0.5 !w-8 !h-8 !bg-black/70 hover:!bg-red-600 !text-white opacity-0 group-hover/card:opacity-100 !transition-opacity z-10"
         @click.stop="emit('remove')"
       />
 

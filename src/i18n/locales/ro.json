@@ -54,7 +54,9 @@
     "topRatedTV": "Seriale de top",
     "hiddenGems": "Comori ascunse",
     "documentaries": "Documentare",
-    "recentlyViewed": "Vizionate recent"
+    "recentlyViewed": "Vizionate recent",
+    "loadFailed": "Încărcarea conținutului a eșuat",
+    "loadFailedHint": "Verifică conexiunea și încearcă din nou"
   },
   "media": {
     "movie": "Film",
@@ -321,7 +323,12 @@
     "password": "Parolă",
     "enterPassword": "Introdu parola",
     "incorrectPassword": "Parolă incorectă",
-    "loginSuccess": "Autentificare reușită"
+    "loginSuccess": "Autentificare reușită",
+    "passwordRequired": "Te rugăm să introduci parola",
+    "subtitle": "Introdu parola pentru a continua",
+    "passwordPlaceholder": "Introdu parola",
+    "signIn": "Autentificare",
+    "secureAccess": "Acces securizat la biblioteca ta media"
   },
   "errors": {
     "generic": "Ceva nu a funcționat",

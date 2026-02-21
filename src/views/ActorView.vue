@@ -15,7 +15,7 @@ import { useLanguage } from '@/composables/useLanguage'
 
 const route = useRoute()
 const router = useRouter()
-const { t } = useLanguage()
+const { t, locale } = useLanguage()
 
 const person = ref<PersonDetails | null>(null)
 const credits = ref<PersonCombinedCredits | null>(null)
@@ -64,7 +64,8 @@ const age = computed(() => {
 
 const formatDate = (dateStr: string | null): string => {
   if (!dateStr) return ''
-  return new Date(dateStr).toLocaleDateString('en-US', {
+  const localeCode = locale.value === 'ro' ? 'ro-RO' : 'en-US'
+  return new Date(dateStr).toLocaleDateString(localeCode, {
     year: 'numeric',
     month: 'long',
     day: 'numeric',

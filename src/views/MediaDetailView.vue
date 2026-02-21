@@ -25,7 +25,7 @@ const router = useRouter()
 const mediaStore = useMediaStore()
 const authStore = useAuthStore()
 const toast = useToast()
-const { languageChangeCounter, t } = useLanguage()
+const { languageChangeCounter, t, locale } = useLanguage()
 const { addItem: addRecentlyViewed } = useRecentlyViewed()
 
 const profileId = computed(() => authStore.activeProfileId || 'default')
@@ -450,7 +450,8 @@ const otherCollectionParts = computed(() => {
 // Box office formatting
 const formatCurrency = (value: number | undefined): string => {
   if (!value || value === 0) return ''
-  return new Intl.NumberFormat('en-US', {
+  const localeCode = locale.value === 'ro' ? 'ro-RO' : 'en-US'
+  return new Intl.NumberFormat(localeCode, {
     style: 'currency',
     currency: 'USD',
     maximumFractionDigits: 0,

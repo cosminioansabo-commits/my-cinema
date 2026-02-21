@@ -59,6 +59,9 @@ export function useHomeContent() {
   const kDramas = ref<Media[]>([])
   const isLoadingMoreContent = ref(true)
 
+  // Error state
+  const contentError = ref(false)
+
   // Library and continue watching
   const libraryItems = ref<Media[]>([])
   const continueWatchingItems = ref<ContinueWatchingItem[]>([])
@@ -234,6 +237,8 @@ export function useHomeContent() {
 
   // Load all content
   const loadAllContent = async (isAuthenticated: boolean) => {
+    contentError.value = false
+
     // Load hero first
     await loadHeroContent()
 
@@ -246,6 +251,16 @@ export function useHomeContent() {
     // Load content in parallel
     await loadPrimaryContent()
     await loadSecondaryContent()
+
+    // If all primary content failed to load, show error state
+    if (
+      !featuredItem.value &&
+      trendingAll.value.length === 0 &&
+      popularMovies.value.length === 0 &&
+      popularTV.value.length === 0
+    ) {
+      contentError.value = true
+    }
   }
 
   return {
@@ -255,6 +270,9 @@ export function useHomeContent() {
     heroBackdrop,
     heroYear,
     heroRating,
+
+    // Error
+    contentError,
 
     // Primary content
     trendingAll,

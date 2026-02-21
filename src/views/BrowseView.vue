@@ -125,7 +125,7 @@ const hasMore = () => {
           v-else-if="!hasMore() && mediaStore.browseResults.length > 0"
           class="text-zinc-600 text-xs tracking-wide"
         >
-          {{ t('browse.endOfResults', 'End of results') }}
+          {{ t('browse.endOfResults') }}
         </span>
       </div>
     </main>

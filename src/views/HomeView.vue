@@ -38,6 +38,8 @@ const {
   heroBackdrop,
   heroYear,
   heroRating,
+  // Error
+  contentError,
   // Primary content
   trendingAll,
   popularMovies,
@@ -152,8 +154,21 @@ watch(languageChangeCounter, () => {
       </div>
     </section>
 
+    <!-- Error State -->
+    <div v-if="contentError" class="flex flex-col items-center justify-center py-20 px-4 text-center">
+      <i class="pi pi-exclamation-triangle text-4xl text-zinc-500 mb-4"></i>
+      <p class="text-lg text-zinc-300 mb-2">{{ t('home.loadFailed') }}</p>
+      <p class="text-sm text-zinc-500 mb-6">{{ t('home.loadFailedHint') }}</p>
+      <Button
+        :label="t('common.retry')"
+        icon="pi pi-refresh"
+        class="!bg-purple-600 hover:!bg-purple-700 !border-0"
+        @click="loadAllContent(authStore.isAuthenticated)"
+      />
+    </div>
+
     <!-- Carousels -->
-    <div class="relative flex flex-col gap-4 sm:gap-10 z-10 pb-8 sm:pb-12">
+    <div v-else class="relative flex flex-col gap-4 sm:gap-10 z-10 pb-8 sm:pb-12">
       <!-- Continue Watching (if has items) -->
       <ContinueWatchingCarousel
         v-if="continueWatchingItems.length > 0 || isLoadingContinueWatching"

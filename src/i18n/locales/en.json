@@ -54,7 +54,9 @@
     "topRatedTV": "Top Rated TV Shows",
     "hiddenGems": "Hidden Gems",
     "documentaries": "Documentaries",
-    "recentlyViewed": "Recently Viewed"
+    "recentlyViewed": "Recently Viewed",
+    "loadFailed": "Failed to load content",
+    "loadFailedHint": "Please check your connection and try again"
   },
   "media": {
     "movie": "Movie",
@@ -321,7 +323,12 @@
     "password": "Password",
     "enterPassword": "Enter password",
     "incorrectPassword": "Incorrect password",
-    "loginSuccess": "Login successful"
+    "loginSuccess": "Login successful",
+    "passwordRequired": "Please enter a password",
+    "subtitle": "Enter your password to continue",
+    "passwordPlaceholder": "Enter your password",
+    "signIn": "Sign In",
+    "secureAccess": "Secure access to your media library"
   },
   "errors": {
     "generic": "Something went wrong",

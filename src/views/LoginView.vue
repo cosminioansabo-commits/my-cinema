@@ -2,19 +2,21 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
+import { useLanguage } from '@/composables/useLanguage'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { t } = useLanguage()
 
 const password = ref('')
 const showPassword = ref(false)
 
 const handleLogin = async () => {
   if (!password.value) {
-    authStore.error = 'Please enter a password'
+    authStore.error = t('auth.passwordRequired')
     return
   }
 
@@ -46,7 +48,7 @@ const handleKeyPress = (e: KeyboardEvent) => {
           <i class="pi pi-play text-3xl text-white"></i>
         </div>
         <h1 class="text-3xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent mb-2">My Cinema</h1>
-        <p class="text-gray-500 text-sm">Enter your password to continue</p>
+        <p class="text-gray-500 text-sm">{{ t('auth.subtitle') }}</p>
       </div>
 
       <!-- Login Form -->
@@ -55,15 +57,15 @@ const handleKeyPress = (e: KeyboardEvent) => {
           <!-- Password Input -->
           <div>
             <label for="password" class="block text-sm font-medium text-gray-300 mb-2">
-              Password
+              {{ t('auth.password') }}
             </label>
             <div class="relative">
               <InputText
                 v-if="showPassword"
-                id="password"
+                id="password-text"
                 v-model="password"
                 type="text"
-                placeholder="Enter your password"
+                :placeholder="t('auth.passwordPlaceholder')"
                 class="w-full !bg-zinc-800 !border-zinc-700 !text-white focus:!border-[#e50914] !rounded-lg !py-3 !px-4"
                 @keypress="handleKeyPress"
                 :disabled="authStore.isLoading"
@@ -73,7 +75,7 @@ const handleKeyPress = (e: KeyboardEvent) => {
                 v-else
                 id="password"
                 v-model="password"
-                placeholder="Enter your password"
+                :placeholder="t('auth.passwordPlaceholder')"
                 :feedback="false"
                 toggleMask
                 class="w-full"
@@ -102,7 +104,7 @@ const handleKeyPress = (e: KeyboardEvent) => {
           <!-- Submit Button -->
           <Button
             type="submit"
-            label="Sign In"
+            :label="t('auth.signIn')"
             :loading="authStore.isLoading"
             :disabled="authStore.isLoading || !password"
             class="w-full !py-3 !text-base !font-semibold login-btn"
@@ -112,7 +114,7 @@ const handleKeyPress = (e: KeyboardEvent) => {
 
       <!-- Footer -->
       <p class="text-center text-gray-600 text-xs mt-6 tracking-wide">
-        Secure access to your media library
+        {{ t('auth.secureAccess') }}
       </p>
     </div>
   </div>
