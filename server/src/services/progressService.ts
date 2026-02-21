@@ -51,7 +51,7 @@ class ProgressService {
       // So we need to handle movies (where season/episode are NULL) differently
 
       // First, check if record exists
-      let existingId: number | null = null
+      let existingId: number | null
       if (seasonNumber === null || episodeNumber === null) {
         // For movies: find by user, type, tmdb where season/episode are NULL
         const findStmt = db.prepare(`

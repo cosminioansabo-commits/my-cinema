@@ -107,7 +107,7 @@ const handleClick = async () => {
 
   // Start download
   try {
-    const downloadId = await offlineStore.startDownload(props.media, props.episode)
+    await offlineStore.startDownload(props.media, props.episode)
     toast.add({
       severity: 'info',
       summary: t('offline.downloadStarted'),

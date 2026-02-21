@@ -153,7 +153,7 @@ const fetchPlaybackInfo = async () => {
 
 // Save progress to backend database (or offline store for offline playback)
 // Called every 10 seconds by VideoPlayer interval, and on pause/stop
-const handleProgress = async (timeMs: number, state: 'playing' | 'paused' | 'stopped') => {
+const handleProgress = async (timeMs: number, _state: 'playing' | 'paused' | 'stopped') => {
   if (!playbackInfo.value?.duration) return
 
   const durationMs = playbackInfo.value.duration

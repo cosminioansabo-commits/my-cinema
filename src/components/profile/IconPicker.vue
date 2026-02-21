@@ -3,7 +3,7 @@ import { ref, computed } from 'vue'
 import { iconCategories, getIconDisplay } from '@/config/avatarOptions'
 import { useLanguage } from '@/composables/useLanguage'
 
-const props = defineProps<{ modelValue: string }>()
+defineProps<{ modelValue: string }>()
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
 const { t } = useLanguage()
 

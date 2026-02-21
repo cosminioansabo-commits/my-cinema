@@ -40,7 +40,7 @@ export const useNotificationStore = defineStore('notifications', () => {
   // Add a new notification
   const addNotification = (title: string, body: string, type: AppNotification['type'] = 'info') => {
     const notification: AppNotification = {
-      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
       title,
       body,
       timestamp: Date.now(),

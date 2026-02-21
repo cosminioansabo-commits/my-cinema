@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express'
-import jwt, { SignOptions } from 'jsonwebtoken'
+import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
 import rateLimit from 'express-rate-limit'
 import { config } from '../config.js'

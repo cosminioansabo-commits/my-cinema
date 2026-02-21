@@ -141,6 +141,21 @@ const searchEpisodeTorrent = (episode: CalendarEpisode) => {
   showTorrentModal.value = true
 }
 
+// PrimeVue SelectButton passthrough config (moved out of template for TS compat)
+const selectButtonPt = {
+  root: { class: 'bg-zinc-800 rounded-lg border border-zinc-700' },
+  pcToggleButton: {
+    root: ({ context }: { context: { active: boolean } }) => ({
+      class: [
+        'px-4 py-2 text-sm transition-colors',
+        context.active
+          ? 'bg-purple-600 text-white'
+          : 'bg-transparent text-gray-400 hover:text-white'
+      ]
+    })
+  }
+}
+
 const isAired = (airDateUtc: string | undefined): boolean => {
   if (!airDateUtc) return false
   return new Date(airDateUtc) <= new Date()
@@ -192,14 +207,14 @@ const getCountdown = (airDateUtc: string | undefined): { label: string; isReleas
       <div>
         <div class="flex items-center gap-4 mb-3">
           <div
-              class="w-10 h-10 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center shadow-lg shadow-purple-500/20">
+              class="w-10 h-10 sm:w-14 sm:h-14 rounded-2xl bg-linear-to-br from-purple-500 to-purple-700 flex items-center justify-center shadow-lg shadow-purple-500/20">
             <i class="pi pi-calendar text-xl sm:text-2xl text-white"></i>
           </div>
-          <h1 class="text-2xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
+          <h1 class="text-2xl sm:text-4xl md:text-5xl font-bold bg-linear-to-r from-white to-gray-400 bg-clip-text text-transparent">
             {{ t('calendar.title') }}
           </h1>
         </div>
-        <p class="text-gray-400 text-sm sm:text-lg ml-0 sm:ml-[4.5rem]">{{ t('calendar.subtitle') }}</p>
+        <p class="text-gray-400 text-sm sm:text-lg ml-0 sm:ml-18">{{ t('calendar.subtitle') }}</p>
       </div>
 
       <div class="flex items-center gap-4">
@@ -209,19 +224,7 @@ const getCountdown = (airDateUtc: string | undefined): { label: string; isReleas
             optionLabel="label"
             optionValue="value"
             @change="fetchCalendar"
-            :pt="{
-            root: { class: 'bg-zinc-800 rounded-lg border border-zinc-700' },
-            pcToggleButton: {
-              root: ({ context }: { context: { active: boolean } }) => ({
-                class: [
-                  'px-4 py-2 text-sm transition-colors',
-                  context.active
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-transparent text-gray-400 hover:text-white'
-                ]
-              })
-            }
-          }"
+            :pt="selectButtonPt"
         />
         <Button
             icon="pi pi-refresh"
@@ -235,7 +238,7 @@ const getCountdown = (airDateUtc: string | undefined): { label: string; isReleas
 
     <!-- Loading State -->
     <div v-if="isLoading" class="flex items-center justify-center py-24">
-      <ProgressSpinner class="!w-[50px] !h-[50px]" strokeWidth="4"/>
+      <ProgressSpinner class="w-12.5! h-12.5!" strokeWidth="4"/>
     </div>
 
     <!-- Error State -->
@@ -277,7 +280,7 @@ const getCountdown = (airDateUtc: string | undefined): { label: string; isReleas
             <div class="flex gap-4">
               <!-- Series Poster -->
               <div
-                  class="w-20 h-28 rounded-lg overflow-hidden bg-zinc-800 flex-shrink-0 cursor-pointer group"
+                  class="w-20 h-28 rounded-lg overflow-hidden bg-zinc-800 shrink-0 cursor-pointer group"
                   @click="goToSeries(episode)"
               >
                 <img
@@ -310,7 +313,7 @@ const getCountdown = (airDateUtc: string | undefined): { label: string; isReleas
                   </div>
 
                   <!-- Status Badge -->
-                  <div class="flex items-center gap-2 flex-shrink-0">
+                  <div class="flex items-center gap-2 shrink-0">
                     <span
                         v-if="episode.hasFile"
                         class="px-2 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400"
