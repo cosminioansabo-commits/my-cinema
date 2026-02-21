@@ -39,7 +39,7 @@ app.use(cors({
     } catch {
       // Invalid URL, reject
     }
-    callback(null, true) // Allow all origins for now (can be restricted later)
+    callback(new Error('Not allowed by CORS'))
   },
   credentials: true
 }))

@@ -5,10 +5,12 @@ import { useMediaStore } from '@/stores/mediaStore'
 import SearchBar from '@/components/common/SearchBar.vue'
 import MediaGrid from '@/components/media/MediaGrid.vue'
 import Button from 'primevue/button'
+import { useLanguage } from '@/composables/useLanguage'
 
 const route = useRoute()
 const router = useRouter()
 const mediaStore = useMediaStore()
+const { t } = useLanguage()
 
 const searchQuery = ref('')
 
@@ -64,8 +66,7 @@ const clearSearch = () => {
     <!-- Results info -->
     <div v-if="searchQuery && mediaStore.totalResults > 0" class="text-center">
       <p class="text-xs sm:text-sm text-gray-400">
-        Found <span class="text-white font-semibold">{{ mediaStore.totalResults.toLocaleString() }}</span> results
-        for "<span class="text-purple-400">{{ searchQuery }}</span>"
+        {{ t('search.foundResults', { count: mediaStore.totalResults.toLocaleString(), query: searchQuery }) }}
       </p>
     </div>
 
@@ -88,8 +89,8 @@ const clearSearch = () => {
       class="flex flex-col items-center justify-center py-10 sm:py-16 text-center px-4"
     >
       <i class="pi pi-search text-3xl sm:text-5xl text-gray-600 mb-3 sm:mb-4"></i>
-      <h2 class="text-base sm:text-xl font-semibold text-gray-400 mb-1.5 sm:mb-2">Search for movies & TV shows</h2>
-      <p class="text-xs sm:text-sm text-gray-500">Enter a title to get started</p>
+      <h2 class="text-base sm:text-xl font-semibold text-gray-400 mb-1.5 sm:mb-2">{{ t('search.searchFor') }}</h2>
+      <p class="text-xs sm:text-sm text-gray-500">{{ t('search.enterTitle') }}</p>
     </div>
 
     <!-- Empty State - No Results -->
@@ -98,10 +99,10 @@ const clearSearch = () => {
       class="flex flex-col items-center justify-center py-10 sm:py-16 text-center px-4"
     >
       <i class="pi pi-times-circle text-3xl sm:text-5xl text-gray-600 mb-3 sm:mb-4"></i>
-      <h2 class="text-base sm:text-xl font-semibold text-gray-400 mb-1.5 sm:mb-2">No results found</h2>
-      <p class="text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4">Try a different search term</p>
+      <h2 class="text-base sm:text-xl font-semibold text-gray-400 mb-1.5 sm:mb-2">{{ t('search.noResults') }}</h2>
+      <p class="text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4">{{ t('search.noResultsHint') }}</p>
       <Button
-        label="Clear Search"
+        :label="t('search.clearSearch')"
         severity="secondary"
         outlined
         class="!text-xs sm:!text-sm"
@@ -115,7 +116,7 @@ const clearSearch = () => {
       class="flex justify-center"
     >
       <Button
-        label="Load More"
+        :label="t('browse.loadMore')"
         icon="pi pi-arrow-down"
         severity="secondary"
         outlined

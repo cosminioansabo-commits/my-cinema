@@ -1,13 +1,15 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import axios from 'axios'
 import type { Media, MediaDetails, MediaType } from '@/types'
-import { getTrending, searchMulti, discoverMedia, getMediaDetails } from '@/services/tmdbService'
+import { getTrending, searchMulti, discoverMedia, getMediaDetails, type PersonResult } from '@/services/tmdbService'
 import { useFiltersStore } from './filtersStore'
 
 export const useMediaStore = defineStore('media', () => {
   // State
   const trending = ref<Media[]>([])
   const searchResults = ref<Media[]>([])
+  const searchPeople = ref<PersonResult[]>([])
   const browseResults = ref<Media[]>([])
   const currentMedia = ref<MediaDetails | null>(null)
 
@@ -22,6 +24,9 @@ export const useMediaStore = defineStore('media', () => {
   const totalResults = ref(0)
 
   const error = ref<string | null>(null)
+
+  // AbortController for cancelling stale search requests
+  let searchAbortController: AbortController | null = null
 
   // Actions
   async function fetchTrending(mediaType: MediaType | 'all' = 'all') {
@@ -44,21 +49,32 @@ export const useMediaStore = defineStore('media', () => {
       return
     }
 
+    // Abort any in-flight search request
+    if (searchAbortController) {
+      searchAbortController.abort()
+    }
+    searchAbortController = new AbortController()
+
     searchQuery.value = query
     isLoadingSearch.value = true
     error.value = null
 
     try {
-      const response = await searchMulti(query, page)
+      const response = await searchMulti(query, page, searchAbortController.signal)
       if (page === 1) {
         searchResults.value = response.results
+        searchPeople.value = response.people
       } else {
         searchResults.value = [...searchResults.value, ...response.results]
+        // Only show people on first page
       }
       totalPages.value = response.totalPages
       totalResults.value = response.totalResults
       currentPage.value = page
     } catch (e) {
+      // Ignore aborted requests
+      if (e instanceof DOMException && e.name === 'AbortError') return
+      if (axios.isCancel(e)) return
       error.value = 'Search failed'
       console.error(e)
     } finally {
@@ -75,6 +91,7 @@ export const useMediaStore = defineStore('media', () => {
   function clearSearch() {
     searchQuery.value = ''
     searchResults.value = []
+    searchPeople.value = []
     currentPage.value = 1
     totalPages.value = 0
     totalResults.value = 0
@@ -166,6 +183,7 @@ export const useMediaStore = defineStore('media', () => {
     // State
     trending,
     searchResults,
+    searchPeople,
     browseResults,
     currentMedia,
     isLoadingTrending,

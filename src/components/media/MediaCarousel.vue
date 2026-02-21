@@ -3,6 +3,9 @@ import { RouterLink } from 'vue-router'
 import type { Media } from '@/types'
 import MediaCard from './MediaCard.vue'
 import { useCarouselScroll } from '@/composables/useCarouselScroll'
+import { useLanguage } from '@/composables/useLanguage'
+
+const { t } = useLanguage()
 
 const props = withDefaults(defineProps<{
   title: string
@@ -32,7 +35,7 @@ void trackRef
       >
         {{ title }}
         <span v-if="seeAllLink" class="text-xs sm:text-sm font-normal text-[#e50914] opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-          See all
+          {{ t('common.seeAll') }}
           <i class="pi pi-chevron-right text-[10px] sm:text-xs"></i>
         </span>
       </component>

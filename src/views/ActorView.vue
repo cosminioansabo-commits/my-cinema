@@ -4,18 +4,22 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   getPersonDetails,
   getPersonCredits,
+  getPersonExternalIds,
   getImageUrl,
   type PersonDetails,
   type PersonCombinedCredits,
 } from '@/services/tmdbService'
 import Button from 'primevue/button'
 import Skeleton from 'primevue/skeleton'
+import { useLanguage } from '@/composables/useLanguage'
 
 const route = useRoute()
 const router = useRouter()
+const { t } = useLanguage()
 
 const person = ref<PersonDetails | null>(null)
 const credits = ref<PersonCombinedCredits | null>(null)
+const externalIds = ref<{ imdbId: string | null; instagramId: string | null; twitterId: string | null; facebookId: string | null } | null>(null)
 const isLoading = ref(true)
 const showFullBio = ref(false)
 
@@ -24,12 +28,14 @@ const personId = computed(() => Number(route.params.id))
 const fetchPerson = async () => {
   isLoading.value = true
   try {
-    const [personData, creditsData] = await Promise.all([
+    const [personData, creditsData, externalIdsData] = await Promise.all([
       getPersonDetails(personId.value),
       getPersonCredits(personId.value),
+      getPersonExternalIds(personId.value),
     ])
     person.value = personData
     credits.value = creditsData
+    externalIds.value = externalIdsData
   } catch (error) {
     console.error('Error fetching person:', error)
   } finally {
@@ -206,9 +212,25 @@ const profileUrl = computed(() => {
               </span>
             </div>
 
+            <!-- Social Links -->
+            <div v-if="externalIds" class="flex items-center gap-3 mt-3 mb-4 justify-center md:justify-start">
+              <a v-if="externalIds.instagramId" :href="`https://instagram.com/${externalIds.instagramId}`" target="_blank" rel="noopener" class="text-gray-400 hover:text-pink-400 transition-colors">
+                <i class="pi pi-instagram text-lg"></i>
+              </a>
+              <a v-if="externalIds.twitterId" :href="`https://x.com/${externalIds.twitterId}`" target="_blank" rel="noopener" class="text-gray-400 hover:text-blue-400 transition-colors">
+                <i class="pi pi-twitter text-lg"></i>
+              </a>
+              <a v-if="externalIds.facebookId" :href="`https://facebook.com/${externalIds.facebookId}`" target="_blank" rel="noopener" class="text-gray-400 hover:text-blue-500 transition-colors">
+                <i class="pi pi-facebook text-lg"></i>
+              </a>
+              <a v-if="externalIds.imdbId" :href="`https://imdb.com/name/${externalIds.imdbId}`" target="_blank" rel="noopener" class="text-gray-400 hover:text-yellow-400 transition-colors">
+                <span class="text-sm font-bold">IMDb</span>
+              </a>
+            </div>
+
             <!-- Biography -->
             <div v-if="person.biography" class="mb-6">
-              <h3 class="text-gray-400 text-xs sm:text-sm mb-2">Biography</h3>
+              <h3 class="text-gray-400 text-xs sm:text-sm mb-2">{{ t('actor.biography') }}</h3>
               <p class="text-gray-200 text-sm sm:text-base leading-relaxed whitespace-pre-line">
                 {{ truncatedBio }}
               </p>
@@ -217,7 +239,7 @@ const profileUrl = computed(() => {
                 class="text-purple-400 hover:text-purple-300 text-sm mt-2 transition-colors"
                 @click="showFullBio = !showFullBio"
               >
-                {{ showFullBio ? 'Show less' : 'Read more' }}
+                {{ showFullBio ? t('actor.showLess') : t('actor.readMore') }}
               </button>
             </div>
           </div>
@@ -227,7 +249,7 @@ const profileUrl = computed(() => {
         <section v-if="knownFor.length > 0" class="mb-8 sm:mb-12">
           <div class="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
             <div class="w-1 h-6 sm:h-8 bg-purple-500 rounded-full"></div>
-            <h2 class="text-lg sm:text-2xl font-bold text-white">Known For</h2>
+            <h2 class="text-lg sm:text-2xl font-bold text-white">{{ t('actor.knownFor') }}</h2>
           </div>
           <div class="flex gap-3 sm:gap-4 overflow-x-auto pb-4 hide-scrollbar">
             <div
@@ -256,7 +278,7 @@ const profileUrl = computed(() => {
         <section v-if="filmography.length > 0">
           <div class="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
             <div class="w-1 h-6 sm:h-8 bg-purple-500 rounded-full"></div>
-            <h2 class="text-lg sm:text-2xl font-bold text-white">Filmography</h2>
+            <h2 class="text-lg sm:text-2xl font-bold text-white">{{ t('actor.filmography') }}</h2>
           </div>
           <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3 sm:gap-4">
             <div

@@ -1,16 +1,35 @@
 <script setup lang="ts">
-import { onMounted, watch } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { useHomeContent } from '@/composables/useHomeContent'
 import { useLanguage } from '@/composables/useLanguage'
 import MediaCarousel from '@/components/media/MediaCarousel.vue'
 import ContinueWatchingCarousel from '@/components/media/ContinueWatchingCarousel.vue'
+import { useRecentlyViewed } from '@/composables/useRecentlyViewed'
 import Button from 'primevue/button'
 import Skeleton from 'primevue/skeleton'
 
 const authStore = useAuthStore()
 const { languageChangeCounter, t } = useLanguage()
+const { recentlyViewed } = useRecentlyViewed()
+
+// Convert recently viewed items to Media-like objects for MediaCarousel
+const recentlyViewedMedia = computed(() =>
+  recentlyViewed.value.map((item) => ({
+    id: item.id,
+    title: item.title,
+    posterPath: item.posterPath,
+    releaseDate: '',
+    voteAverage: 0,
+    mediaType: item.mediaType as 'movie' | 'tv',
+    overview: '',
+    backdropPath: null,
+    voteCount: 0,
+    genreIds: [],
+    popularity: 0,
+  }))
+)
 
 const {
   // Hero
@@ -62,6 +81,7 @@ watch(languageChangeCounter, () => {
 </script>
 
 <template>
+  <div>
     <!-- Hero Section -->
     <section class="relative h-[55vh] sm:h-[65vh] md:h-[70vh] min-h-[380px] sm:min-h-[450px] md:min-h-[500px] max-h-[800px] full-bleed overflow-hidden">
       <!-- Background -->
@@ -106,9 +126,9 @@ watch(languageChangeCounter, () => {
             <div class="flex items-center gap-2 sm:gap-4 mb-3 sm:mb-4 text-xs sm:text-sm">
               <span class="text-green-500 font-bold">{{ heroRating }}% Match</span>
               <span class="text-gray-300">{{ heroYear }}</span>
-              <span class="px-1 sm:px-1.5 border border-gray-500 text-gray-400 text-[10px] sm:text-xs">HD</span>
+              <span class="px-1 sm:px-1.5 border border-gray-500 text-gray-400 text-[10px] sm:text-xs">{{ t('media.hd') }}</span>
               <span class="px-1.5 sm:px-2 py-0.5 bg-[#e50914] text-white text-[10px] sm:text-xs font-medium rounded">
-                {{ featuredItem.mediaType === 'movie' ? 'Movie' : 'Series' }}
+                {{ featuredItem.mediaType === 'movie' ? t('media.movie') : t('media.series') }}
               </span>
             </div>
 
@@ -149,6 +169,13 @@ watch(languageChangeCounter, () => {
         :title="t('home.myLibrary')"
         :items="libraryItems"
         see-all-link="/my-library"
+      />
+
+      <!-- Recently Viewed -->
+      <MediaCarousel
+        v-if="recentlyViewedMedia.length > 0"
+        :title="t('home.recentlyViewed')"
+        :items="recentlyViewedMedia"
       />
 
       <!-- Trending Now -->
@@ -300,4 +327,5 @@ watch(languageChangeCounter, () => {
         :loading="isLoadingMoreContent"
       />
     </div>
+  </div>
 </template>

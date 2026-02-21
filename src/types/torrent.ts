@@ -29,6 +29,7 @@ export interface Download {
   createdAt: string
   completedAt?: string
   error?: string
+  magnetLink?: string
 }
 
 export type DownloadStatus = 'queued' | 'downloading' | 'paused' | 'completed' | 'error'

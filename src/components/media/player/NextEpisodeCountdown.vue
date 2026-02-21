@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import Button from 'primevue/button'
+import { useLanguage } from '@/composables/useLanguage'
+
+const { t } = useLanguage()
 
 defineProps<{
   seasonNumber: number
@@ -18,7 +21,7 @@ const emit = defineEmits<{
 <template>
   <div class="absolute inset-0 bg-black/90 flex items-center justify-center z-50">
     <div class="text-center max-w-lg px-6">
-      <p class="text-gray-400 text-sm uppercase tracking-wide mb-2">Up Next</p>
+      <p class="text-gray-400 text-sm uppercase tracking-wide mb-2">{{ t('player.upNext') }}</p>
       <h3 class="text-white text-2xl font-bold mb-2">
         S{{ seasonNumber }}:E{{ episodeNumber }} - {{ name }}
       </h3>
@@ -57,13 +60,13 @@ const emit = defineEmits<{
 
       <div class="flex gap-4 justify-center">
         <Button
-          label="Cancel"
+          :label="t('player.cancelAutoplay')"
           severity="secondary"
           class="!bg-zinc-700 !border-0 hover:!bg-zinc-600"
           @click="emit('cancel')"
         />
         <Button
-          label="Play Now"
+          :label="t('player.playNow')"
           class="!bg-[#e50914] !border-0 hover:!bg-[#f40612]"
           @click="emit('playNow')"
         />

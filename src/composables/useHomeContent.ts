@@ -22,7 +22,7 @@ import {
   getDocumentaries,
   getKoreanDramas,
   getBackdropUrl,
-  getMediaDetails,
+  getMediaBasicInfo,
 } from '@/services/tmdbService'
 import { profileLibraryService } from '@/services/libraryService'
 import { progressService } from '@/services/progressService'
@@ -100,23 +100,15 @@ export function useHomeContent() {
       const enrichedItems: ContinueWatchingItem[] = await Promise.all(
         items.map(async (item) => {
           try {
-            if (item.mediaType === 'movie') {
-              const movieDetails = await getMediaDetails('movie', item.tmdbId)
-              return {
-                ...item,
-                title: movieDetails?.title || 'Unknown Movie',
-                posterPath: movieDetails?.posterPath || null,
-              }
-            } else {
-              const showDetails = await getMediaDetails('tv', item.tmdbId)
-              return {
-                ...item,
-                title: showDetails?.title || 'Unknown Show',
-                posterPath: showDetails?.posterPath || null,
-                episodeTitle: item.seasonNumber && item.episodeNumber
-                  ? `S${item.seasonNumber}:E${item.episodeNumber}`
-                  : undefined,
-              }
+            const mediaType = item.mediaType === 'movie' ? 'movie' : 'tv'
+            const basicInfo = await getMediaBasicInfo(mediaType, item.tmdbId)
+            return {
+              ...item,
+              title: basicInfo?.title || 'Unknown',
+              posterPath: basicInfo?.posterPath || null,
+              ...(item.mediaType !== 'movie' && item.seasonNumber && item.episodeNumber
+                ? { episodeTitle: `S${item.seasonNumber}:E${item.episodeNumber}` }
+                : {}),
             }
           } catch {
             return {

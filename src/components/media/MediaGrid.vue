@@ -3,6 +3,9 @@ import type { Media } from '@/types'
 import MediaCard from './MediaCard.vue'
 import Card from 'primevue/card'
 import Skeleton from 'primevue/skeleton'
+import { useLanguage } from '@/composables/useLanguage'
+
+const { t } = useLanguage()
 
 defineProps<{
   items: Media[]
@@ -54,7 +57,7 @@ defineProps<{
     <div class="w-16 h-16 sm:w-24 sm:h-24 rounded-xl sm:rounded-2xl bg-zinc-800/50 flex items-center justify-center mb-4 sm:mb-8 border border-zinc-700/50">
       <i class="pi pi-video text-2xl sm:text-4xl text-gray-500"></i>
     </div>
-    <h3 class="text-lg sm:text-2xl font-semibold text-gray-200 mb-2 sm:mb-3">No results found</h3>
-    <p class="text-gray-500 max-w-md text-sm sm:text-base px-4">Try adjusting your filters or search for something else</p>
+    <h3 class="text-lg sm:text-2xl font-semibold text-gray-200 mb-2 sm:mb-3">{{ t('browse.noResults') }}</h3>
+    <p class="text-gray-500 max-w-md text-sm sm:text-base px-4">{{ t('browse.noResultsHint') }}</p>
   </div>
 </template>

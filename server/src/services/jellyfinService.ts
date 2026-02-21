@@ -93,9 +93,19 @@ export interface JellyfinPlaybackInfo {
   duration: number
 }
 
+// In-memory cache for library item lists (avoids fetching ALL items on every play request)
+interface LibraryCache {
+  items: JellyfinItem[]
+  timestamp: number
+}
+
+const LIBRARY_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+
 class JellyfinService {
   private client: AxiosInstance
   private userId: string | null = null
+  private movieCache: LibraryCache | null = null
+  private episodeCache: LibraryCache | null = null
 
   constructor() {
     this.client = axios.create({
@@ -157,6 +167,48 @@ class JellyfinService {
   }
 
   /**
+   * Get cached movie items or fetch fresh from Jellyfin
+   */
+  private async getMovieItems(): Promise<JellyfinItem[]> {
+    if (this.movieCache && Date.now() - this.movieCache.timestamp < LIBRARY_CACHE_TTL) {
+      return this.movieCache.items
+    }
+
+    const response = await this.client.get('/Items', {
+      params: {
+        Recursive: true,
+        IncludeItemTypes: 'Movie',
+        Fields: 'Path,MediaSources,MediaStreams'
+      }
+    })
+
+    const items = response.data.Items as JellyfinItem[]
+    this.movieCache = { items, timestamp: Date.now() }
+    return items
+  }
+
+  /**
+   * Get cached episode items or fetch fresh from Jellyfin
+   */
+  private async getEpisodeItems(): Promise<JellyfinItem[]> {
+    if (this.episodeCache && Date.now() - this.episodeCache.timestamp < LIBRARY_CACHE_TTL) {
+      return this.episodeCache.items
+    }
+
+    const response = await this.client.get('/Items', {
+      params: {
+        Recursive: true,
+        IncludeItemTypes: 'Episode',
+        Fields: 'Path,MediaSources,MediaStreams'
+      }
+    })
+
+    const items = response.data.Items as JellyfinItem[]
+    this.episodeCache = { items, timestamp: Date.now() }
+    return items
+  }
+
+  /**
    * Search for a movie by file path (from Radarr)
    * Uses filename matching since paths may differ between Radarr and Jellyfin
    */
@@ -165,15 +217,7 @@ class JellyfinService {
       // Extract filename for matching (more reliable than full path)
       const filename = filePath.split('/').pop() || filePath
 
-      const response = await this.client.get('/Items', {
-        params: {
-          Recursive: true,
-          IncludeItemTypes: 'Movie',
-          Fields: 'Path,MediaSources,MediaStreams'
-        }
-      })
-
-      const items = response.data.Items as JellyfinItem[]
+      const items = await this.getMovieItems()
 
       // Try exact path match first
       let found = items.find(item => {
@@ -213,15 +257,7 @@ class JellyfinService {
       // Extract filename for matching (more reliable than full path)
       const filename = filePath.split('/').pop() || filePath
 
-      const response = await this.client.get('/Items', {
-        params: {
-          Recursive: true,
-          IncludeItemTypes: 'Episode',
-          Fields: 'Path,MediaSources,MediaStreams'
-        }
-      })
-
-      const items = response.data.Items as JellyfinItem[]
+      const items = await this.getEpisodeItems()
 
       // Try exact path match first
       let found = items.find(item => {

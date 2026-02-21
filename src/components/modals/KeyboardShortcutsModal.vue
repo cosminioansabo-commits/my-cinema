@@ -3,6 +3,9 @@ import { computed } from 'vue'
 import Dialog from 'primevue/dialog'
 import { getShortcutGroups } from '@/config/keyboardShortcuts'
 import { showKeyboardHelp } from '@/composables/useKeyboardShortcuts'
+import { useLanguage } from '@/composables/useLanguage'
+
+const { t } = useLanguage()
 
 const shortcutGroups = computed(() => getShortcutGroups())
 
@@ -32,8 +35,8 @@ const closeModal = () => {
           <i class="pi pi-bolt text-purple-400 text-sm"></i>
         </div>
         <div>
-          <h2 class="text-white text-base font-semibold tracking-tight">Keyboard Shortcuts</h2>
-          <p class="text-zinc-500 text-xs mt-0.5">Navigate faster with keyboard</p>
+          <h2 class="text-white text-base font-semibold tracking-tight">{{ t('keyboard.title') }}</h2>
+          <p class="text-zinc-500 text-xs mt-0.5">{{ t('keyboard.subtitle') }}</p>
         </div>
       </div>
       <button
@@ -81,11 +84,11 @@ const closeModal = () => {
       <div class="flex items-center justify-center gap-4 text-[11px] text-zinc-600">
         <span class="flex items-center gap-1.5">
           <kbd class="shortcuts-kbd-sm">?</kbd>
-          <span>toggle</span>
+          <span>{{ t('keyboard.toggle') }}</span>
         </span>
         <span class="flex items-center gap-1.5">
           <kbd class="shortcuts-kbd-sm">Esc</kbd>
-          <span>close</span>
+          <span>{{ t('common.close').toLowerCase() }}</span>
         </span>
       </div>
     </div>

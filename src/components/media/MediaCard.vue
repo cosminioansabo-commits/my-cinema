@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { getImageUrl, getPosterSrcset } from '@/services/tmdbService'
 import { useFiltersStore } from '@/stores/filtersStore'
+import { useLanguage } from '@/composables/useLanguage'
 import type { Media } from '@/types'
 import Card from 'primevue/card'
 import { computed, ref } from 'vue'
@@ -14,6 +15,7 @@ const props = withDefaults(defineProps<{
 })
 
 const filtersStore = useFiltersStore()
+const { t } = useLanguage()
 const imageLoaded = ref(false)
 
 const posterUrl = computed(() => getImageUrl(props.media.posterPath, 'w300'))
@@ -47,7 +49,7 @@ const matchBgColor = computed(() => {
   return 'bg-red-500/20'
 })
 
-const mediaTypeLabel = computed(() => props.media.mediaType === 'movie' ? 'Movie' : 'Series')
+const mediaTypeLabel = computed(() => props.media.mediaType === 'movie' ? t('media.movie') : t('media.series'))
 
 // Get genre names from IDs using O(1) Map lookup
 const genreNames = computed(() => {

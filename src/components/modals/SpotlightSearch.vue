@@ -5,10 +5,12 @@ import { useMediaStore } from '@/stores/mediaStore'
 import { useDebounce } from '@/composables/useDebounce'
 import { getImageUrl } from '@/services/tmdbService'
 import { spotlightVisible, closeSpotlight } from '@/composables/useSpotlightSearch'
+import { useLanguage } from '@/composables/useLanguage'
 import Dialog from 'primevue/dialog'
 
 const router = useRouter()
 const mediaStore = useMediaStore()
+const { t } = useLanguage()
 
 const query = ref('')
 const debouncedQuery = useDebounce(query, 300)
@@ -17,6 +19,7 @@ const inputRef = ref<HTMLInputElement | null>(null)
 const resultsRef = ref<HTMLElement | null>(null)
 
 const results = computed(() => mediaStore.searchResults)
+const people = computed(() => mediaStore.searchPeople)
 const isLoading = computed(() => mediaStore.isLoadingSearch)
 
 const displayResults = computed(() =>
@@ -30,6 +33,19 @@ const displayResults = computed(() =>
     route: { name: 'media-detail' as const, params: { type: media.mediaType, id: media.id } },
   }))
 )
+
+const displayPeople = computed(() =>
+  people.value.map((person) => ({
+    id: person.id,
+    name: person.name,
+    photoUrl: getImageUrl(person.profilePath, 'w200'),
+    department: person.knownForDepartment,
+    route: { name: 'actor' as const, params: { id: person.id } },
+  }))
+)
+
+// Total navigable items count (media results + people)
+const totalNavigableCount = computed(() => displayResults.value.length + displayPeople.value.length)
 
 // Search when debounced query changes
 watch(debouncedQuery, (val) => {
@@ -58,8 +74,13 @@ function navigateToResult(item: (typeof displayResults.value)[0]) {
   closeSpotlight()
 }
 
+function navigateToPerson(person: (typeof displayPeople.value)[0]) {
+  router.push(person.route)
+  closeSpotlight()
+}
+
 function handleKeydown(e: KeyboardEvent) {
-  const count = displayResults.value.length
+  const count = totalNavigableCount.value
 
   switch (e.key) {
     case 'ArrowDown':
@@ -79,7 +100,17 @@ function handleKeydown(e: KeyboardEvent) {
     case 'Enter':
       e.preventDefault()
       if (selectedIndex.value >= 0 && selectedIndex.value < count) {
-        navigateToResult(displayResults.value[selectedIndex.value])
+        const mediaCount = displayResults.value.length
+        if (selectedIndex.value < mediaCount) {
+          navigateToResult(displayResults.value[selectedIndex.value])
+        } else {
+          const personIdx = selectedIndex.value - mediaCount
+          navigateToPerson(displayPeople.value[personIdx])
+        }
+      } else if (query.value.trim()) {
+        // Navigate to search page with query when no result is selected
+        router.push({ name: 'search', query: { q: query.value.trim() } })
+        closeSpotlight()
       }
       break
     case 'Escape':
@@ -132,7 +163,7 @@ function ratingColor(rating: number) {
           autocorrect="off"
           autocapitalize="off"
           spellcheck="false"
-          placeholder="Search movies & TV shows..."
+          :placeholder="t('search.placeholder')"
           class="spotlight-input"
           @keydown="handleKeydown"
           @compositionend="query = ($event.target as HTMLInputElement).value"
@@ -169,7 +200,8 @@ function ratingColor(rating: number) {
       </div>
 
       <!-- Results -->
-      <div v-else-if="displayResults.length > 0" class="flex flex-col gap-4 p-2">
+      <div v-else-if="displayResults.length > 0 || displayPeople.length > 0" class="flex flex-col gap-4 p-2">
+        <!-- Media results -->
         <button
           v-for="(item, index) in displayResults"
           :key="`${item.mediaType}-${item.id}`"
@@ -191,7 +223,7 @@ function ratingColor(rating: number) {
               <span v-if="item.year" class="text-zinc-400 text-xs">{{ item.year }}</span>
               <span class="flex items-center gap-1 text-zinc-500 text-xs">
                 <i :class="['pi', item.mediaType === 'tv' ? 'pi-desktop' : 'pi-video', 'text-[10px]']"></i>
-                {{ item.mediaType === 'tv' ? 'TV Show' : 'Movie' }}
+                {{ item.mediaType === 'tv' ? t('search.tvShow') : t('media.movie') }}
               </span>
             </div>
           </div>
@@ -209,6 +241,39 @@ function ratingColor(rating: number) {
             class="pi pi-angle-right text-zinc-500 text-sm flex-shrink-0"
           ></i>
         </button>
+
+        <!-- People section -->
+        <template v-if="displayPeople.length > 0">
+          <div class="px-2 pt-2">
+            <div class="h-px bg-gradient-to-r from-transparent via-zinc-700/50 to-transparent mb-3"></div>
+            <span class="text-zinc-500 text-[11px] font-medium uppercase tracking-wider">{{ t('search.people') }}</span>
+          </div>
+          <button
+            v-for="(person, pIndex) in displayPeople"
+            :key="`person-${person.id}`"
+            class="spotlight-result"
+            :class="(displayResults.length + pIndex) === selectedIndex ? 'spotlight-result--active' : ''"
+            @click="navigateToPerson(person)"
+            @mouseenter="selectedIndex = displayResults.length + pIndex"
+          >
+            <!-- Photo -->
+            <img
+              :src="person.photoUrl"
+              :alt="person.name"
+              class="w-14 h-18 object-cover rounded-lg bg-zinc-800 flex-shrink-0 ring-1 ring-white/[0.08]"
+            />
+            <!-- Name and department -->
+            <div class="flex-1 min-w-0">
+              <p class="text-white text-[13px] font-medium truncate leading-snug">{{ person.name }}</p>
+              <span v-if="person.department" class="text-zinc-500 text-xs">{{ person.department }}</span>
+            </div>
+            <!-- Arrow indicator -->
+            <i
+              v-if="(displayResults.length + pIndex) === selectedIndex"
+              class="pi pi-angle-right text-zinc-500 text-sm flex-shrink-0"
+            ></i>
+          </button>
+        </template>
       </div>
 
       <!-- No results -->
@@ -219,8 +284,8 @@ function ratingColor(rating: number) {
         <div class="w-12 h-12 rounded-2xl bg-zinc-800/80 flex items-center justify-center mb-4">
           <i class="pi pi-times-circle text-xl text-zinc-500"></i>
         </div>
-        <p class="text-zinc-400 text-sm font-medium">No results found</p>
-        <p class="text-zinc-600 text-xs mt-1">Try a different search term</p>
+        <p class="text-zinc-400 text-sm font-medium">{{ t('search.noResults') }}</p>
+        <p class="text-zinc-600 text-xs mt-1">{{ t('search.noResultsHint') }}</p>
       </div>
 
       <!-- Empty state -->
@@ -231,7 +296,7 @@ function ratingColor(rating: number) {
             <path d="m21 21-4.35-4.35" stroke-linecap="round" />
           </svg>
         </div>
-        <p class="text-zinc-400 text-sm font-medium tracking-wide">Search movies & TV shows</p>
+        <p class="text-zinc-400 text-sm font-medium tracking-wide">{{ t('search.searchFor') }}</p>
         <div class="flex items-center gap-1.5 mt-3">
           <span class="text-zinc-600 text-xs">Press</span>
           <kbd class="spotlight-kbd">&#8984;K</kbd>
@@ -245,15 +310,15 @@ function ratingColor(rating: number) {
       <div class="flex items-center gap-4">
         <span class="flex items-center gap-1.5">
           <kbd class="spotlight-kbd-sm">&uarr;&darr;</kbd>
-          <span>navigate</span>
+          <span>{{ t('search.navigate') }}</span>
         </span>
         <span class="flex items-center gap-1.5">
           <kbd class="spotlight-kbd-sm">&crarr;</kbd>
-          <span>open</span>
+          <span>{{ t('search.open') }}</span>
         </span>
         <span class="flex items-center gap-1.5">
           <kbd class="spotlight-kbd-sm">esc</kbd>
-          <span>close</span>
+          <span>{{ t('common.close') }}</span>
         </span>
       </div>
     </div>

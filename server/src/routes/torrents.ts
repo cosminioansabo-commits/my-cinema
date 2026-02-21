@@ -39,6 +39,12 @@ router.post('/download', async (req: Request, res: Response) => {
       return
     }
 
+    // Validate magnet link format
+    if (!magnetLink.startsWith('magnet:?') || !magnetLink.includes('xt=urn:btih:')) {
+      res.status(400).json({ error: 'Invalid magnet link format' })
+      return
+    }
+
     const download = await downloadManager.startDownload({
       magnetLink,
       mediaId,

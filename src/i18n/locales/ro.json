@@ -53,7 +53,8 @@
     "topRatedMovies": "Filme de top",
     "topRatedTV": "Seriale de top",
     "hiddenGems": "Comori ascunse",
-    "documentaries": "Documentare"
+    "documentaries": "Documentare",
+    "recentlyViewed": "Vizionate recent"
   },
   "media": {
     "movie": "Film",
@@ -106,7 +107,20 @@
     "hasBeenRemoved": "{title} a fost eliminat din biblioteca ta",
     "notFoundInSonarr": "Nu s-a găsit acest serial în baza de date Sonarr",
     "failedToUpdateLibrary": "Actualizarea bibliotecii a eșuat",
-    "addToLibraryFirst": "Adaugă mai întâi în bibliotecă pentru a descărca"
+    "addToLibraryFirst": "Adaugă mai întâi în bibliotecă pentru a descărca",
+    "hd": "HD",
+    "share": "Distribuie",
+    "linkCopied": "Link copiat în clipboard",
+    "shareFailed": "Distribuirea a eșuat"
+  },
+  "actor": {
+    "biography": "Biografie",
+    "readMore": "Citește mai mult",
+    "showLess": "Arată mai puțin",
+    "knownFor": "Cunoscut pentru",
+    "filmography": "Filmografie",
+    "notFound": "Actorul nu a fost găsit",
+    "notFoundHint": "Actorul solicitat nu a putut fi găsit."
   },
   "player": {
     "play": "Redare",
@@ -125,7 +139,9 @@
     "resumePlayback": "Continuă redarea?",
     "continueFrom": "Continuă de la {time}",
     "startOver": "Începe de la început",
+    "resume": "Continuă",
     "nextEpisode": "Episodul următor",
+    "upNext": "Următorul",
     "playingIn": "Redare în {seconds}s",
     "cancelAutoplay": "Anulează",
     "playNow": "Redă acum",
@@ -133,17 +149,38 @@
     "fontSize": "Dimensiune font",
     "fontColor": "Culoare font",
     "backgroundColor": "Fundal",
+    "findSubtitles": "Găsește subtitrări",
     "searchSubtitles": "Caută subtitrări",
     "downloadSubtitle": "Descarcă",
+    "noSubtitlesAvailable": "Nicio subtitrare disponibilă",
     "noSubtitlesFound": "Nu s-au găsit subtitrări",
-    "subtitleLanguage": "Limba"
+    "subtitleLanguage": "Limba",
+    "searching": "Se caută...",
+    "style": "Stil",
+    "results": "Rezultate",
+    "loadingPlayback": "Se încarcă redarea...",
+    "unableToPlay": "Nu se poate reda",
+    "noStreamAvailable": "Niciun stream disponibil",
+    "noStreamHint": "Fișierul media nu a putut fi localizat. Asigură-te că fișierul există în biblioteca ta.",
+    "offlineNotFound": "Videoclipul offline nu a fost găsit. Fișierul cache a fost posibil șters.",
+    "mediaNotFound": "Media nu a fost găsită. Asigură-te că Radarr/Sonarr are fișierul.",
+    "failedToConnect": "Conectarea la serviciul media a eșuat",
+    "subtitleLoaded": "Subtitrare încărcată!"
   },
   "search": {
     "placeholder": "Caută filme și seriale...",
     "noResults": "Niciun rezultat găsit",
+    "noResultsHint": "Încearcă un alt termen de căutare",
     "resultsFor": "Rezultate pentru \"{query}\"",
     "foundResults": "S-au găsit {count} rezultate pentru \"{query}\"",
-    "searchTip": "Încearcă să cauți filme, seriale sau actori"
+    "searchTip": "Încearcă să cauți filme, seriale sau actori",
+    "searchFor": "Caută filme și seriale",
+    "enterTitle": "Introdu un titlu pentru a căuta filme, seriale și altele",
+    "clearSearch": "Șterge căutarea",
+    "tvShow": "Serial TV",
+    "navigate": "navighează",
+    "open": "deschide",
+    "people": "Persoane"
   },
   "browse": {
     "title": "Explorează",
@@ -180,17 +217,25 @@
     "loadMore": "Încarcă mai mult",
     "nGenres": "{n} gen(uri)",
     "nPlatforms": "{n} platformă(e)",
-    "noResults": "Niciun rezultat nu corespunde filtrelor"
+    "noResults": "Niciun rezultat găsit",
+    "noResultsHint": "Încearcă să ajustezi filtrele sau caută altceva",
+    "endOfResults": "Sfârșitul rezultatelor"
   },
   "downloads": {
     "title": "Descărcări",
     "queue": "Coadă de descărcare",
     "noDownloads": "Nicio descărcare activă",
+    "noDownloadsHint": "Începe o descărcare din pagina de detalii a unui film sau serial",
+    "noCompletedDownloads": "Nicio descărcare finalizată",
+    "noFailedDownloads": "Nicio descărcare eșuată",
     "downloading": "Se descarcă",
     "seeding": "Se distribuie",
     "paused": "În pauză",
     "completed": "Finalizat",
+    "failed": "Eșuat",
     "error": "Eroare",
+    "unknown": "Necunoscut",
+    "queued": "În așteptare",
     "pause": "Pauză",
     "resume": "Continuă",
     "cancel": "Anulează",
@@ -199,7 +244,16 @@
     "eta": "Timp rămas",
     "size": "Dimensiune",
     "progress": "Progres",
-    "peers": "Peers"
+    "peers": "Peers",
+    "active": "Active",
+    "viewAll": "Vezi tot",
+    "connected": "Conectat",
+    "disconnected": "Deconectat",
+    "serverConnected": "Server conectat",
+    "noDownloadsYet": "Nicio descărcare încă",
+    "moreCount": "+ {count} altele",
+    "clearCompleted": "Șterge finalizate",
+    "retryDownload": "Reîncearcă"
   },
   "library": {
     "title": "Biblioteca mea",
@@ -280,12 +334,14 @@
   },
   "keyboard": {
     "title": "Scurtături tastatură",
+    "subtitle": "Navighează mai rapid cu tastatura",
     "general": "General",
     "navigation": "Navigare",
     "videoPlayer": "Player video",
     "focusSearch": "Focus căutare",
     "closeModal": "Închide modal/meniu",
-    "showHelp": "Afișează scurtăturile"
+    "showHelp": "Afișează scurtăturile",
+    "toggle": "comută"
   },
   "time": {
     "justNow": "Chiar acum",
@@ -295,7 +351,10 @@
     "remaining": "{time} rămas"
   },
   "continueWatching": {
-    "clearAll": "Șterge Tot"
+    "clearAll": "Șterge Tot",
+    "confirmClearTitle": "Șterge istoricul",
+    "confirmClearMessage": "Sigur vrei să ștergi tot istoricul de vizionare? Aceasta nu poate fi anulată.",
+    "unknown": "Necunoscut"
   },
   "notifications": {
     "title": "Notificări",

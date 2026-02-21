@@ -53,7 +53,8 @@
     "topRatedMovies": "Top Rated Movies",
     "topRatedTV": "Top Rated TV Shows",
     "hiddenGems": "Hidden Gems",
-    "documentaries": "Documentaries"
+    "documentaries": "Documentaries",
+    "recentlyViewed": "Recently Viewed"
   },
   "media": {
     "movie": "Movie",
@@ -106,7 +107,20 @@
     "hasBeenRemoved": "{title} has been removed from your library",
     "notFoundInSonarr": "Could not find this series in Sonarr database",
     "failedToUpdateLibrary": "Failed to update library",
-    "addToLibraryFirst": "Add to library first to download"
+    "addToLibraryFirst": "Add to library first to download",
+    "hd": "HD",
+    "share": "Share",
+    "linkCopied": "Link copied to clipboard",
+    "shareFailed": "Failed to share"
+  },
+  "actor": {
+    "biography": "Biography",
+    "readMore": "Read more",
+    "showLess": "Show less",
+    "knownFor": "Known For",
+    "filmography": "Filmography",
+    "notFound": "Actor not found",
+    "notFoundHint": "The requested actor could not be found."
   },
   "player": {
     "play": "Play",
@@ -125,7 +139,9 @@
     "resumePlayback": "Resume playback?",
     "continueFrom": "Continue from {time}",
     "startOver": "Start Over",
+    "resume": "Resume",
     "nextEpisode": "Next Episode",
+    "upNext": "Up Next",
     "playingIn": "Playing in {seconds}s",
     "cancelAutoplay": "Cancel",
     "playNow": "Play Now",
@@ -133,17 +149,38 @@
     "fontSize": "Font Size",
     "fontColor": "Font Color",
     "backgroundColor": "Background",
+    "findSubtitles": "Find Subtitles",
     "searchSubtitles": "Search Subtitles",
     "downloadSubtitle": "Download",
+    "noSubtitlesAvailable": "No subtitles available",
     "noSubtitlesFound": "No subtitles found",
-    "subtitleLanguage": "Language"
+    "subtitleLanguage": "Language",
+    "searching": "Searching...",
+    "style": "Style",
+    "results": "Results",
+    "loadingPlayback": "Loading playback...",
+    "unableToPlay": "Unable to play",
+    "noStreamAvailable": "No stream available",
+    "noStreamHint": "The media file could not be located. Make sure the file exists in your library.",
+    "offlineNotFound": "Offline video not found. The cached file may have been deleted.",
+    "mediaNotFound": "Media not found. Make sure Radarr/Sonarr has the file.",
+    "failedToConnect": "Failed to connect to media service",
+    "subtitleLoaded": "Subtitle loaded!"
   },
   "search": {
     "placeholder": "Search movies & TV shows...",
     "noResults": "No results found",
+    "noResultsHint": "Try a different search term",
     "resultsFor": "Results for \"{query}\"",
     "foundResults": "Found {count} results for \"{query}\"",
-    "searchTip": "Try searching for movies, TV shows, or actors"
+    "searchTip": "Try searching for movies, TV shows, or actors",
+    "searchFor": "Search for movies & TV shows",
+    "enterTitle": "Enter a title to search for movies, series and more",
+    "clearSearch": "Clear Search",
+    "tvShow": "TV Show",
+    "navigate": "navigate",
+    "open": "open",
+    "people": "People"
   },
   "browse": {
     "title": "Browse",
@@ -180,17 +217,25 @@
     "loadMore": "Load More",
     "nGenres": "{n} genre(s)",
     "nPlatforms": "{n} platform(s)",
-    "noResults": "No results match your filters"
+    "noResults": "No results found",
+    "noResultsHint": "Try adjusting your filters or search for something else",
+    "endOfResults": "End of results"
   },
   "downloads": {
     "title": "Downloads",
     "queue": "Download Queue",
     "noDownloads": "No active downloads",
+    "noDownloadsHint": "Start a download from a movie or TV show detail page",
+    "noCompletedDownloads": "No completed downloads",
+    "noFailedDownloads": "No failed downloads",
     "downloading": "Downloading",
     "seeding": "Seeding",
     "paused": "Paused",
     "completed": "Completed",
+    "failed": "Failed",
     "error": "Error",
+    "unknown": "Unknown",
+    "queued": "Queued",
     "pause": "Pause",
     "resume": "Resume",
     "cancel": "Cancel",
@@ -199,7 +244,16 @@
     "eta": "ETA",
     "size": "Size",
     "progress": "Progress",
-    "peers": "Peers"
+    "peers": "Peers",
+    "active": "Active",
+    "viewAll": "View All",
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "serverConnected": "Server Connected",
+    "noDownloadsYet": "No downloads yet",
+    "moreCount": "+ {count} more",
+    "clearCompleted": "Clear Completed",
+    "retryDownload": "Retry"
   },
   "library": {
     "title": "My Library",
@@ -280,12 +334,14 @@
   },
   "keyboard": {
     "title": "Keyboard Shortcuts",
+    "subtitle": "Navigate faster with keyboard",
     "general": "General",
     "navigation": "Navigation",
     "videoPlayer": "Video Player",
     "focusSearch": "Focus search",
     "closeModal": "Close modal/menu",
-    "showHelp": "Show keyboard shortcuts"
+    "showHelp": "Show keyboard shortcuts",
+    "toggle": "toggle"
   },
   "time": {
     "justNow": "Just now",
@@ -295,7 +351,10 @@
     "remaining": "{time} remaining"
   },
   "continueWatching": {
-    "clearAll": "Clear All"
+    "clearAll": "Clear All",
+    "confirmClearTitle": "Clear Watch History",
+    "confirmClearMessage": "Are you sure you want to clear your entire watch history? This cannot be undone.",
+    "unknown": "Unknown"
   },
   "notifications": {
     "title": "Notifications",

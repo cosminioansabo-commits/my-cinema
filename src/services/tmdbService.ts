@@ -548,15 +548,56 @@ export async function getTVByGenre(genreId: number, page = 1): Promise<Media[]> 
     .filter((item): item is Media => item !== null)
 }
 
-export async function searchMulti(query: string, page = 1): Promise<{ results: Media[]; totalPages: number; totalResults: number }> {
+/**
+ * Lightweight fetch for basic media info (title + poster only).
+ * Used by continue-watching to avoid the heavyweight getMediaDetails (6+ sub-requests).
+ */
+export async function getMediaBasicInfo(mediaType: MediaType, id: number): Promise<{ title: string; posterPath: string | null } | null> {
+  const cacheKey = `basic-${mediaType}-${id}`
+  const cached = getCached<{ title: string; posterPath: string | null }>(cacheKey, CACHE_TTL_DETAILS)
+  if (cached) return cached
+
+  try {
+    const { data } = await api.get(`/${mediaType}/${id}`)
+    const result = {
+      title: data.title || data.name || 'Unknown',
+      posterPath: data.poster_path || null,
+    }
+    setCache(cacheKey, result)
+    return result
+  } catch {
+    return null
+  }
+}
+
+export interface PersonResult {
+  id: number
+  name: string
+  profilePath: string | null
+  knownForDepartment: string
+}
+
+export async function searchMulti(query: string, page = 1, signal?: AbortSignal): Promise<{ results: Media[]; people: PersonResult[]; totalPages: number; totalResults: number }> {
   const { data } = await api.get<TMDBResponse<TMDBSearchResult>>('/search/multi', {
     params: { query, page, include_adult: false },
+    signal,
   })
+
+  const people: PersonResult[] = data.results
+    .filter((item) => item.media_type === 'person')
+    .slice(0, 5)
+    .map((item) => ({
+      id: item.id,
+      name: item.name || '',
+      profilePath: item.poster_path || (item as any).profile_path || null,
+      knownForDepartment: (item as any).known_for_department || '',
+    }))
 
   return {
     results: data.results
       .map(transformToMedia)
       .filter((item): item is Media => item !== null),
+    people,
     totalPages: data.total_pages,
     totalResults: data.total_results,
   }
@@ -1044,6 +1085,32 @@ export async function getPersonDetails(personId: number): Promise<PersonDetails 
   } catch (error) {
     console.error('Error fetching person details:', error)
     return null
+  }
+}
+
+// Get person external IDs (social media links)
+export async function getPersonExternalIds(personId: number): Promise<{
+  imdbId: string | null
+  instagramId: string | null
+  twitterId: string | null
+  facebookId: string | null
+}> {
+  const cacheKey = `person-external-${personId}`
+  const cached = getCached<any>(cacheKey, CACHE_TTL_DETAILS)
+  if (cached) return cached
+
+  try {
+    const { data } = await api.get(`/person/${personId}/external_ids`)
+    const result = {
+      imdbId: data.imdb_id || null,
+      instagramId: data.instagram_id || null,
+      twitterId: data.twitter_id || null,
+      facebookId: data.facebook_id || null,
+    }
+    setCache(cacheKey, result)
+    return result
+  } catch {
+    return { imdbId: null, instagramId: null, twitterId: null, facebookId: null }
   }
 }
 

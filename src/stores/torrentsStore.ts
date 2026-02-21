@@ -99,6 +99,36 @@ export const useTorrentsStore = defineStore('torrents', () => {
     }
   }
 
+  function clearCompleted(): void {
+    downloads.value = downloads.value.filter(d => d.status !== 'completed')
+  }
+
+  async function retryDownload(id: string): Promise<Download | null> {
+    const download = downloads.value.find(d => d.id === id)
+    if (!download || !download.magnetLink) return null
+
+    // Remove the failed download
+    const index = downloads.value.findIndex(d => d.id === id)
+    if (index !== -1) {
+      downloads.value.splice(index, 1)
+    }
+
+    // Re-start the download with the same magnet link
+    const newDownload = await torrentService.startDownload(
+      download.magnetLink,
+      download.mediaId,
+      download.mediaType,
+      download.name
+    )
+
+    const existingIndex = downloads.value.findIndex(d => d.id === newDownload.id)
+    if (existingIndex === -1) {
+      downloads.value.unshift(newDownload)
+    }
+
+    return newDownload
+  }
+
   async function fetchDownloads(): Promise<void> {
     try {
       downloads.value = await torrentService.getDownloads()
@@ -177,7 +207,9 @@ export const useTorrentsStore = defineStore('torrents', () => {
     pauseDownload,
     resumeDownload,
     cancelDownload,
+    clearCompleted,
     fetchDownloads,
+    retryDownload,
     connectWebSocket,
     disconnectWebSocket
   }

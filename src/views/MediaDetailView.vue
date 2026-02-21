@@ -9,6 +9,7 @@ import { libraryService, profileLibraryService } from '@/services/libraryService
 import { useAuthStore } from '@/stores/authStore'
 import { getExternalRatings, type ExternalRatings } from '@/services/omdbService'
 import { progressService, type WatchProgress } from '@/services/progressService'
+import { useRecentlyViewed } from '@/composables/useRecentlyViewed'
 import type { SonarrEpisode } from '@/services/libraryService'
 import TorrentSearchModal from '@/components/modals/TorrentSearchModal.vue'
 import TrailerModal from '@/components/modals/TrailerModal.vue'
@@ -25,6 +26,7 @@ const mediaStore = useMediaStore()
 const authStore = useAuthStore()
 const toast = useToast()
 const { languageChangeCounter, t } = useLanguage()
+const { addItem: addRecentlyViewed } = useRecentlyViewed()
 
 const profileId = computed(() => authStore.activeProfileId || 'default')
 
@@ -348,6 +350,14 @@ watch([mediaType, mediaId], ([newType, newId]) => {
 // Run all independent fetches in parallel for better performance
 watch(media, (newMedia) => {
   if (newMedia) {
+    // Track in recently viewed
+    addRecentlyViewed({
+      id: newMedia.id,
+      mediaType: mediaType.value,
+      title: newMedia.title,
+      posterPath: newMedia.posterPath,
+    })
+
     Promise.all([
       checkLibraryStatus(),
       fetchCollection(),
@@ -662,7 +672,7 @@ const goBack = () => {
                 >
                   <span class="text-base leading-none">🍅</span>
                   <span
-                    :class="externalRatings.rottenTomatoes.rating >= 60 ? 'text-red-400' : 'text-green-400'"
+                    :class="externalRatings.rottenTomatoes.rating >= 60 ? 'text-green-400' : 'text-red-400'"
                     class="font-bold text-sm"
                   >
                     {{ externalRatings.rottenTomatoes.rating }}%
@@ -1053,4 +1063,5 @@ const goBack = () => {
 .action-btn-disabled:hover {
   transform: none !important;
 }
+
 </style>

@@ -7,8 +7,10 @@ import { ref } from 'vue'
 import DownloadProgress from './DownloadProgress.vue'
 import { useTorrentsStore } from '@/stores/torrentsStore'
 import { useOfflineStore } from '@/stores/offlineStore'
+import { useLanguage } from '@/composables/useLanguage'
 
 const router = useRouter()
+const { t } = useLanguage()
 const torrentsStore = useTorrentsStore()
 const offlineStore = useOfflineStore()
 const op = ref()
@@ -49,7 +51,7 @@ function goToDownloads() {
       :badge="activeCount > 0 ? String(activeCount) : undefined"
       badgeSeverity="success"
       class="!text-gray-400 hover:!text-white hover:!bg-white/10"
-      title="Downloads"
+      :title="t('downloads.title')"
       @click="toggle"
     />
 
@@ -58,9 +60,9 @@ function goToDownloads() {
       class="!w-[calc(100vw-24px)] sm:!w-[400px]"
     >
       <div class="flex items-center justify-between mb-3 sm:mb-4">
-        <h3 class="text-base sm:text-lg font-semibold text-white">Downloads</h3>
+        <h3 class="text-base sm:text-lg font-semibold text-white">{{ t('downloads.title') }}</h3>
         <Button
-          label="View All"
+          :label="t('downloads.viewAll')"
           link
           size="small"
           class="!text-xs sm:!text-sm !text-purple-400 hover:!text-purple-300"
@@ -75,7 +77,7 @@ function goToDownloads() {
           :class="torrentsStore.wsConnected ? 'bg-green-500' : 'bg-red-500'"
         ></span>
         <span class="text-gray-400">
-          {{ torrentsStore.wsConnected ? 'Connected' : 'Disconnected' }}
+          {{ torrentsStore.wsConnected ? t('downloads.connected') : t('downloads.disconnected') }}
         </span>
       </div>
 
@@ -84,7 +86,7 @@ function goToDownloads() {
         <div class="w-12 h-12 sm:w-14 sm:h-14 mx-auto rounded-full bg-zinc-800 flex items-center justify-center mb-3">
           <i class="pi pi-inbox text-xl sm:text-2xl text-gray-500"></i>
         </div>
-        <p class="text-gray-400 text-xs sm:text-sm">No downloads yet</p>
+        <p class="text-gray-400 text-xs sm:text-sm">{{ t('downloads.noDownloadsYet') }}</p>
       </div>
 
       <!-- Downloads list -->
@@ -102,7 +104,7 @@ function goToDownloads() {
           v-if="torrentsStore.downloads.length > 5"
           class="text-center text-xs text-gray-500"
         >
-          + {{ torrentsStore.downloads.length - 5 }} more downloads
+          {{ t('downloads.moreCount', { count: torrentsStore.downloads.length - 5 }) }}
         </p>
       </div>
     </Popover>

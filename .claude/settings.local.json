@@ -50,7 +50,8 @@
       "WebFetch(domain:github.com)",
       "Bash(npm audit:*)",
       "Bash(npm view:*)",
-      "Bash(npm info:*)"
+      "Bash(npm info:*)",
+      "mcp__Claude_Preview__preview_start"
     ],
     "deny": [],
     "ask": []

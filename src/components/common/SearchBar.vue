@@ -2,8 +2,11 @@
 import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDebounce } from '@/composables/useDebounce'
+import { useLanguage } from '@/composables/useLanguage'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
+
+const { t } = useLanguage()
 
 const props = defineProps<{
   modelValue?: string
@@ -60,7 +63,7 @@ const clearSearch = () => {
     <InputText
       v-model="localQuery"
       data-search-input
-      placeholder="Search movies & TV shows..."
+      :placeholder="t('search.placeholder')"
       class="w-full pl-10 sm:pl-14 pr-10 sm:pr-14 py-3 sm:py-4 bg-zinc-800/80 backdrop-blur-sm border border-zinc-700/50 rounded-xl sm:rounded-2xl text-white text-sm sm:text-base placeholder-gray-500 focus:ring-2 focus:ring-[#e50914]/30 focus:border-[#e50914]/50 focus:bg-zinc-800 transition-all duration-200 shadow-lg shadow-black/20"
       :autofocus="autoFocus"
       @keydown.enter="handleSubmit"

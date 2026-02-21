@@ -69,6 +69,12 @@ const router = createRouter({
       component: () => import('@/views/ActorView.vue'),
       props: true,
     },
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'not-found',
+      component: () => import('@/views/NotFoundView.vue'),
+      meta: { public: true },
+    },
   ],
   scrollBehavior(_to, _from, savedPosition) {
     if (savedPosition) {

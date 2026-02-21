@@ -3,6 +3,9 @@ import { getImageUrl } from '@/services/tmdbService'
 import { formatRemainingTime } from '@/utils/formatters'
 import Button from 'primevue/button'
 import type { ContinueWatchingItem } from '@/types'
+import { useLanguage } from '@/composables/useLanguage'
+
+const { t } = useLanguage()
 
 const props = defineProps<{
   item: ContinueWatchingItem
@@ -19,7 +22,7 @@ const posterUrl = props.item.posterPath
 
 const displayTitle = props.item.mediaType === 'episode' && props.item.seasonNumber && props.item.episodeNumber
   ? `S${props.item.seasonNumber}:E${props.item.episodeNumber}`
-  : props.item.title || 'Unknown'
+  : props.item.title || t('continueWatching.unknown')
 </script>
 
 <template>
@@ -76,7 +79,7 @@ const displayTitle = props.item.mediaType === 'episode' && props.item.seasonNumb
 
     <!-- Info Overlay -->
     <div class="absolute bottom-1 left-0 right-0 p-2 bg-gradient-to-t from-black/90 to-transparent">
-      <p class="text-white text-xs font-medium truncate">{{ item.title || 'Unknown' }}</p>
+      <p class="text-white text-xs font-medium truncate">{{ item.title || t('continueWatching.unknown') }}</p>
       <p class="text-gray-400 text-[10px]">{{ formatRemainingTime(item.positionMs, item.durationMs) }}</p>
     </div>
   </div>

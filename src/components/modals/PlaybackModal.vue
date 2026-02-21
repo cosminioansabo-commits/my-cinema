@@ -8,6 +8,7 @@ import { progressService } from '@/services/progressService'
 import { useNextEpisode } from '@/composables/useNextEpisode'
 import { useModalState } from '@/composables/useModalState'
 import { useOfflineStore } from '@/stores/offlineStore'
+import { useLanguage } from '@/composables/useLanguage'
 import type { OfflineMediaItem } from '@/services/offlineStorageService'
 
 const props = defineProps<{
@@ -30,6 +31,7 @@ const emit = defineEmits<{
 
 const isOpen = useModalState(props, emit)
 const offlineStore = useOfflineStore()
+const { t } = useLanguage()
 
 const isLoading = ref(false)
 const hasError = ref(false)
@@ -77,8 +79,6 @@ const fetchPlaybackInfo = async () => {
   try {
     // Offline mode - get video URL from cache
     if (props.offlineItem) {
-      console.log('Loading offline playback for:', props.offlineItem.id)
-
       // Fetch video URL and subtitles in parallel
       const [offlineVideoUrl, offlineSubtitles] = await Promise.all([
         offlineStore.getOfflineVideoUrl(props.offlineItem.id),
@@ -87,11 +87,9 @@ const fetchPlaybackInfo = async () => {
 
       if (!offlineVideoUrl) {
         hasError.value = true
-        errorMessage.value = 'Offline video not found. The cached file may have been deleted.'
+        errorMessage.value = t('player.offlineNotFound')
         return
       }
-
-      console.log('Loaded offline subtitles:', offlineSubtitles.length)
 
       // Create playback info from offline item
       playbackInfo.value = {
@@ -108,16 +106,12 @@ const fetchPlaybackInfo = async () => {
       // Resume from saved position in offline item
       if (props.offlineItem.playbackPosition && props.offlineItem.playbackPosition > 0) {
         resumePosition.value = props.offlineItem.playbackPosition * 1000 // Convert seconds to ms
-        console.log('Offline resume position:', resumePosition.value)
       }
 
-      console.log('Offline playback ready:', playbackInfo.value)
       return
     }
 
     // Online mode - fetch from Jellyfin
-    console.log('Fetching playback info:', { mediaType: props.mediaType, tmdbId: props.tmdbId, showTmdbId: props.showTmdbId, season: currentSeasonNumber.value, episode: currentEpisodeNumber.value })
-
     // Fetch playback info and saved progress in parallel
     const [playbackResult, savedProgress] = await Promise.all([
       props.mediaType === 'movie' && props.tmdbId
@@ -139,14 +133,11 @@ const fetchPlaybackInfo = async () => {
     // Set resume position from saved progress (if not already completed)
     if (savedProgress && !savedProgress.completed && savedProgress.positionMs > 0) {
       resumePosition.value = savedProgress.positionMs
-      console.log('Resume position loaded:', resumePosition.value)
     }
-
-    console.log('Playback info received:', playbackInfo.value)
 
     if (!playbackInfo.value) {
       hasError.value = true
-      errorMessage.value = 'Media not found. Make sure Radarr/Sonarr has the file.'
+      errorMessage.value = t('player.mediaNotFound')
     } else {
       // Fetch next episode info for TV shows
       fetchNextEpisodeInfo()
@@ -154,7 +145,7 @@ const fetchPlaybackInfo = async () => {
   } catch (error) {
     console.error('Error fetching playback info:', error)
     hasError.value = true
-    errorMessage.value = 'Failed to connect to media service'
+    errorMessage.value = t('player.failedToConnect')
   } finally {
     isLoading.value = false
   }
@@ -171,7 +162,6 @@ const handleProgress = async (timeMs: number, state: 'playing' | 'paused' | 'sto
   if (props.offlineItem) {
     const positionSeconds = timeMs / 1000
     await offlineStore.updatePlaybackPosition(props.offlineItem.id, positionSeconds)
-    console.log(`Offline progress saved: ${positionSeconds}s (${state})`)
     return
   }
 
@@ -188,7 +178,6 @@ const handleProgress = async (timeMs: number, state: 'playing' | 'paused' | 'sto
     currentSeasonNumber.value,
     currentEpisodeNumber.value
   )
-  console.log(`Progress saved: ${timeMs}ms / ${durationMs}ms (${state})`)
 }
 
 // Handle close - confirm if playing
@@ -214,8 +203,6 @@ const playNextEpisode = async () => {
   currentSeasonNumber.value = nextEpisode.value.seasonNumber
   currentEpisodeNumber.value = nextEpisode.value.episodeNumber
 
-  console.log(`Playing next episode: S${currentSeasonNumber.value}E${currentEpisodeNumber.value}`)
-
   // Reset and refetch playback info for next episode
   resetNextEpisode()
   await fetchPlaybackInfo()
@@ -233,7 +220,6 @@ const handleEnded = async () => {
       currentSeasonNumber.value,
       currentEpisodeNumber.value
     )
-    console.log('Marked as watched')
   }
 
   // For TV shows with a next episode, show countdown
@@ -249,7 +235,6 @@ const handleEnded = async () => {
 
 // Watch for modal open - use immediate: true in case component mounts with visible=true
 watch(() => props.visible, (newValue) => {
-  console.log('PlaybackModal visible changed:', newValue, { mediaType: props.mediaType, tmdbId: props.tmdbId, showTmdbId: props.showTmdbId })
   if (newValue) {
     // Reset episode state when modal opens
     currentSeasonNumber.value = props.seasonNumber
@@ -295,13 +280,13 @@ const displayTitle = computed(() => {
     <!-- Loading State -->
     <div v-if="isLoading" class="flex flex-col items-center justify-center h-[60vh]">
       <i class="pi pi-spin pi-spinner text-5xl text-white mb-4"></i>
-      <p class="text-gray-400">Loading playback...</p>
+      <p class="text-gray-400">{{ t('player.loadingPlayback') }}</p>
     </div>
 
     <!-- Error State -->
     <div v-else-if="hasError" class="flex flex-col items-center justify-center h-[60vh]">
       <i class="pi pi-exclamation-triangle text-5xl text-red-500 mb-4"></i>
-      <p class="text-white text-lg mb-2">Unable to play</p>
+      <p class="text-white text-lg mb-2">{{ t('player.unableToPlay') }}</p>
       <p class="text-gray-400 text-center max-w-md">{{ errorMessage }}</p>
     </div>
 
@@ -342,13 +327,12 @@ const displayTitle = computed(() => {
       </Transition>
     </div>
 
-    <!-- Debug info for development -->
+    <!-- Empty state - no stream available -->
     <div v-else-if="!isLoading && !hasError" class="flex flex-col items-center justify-center h-[60vh]">
       <i class="pi pi-exclamation-circle text-5xl text-yellow-500 mb-4"></i>
-      <p class="text-white text-lg mb-2">No stream available</p>
+      <p class="text-white text-lg mb-2">{{ t('player.noStreamAvailable') }}</p>
       <p class="text-gray-400 text-center max-w-md text-sm">
-        playbackInfo: {{ playbackInfo ? 'exists' : 'null' }}<br>
-        streamUrl: {{ playbackInfo?.streamUrl || 'none' }}
+        {{ t('player.noStreamHint') }}
       </p>
     </div>
   </Dialog>

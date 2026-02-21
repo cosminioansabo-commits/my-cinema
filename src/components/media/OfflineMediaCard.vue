@@ -126,7 +126,7 @@ onMounted(async () => {
 
         <div class="flex items-center gap-2 mt-2">
           <Button
-            :icon="hasProgress ? 'pi pi-play' : 'pi pi-play'"
+            :icon="hasProgress ? 'pi pi-step-forward' : 'pi pi-play'"
             :label="hasProgress ? t('media.resume') : t('media.play')"
             size="small"
             class="!py-1.5 !px-3 !text-xs"

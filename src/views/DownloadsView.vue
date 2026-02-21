@@ -67,7 +67,7 @@ const handleDeleteOffline = (_item: OfflineMediaItem) => {
             <i class="pi pi-download text-lg sm:text-2xl text-white"></i>
           </div>
           <h1 class="text-2xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
-            Downloads
+            {{ t('downloads.title') }}
           </h1>
         </div>
       </div>
@@ -78,7 +78,7 @@ const handleDeleteOffline = (_item: OfflineMediaItem) => {
           :class="torrentsStore.wsConnected ? 'bg-green-500' : 'bg-red-500'"
         ></span>
         <span class="text-gray-400">
-          {{ torrentsStore.wsConnected ? 'Server Connected' : 'Disconnected' }}
+          {{ torrentsStore.wsConnected ? t('downloads.serverConnected') : t('downloads.disconnected') }}
         </span>
       </div>
     </div>
@@ -97,7 +97,7 @@ const handleDeleteOffline = (_item: OfflineMediaItem) => {
               root: { class: '!bg-transparent !border-none !text-gray-400 hover:!text-gray-200 !py-2.5 sm:!py-3 !px-3 sm:!px-4 !text-xs sm:!text-sm data-[p-active=true]:!text-purple-400 data-[p-active=true]:!border-b-2 data-[p-active=true]:!border-purple-500' }
             }"
           >
-            Active
+            {{ t('downloads.active') }}
             <span v-if="activeDownloads.length" class="ml-1.5 sm:ml-2 text-[10px] sm:text-xs bg-purple-600 text-white px-1.5 sm:px-2 py-0.5 rounded-full">
               {{ activeDownloads.length }}
             </span>
@@ -108,7 +108,7 @@ const handleDeleteOffline = (_item: OfflineMediaItem) => {
               root: { class: '!bg-transparent !border-none !text-gray-400 hover:!text-gray-200 !py-2.5 sm:!py-3 !px-3 sm:!px-4 !text-xs sm:!text-sm data-[p-active=true]:!text-purple-400 data-[p-active=true]:!border-b-2 data-[p-active=true]:!border-purple-500' }
             }"
           >
-            Completed
+            {{ t('downloads.completed') }}
             <span v-if="completedDownloads.length" class="ml-1.5 sm:ml-2 text-[10px] sm:text-xs bg-green-600 text-white px-1.5 sm:px-2 py-0.5 rounded-full">
               {{ completedDownloads.length }}
             </span>
@@ -119,7 +119,7 @@ const handleDeleteOffline = (_item: OfflineMediaItem) => {
               root: { class: '!bg-transparent !border-none !text-gray-400 hover:!text-gray-200 !py-2.5 sm:!py-3 !px-3 sm:!px-4 !text-xs sm:!text-sm data-[p-active=true]:!text-purple-400 data-[p-active=true]:!border-b-2 data-[p-active=true]:!border-purple-500' }
             }"
           >
-            Failed
+            {{ t('downloads.failed') }}
             <span v-if="failedDownloads.length" class="ml-1.5 sm:ml-2 text-[10px] sm:text-xs bg-red-600 text-white px-1.5 sm:px-2 py-0.5 rounded-full">
               {{ failedDownloads.length }}
             </span>
@@ -145,9 +145,9 @@ const handleDeleteOffline = (_item: OfflineMediaItem) => {
               <div class="w-14 h-14 sm:w-16 sm:h-16 mx-auto rounded-full bg-zinc-800 flex items-center justify-center mb-4">
                 <i class="pi pi-download text-2xl sm:text-3xl text-gray-500"></i>
               </div>
-              <p class="text-gray-400 text-sm sm:text-base">No active downloads</p>
+              <p class="text-gray-400 text-sm sm:text-base">{{ t('downloads.noDownloads') }}</p>
               <p class="text-gray-500 text-xs sm:text-sm mt-2 max-w-xs mx-auto">
-                Find a movie or TV show and click "Find Torrent" to start downloading
+                {{ t('downloads.noDownloadsHint') }}
               </p>
             </div>
 
@@ -165,11 +165,21 @@ const handleDeleteOffline = (_item: OfflineMediaItem) => {
 
           <!-- Completed Downloads -->
           <TabPanel value="completed" class="p-3 sm:p-4">
+            <div v-if="completedDownloads.length > 0" class="flex justify-end mb-3">
+              <Button
+                :label="t('downloads.clearCompleted')"
+                icon="pi pi-trash"
+                severity="secondary"
+                text
+                size="small"
+                @click="torrentsStore.clearCompleted()"
+              />
+            </div>
             <div v-if="completedDownloads.length === 0" class="text-center py-10 sm:py-16">
               <div class="w-14 h-14 sm:w-16 sm:h-16 mx-auto rounded-full bg-zinc-800 flex items-center justify-center mb-4">
                 <i class="pi pi-check-circle text-2xl sm:text-3xl text-gray-500"></i>
               </div>
-              <p class="text-gray-400 text-sm sm:text-base">No completed downloads</p>
+              <p class="text-gray-400 text-sm sm:text-base">{{ t('downloads.noCompletedDownloads') }}</p>
             </div>
 
             <div v-else class="flex flex-col gap-2 sm:gap-4 p-2 sm:p-4">
@@ -188,7 +198,7 @@ const handleDeleteOffline = (_item: OfflineMediaItem) => {
               <div class="w-14 h-14 sm:w-16 sm:h-16 mx-auto rounded-full bg-zinc-800 flex items-center justify-center mb-4">
                 <i class="pi pi-times-circle text-2xl sm:text-3xl text-gray-500"></i>
               </div>
-              <p class="text-gray-400 text-sm sm:text-base">No failed downloads</p>
+              <p class="text-gray-400 text-sm sm:text-base">{{ t('downloads.noFailedDownloads') }}</p>
             </div>
 
             <div v-else class="flex flex-col gap-2 sm:gap-4 p-2 sm:p-4">
@@ -197,6 +207,7 @@ const handleDeleteOffline = (_item: OfflineMediaItem) => {
                 :key="download.id"
                 :download="download"
                 @cancel="torrentsStore.cancelDownload"
+                @retry="torrentsStore.retryDownload"
               />
             </div>
           </TabPanel>

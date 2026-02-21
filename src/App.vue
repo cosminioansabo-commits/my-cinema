@@ -5,6 +5,7 @@ import AppHeader from '@/components/layout/AppHeader.vue'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
 import KeyboardShortcutsModal from '@/components/modals/KeyboardShortcutsModal.vue'
 import SpotlightSearch from '@/components/modals/SpotlightSearch.vue'
+import ScrollToTop from '@/components/ui/ScrollToTop.vue'
 import Toast from 'primevue/toast'
 import { useToast } from 'primevue/usetoast'
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
@@ -72,7 +73,11 @@ onUnmounted(() => {
 
     <main :class="showLayout ? 'pt-14 min-h-screen' : 'min-h-screen'">
       <div :class="showLayout ? 'max-w-[1920px] px-4' : ''">
-        <RouterView />
+        <RouterView v-slot="{ Component }">
+          <Transition name="page" mode="out-in">
+            <component :is="Component" />
+          </Transition>
+        </RouterView>
       </div>
     </main>
 
@@ -81,5 +86,20 @@ onUnmounted(() => {
     <!-- Global Keyboard Shortcuts Help Modal -->
     <KeyboardShortcutsModal />
     <SpotlightSearch />
+
+    <!-- Scroll-to-top button -->
+    <ScrollToTop />
   </div>
 </template>
+
+<style>
+/* Page transition */
+.page-enter-active,
+.page-leave-active {
+  transition: opacity 0.2s ease;
+}
+.page-enter-from,
+.page-leave-to {
+  opacity: 0;
+}
+</style>

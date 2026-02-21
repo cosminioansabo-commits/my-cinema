@@ -4,6 +4,9 @@ import ProgressBar from 'primevue/progressbar'
 import Button from 'primevue/button'
 import type { Download } from '@/types/torrent'
 import { formatSpeed, formatSize, formatEta } from '@/utils/formatters'
+import { useLanguage } from '@/composables/useLanguage'
+
+const { t } = useLanguage()
 
 const props = defineProps<{
   download: Download
@@ -13,16 +16,17 @@ const emit = defineEmits<{
   pause: [id: string]
   resume: [id: string]
   cancel: [id: string]
+  retry: [id: string]
 }>()
 
 const statusLabel = computed(() => {
   switch (props.download.status) {
-    case 'queued': return 'Queued'
-    case 'downloading': return 'Downloading'
-    case 'paused': return 'Paused'
-    case 'completed': return 'Completed'
-    case 'error': return 'Error'
-    default: return 'Unknown'
+    case 'queued': return t('downloads.queued')
+    case 'downloading': return t('downloads.downloading')
+    case 'paused': return t('downloads.paused')
+    case 'completed': return t('downloads.completed')
+    case 'error': return t('downloads.error')
+    default: return t('downloads.unknown')
   }
 })
 
@@ -84,6 +88,17 @@ const statusClass = computed(() => {
           aria-label="Resume"
         />
         <Button
+          v-if="download.status === 'error' && download.magnetLink"
+          icon="pi pi-refresh"
+          severity="warning"
+          text
+          rounded
+          size="small"
+          @click="emit('retry', download.id)"
+          :aria-label="t('downloads.retryDownload')"
+          v-tooltip.top="t('downloads.retryDownload')"
+        />
+        <Button
           v-if="download.status !== 'completed'"
           icon="pi pi-times"
           severity="danger"
@@ -117,7 +132,7 @@ const statusClass = computed(() => {
           <i class="pi pi-arrow-down text-green-400 mr-1"></i>
           {{ formatSpeed(download.downloadSpeed) }}
         </span>
-        <span>ETA: {{ formatEta(download.eta) }}</span>
+        <span>{{ t('downloads.eta') }}: {{ formatEta(download.eta) }}</span>
       </div>
 
       <span>

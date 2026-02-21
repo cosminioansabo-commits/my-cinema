@@ -7,6 +7,7 @@ import { mediaService } from '@/services/mediaService'
 import { subtitleService, type SubtitleSearchResult, type SubtitleLanguage } from '@/services/subtitleService'
 import { formatTime } from '@/utils/formatters'
 import { useSubtitleStyle, fontSizeOptions, fontColorOptions, bgOpacityOptions } from '@/composables/useSubtitleStyle'
+import { useLanguage } from '@/composables/useLanguage'
 import { PLAYBACK_SPEEDS, type PlaybackSpeed } from '@/config/keyboardShortcuts'
 import { useTouchGestures } from '@/composables/useTouchGestures'
 
@@ -97,6 +98,7 @@ let speedIndicatorTimeout: ReturnType<typeof setTimeout> | null = null
 
 // Subtitle styling composable
 const { subtitleStyle, saveSubtitleStyle, applySubtitleStyle } = useSubtitleStyle()
+const { t } = useLanguage()
 
 // Double-tap seek state (mobile)
 const lastTapTime = ref(0)
@@ -151,12 +153,8 @@ const initPlayer = () => {
   isLoading.value = true
   hasError.value = false
 
-  console.log('Initializing video player:', props.streamUrl.substring(0, 80) + '...')
-  console.log('Is direct video URL:', isDirectVideoUrl.value)
-
   // For blob URLs (offline cached videos), use native video playback
   if (isDirectVideoUrl.value) {
-    console.log('Using native video playback for direct video URL')
     video.src = props.streamUrl
     video.addEventListener('loadedmetadata', () => {
       isLoading.value = false
@@ -505,7 +503,7 @@ const toggleSettings = () => {
 
 // Subtitle options for display
 const subtitleOptions = computed(() => {
-  const options = [{ label: 'Off', value: null as number | null }]
+  const options = [{ label: t('player.off'), value: null as number | null }]
   if (props.subtitles) {
     props.subtitles.forEach(sub => {
       options.push({ label: sub.displayTitle, value: sub.id })
@@ -529,7 +527,6 @@ const loadSubtitle = async (subtitleId: number | null) => {
   }
 
   if (subtitleId === null) {
-    console.log('Subtitles disabled')
     return
   }
 
@@ -539,8 +536,6 @@ const loadSubtitle = async (subtitleId: number | null) => {
     console.error('Subtitle not found or no URL:', subtitleId)
     return
   }
-
-  console.log('Loading subtitle:', subtitle.displayTitle, subtitle.url)
 
   // Create and add the track element
   const track = document.createElement('track')
@@ -555,7 +550,6 @@ const loadSubtitle = async (subtitleId: number | null) => {
 
   // Wait for track to load and then show it
   track.addEventListener('load', () => {
-    console.log('Subtitle track loaded')
     // Find and enable this track
     for (let i = 0; i < video.textTracks.length; i++) {
       if (video.textTracks[i].label === subtitle.displayTitle) {
@@ -725,8 +719,6 @@ const switchAudioTrack = async (streamIndex: number) => {
 
   isLoading.value = true
   selectedAudioTrack.value = streamIndex
-
-  console.log(`Switching audio track to stream ${streamIndex} at position ${currentPos}s`)
 
   const newHlsUrl = await mediaService.getJellyfinAudioTrackUrl(
     props.jellyfinItemId,
@@ -1090,18 +1082,18 @@ defineExpose({
       class="absolute inset-0 flex items-center justify-center bg-black/80 z-20"
     >
       <div class="bg-zinc-900 rounded-xl p-6 max-w-md text-center">
-        <p class="text-white text-lg mb-2">Resume playback?</p>
+        <p class="text-white text-lg mb-2">{{ t('player.resumePlayback') }}</p>
         <p class="text-gray-400 mb-6">
-          Continue from {{ formatTime((resumePosition || 0) / 1000) }}
+          {{ t('player.continueFrom', { time: formatTime((resumePosition || 0) / 1000) }) }}
         </p>
         <div class="flex gap-3 justify-center">
           <Button
-            label="Start Over"
+            :label="t('player.startOver')"
             severity="secondary"
             @click="startFromBeginning"
           />
           <Button
-            label="Resume"
+            :label="t('player.resume')"
             @click="resumeFromPosition"
           />
         </div>
@@ -1243,7 +1235,7 @@ defineExpose({
                 <div v-if="settingsTab === 'main'" class="p-4">
                   <!-- Audio Track Selection -->
                   <div v-if="audioTracks && audioTracks.length > 1" class="mb-4">
-                    <label class="text-gray-400 text-xs uppercase tracking-wide mb-2 block">Audio</label>
+                    <label class="text-gray-400 text-xs uppercase tracking-wide mb-2 block">{{ t('player.audio') }}</label>
                     <div class="flex flex-col gap-1 max-h-32 overflow-y-auto">
                       <button
                         v-for="track in audioTracks"
@@ -1260,21 +1252,21 @@ defineExpose({
                   <!-- Subtitle Selection -->
                   <div>
                     <div class="flex items-center justify-between mb-2">
-                      <label class="text-gray-400 text-xs uppercase tracking-wide">Subtitles</label>
+                      <label class="text-gray-400 text-xs uppercase tracking-wide">{{ t('player.subtitles') }}</label>
                       <div class="flex items-center gap-2">
                         <button
                           v-if="subtitleSearchEnabled"
                           class="text-xs text-blue-400 hover:text-blue-300 transition-colors"
                           @click="openSubtitleSearch"
                         >
-                          <i class="pi pi-search text-xs mr-1"></i>Find
+                          <i class="pi pi-search text-xs mr-1"></i>{{ t('player.findSubtitles') }}
                         </button>
                         <button
                           v-if="subtitles && subtitles.length > 0"
                           class="text-xs text-gray-400 hover:text-white transition-colors"
                           @click="settingsTab = 'subtitleStyle'"
                         >
-                          Style <i class="pi pi-chevron-right text-xs"></i>
+                          {{ t('player.style') }} <i class="pi pi-chevron-right text-xs"></i>
                         </button>
                       </div>
                     </div>
@@ -1290,7 +1282,7 @@ defineExpose({
                       </button>
                     </div>
                     <div v-else class="text-gray-500 text-sm py-2">
-                      No subtitles available
+                      {{ t('player.noSubtitlesAvailable') }}
                     </div>
                   </div>
                 </div>
@@ -1302,12 +1294,12 @@ defineExpose({
                     @click="settingsTab = 'main'"
                   >
                     <i class="pi pi-chevron-left text-xs"></i>
-                    <span class="text-sm">Subtitle Style</span>
+                    <span class="text-sm">{{ t('player.subtitleStyle') }}</span>
                   </button>
 
                   <!-- Font Size -->
                   <div class="mb-4">
-                    <label class="text-gray-400 text-xs uppercase tracking-wide mb-2 block">Font Size</label>
+                    <label class="text-gray-400 text-xs uppercase tracking-wide mb-2 block">{{ t('player.fontSize') }}</label>
                     <div class="flex flex-wrap gap-1">
                       <button
                         v-for="option in fontSizeOptions"
@@ -1323,7 +1315,7 @@ defineExpose({
 
                   <!-- Font Color -->
                   <div class="mb-4">
-                    <label class="text-gray-400 text-xs uppercase tracking-wide mb-2 block">Font Color</label>
+                    <label class="text-gray-400 text-xs uppercase tracking-wide mb-2 block">{{ t('player.fontColor') }}</label>
                     <div class="flex flex-wrap gap-2">
                       <button
                         v-for="option in fontColorOptions"
@@ -1339,7 +1331,7 @@ defineExpose({
 
                   <!-- Background Opacity -->
                   <div>
-                    <label class="text-gray-400 text-xs uppercase tracking-wide mb-2 block">Background</label>
+                    <label class="text-gray-400 text-xs uppercase tracking-wide mb-2 block">{{ t('player.backgroundColor') }}</label>
                     <div class="flex flex-wrap gap-1">
                       <button
                         v-for="option in bgOpacityOptions"
@@ -1361,12 +1353,12 @@ defineExpose({
                     @click="settingsTab = 'main'"
                   >
                     <i class="pi pi-chevron-left text-xs"></i>
-                    <span class="text-sm">Find Subtitles</span>
+                    <span class="text-sm">{{ t('player.findSubtitles') }}</span>
                   </button>
 
                   <!-- Language Selection -->
                   <div class="mb-4">
-                    <label class="text-gray-400 text-xs uppercase tracking-wide mb-2 block">Language</label>
+                    <label class="text-gray-400 text-xs uppercase tracking-wide mb-2 block">{{ t('player.subtitleLanguage') }}</label>
                     <select
                       v-model="selectedSearchLanguage"
                       class="w-full bg-zinc-800 text-white text-sm rounded px-3 py-2 border border-zinc-600 focus:border-red-500 focus:outline-none"
@@ -1385,7 +1377,7 @@ defineExpose({
                   >
                     <i v-if="isSearchingSubtitles" class="pi pi-spin pi-spinner"></i>
                     <i v-else class="pi pi-search"></i>
-                    {{ isSearchingSubtitles ? 'Searching...' : 'Search' }}
+                    {{ isSearchingSubtitles ? t('player.searching') : t('common.search') }}
                   </button>
 
                   <!-- Error/Success Message -->
@@ -1395,7 +1387,7 @@ defineExpose({
 
                   <!-- Search Results -->
                   <div v-if="subtitleSearchResults.length > 0" class="max-h-48 overflow-y-auto">
-                    <div class="text-gray-400 text-xs uppercase tracking-wide mb-2">Results</div>
+                    <div class="text-gray-400 text-xs uppercase tracking-wide mb-2">{{ t('player.results') }}</div>
                     <div class="flex flex-col gap-1">
                       <button
                         v-for="result in subtitleSearchResults"

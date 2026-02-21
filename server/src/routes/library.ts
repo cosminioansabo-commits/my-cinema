@@ -235,6 +235,28 @@ router.get('/series/calendar', async (req: Request, res: Response) => {
   res.json({ episodes: enrichedEpisodes })
 })
 
+// Get Sonarr root folders (must be before /:seriesId to avoid matching "rootfolders" as a series ID)
+router.get('/series/rootfolders', async (req: Request, res: Response) => {
+  if (!sonarrService.isEnabled()) {
+    res.status(503).json({ error: 'Sonarr is not configured' })
+    return
+  }
+
+  const folders = await sonarrService.getRootFolders()
+  res.json({ folders })
+})
+
+// Get Sonarr quality profiles (must be before /:seriesId)
+router.get('/series/profiles', async (req: Request, res: Response) => {
+  if (!sonarrService.isEnabled()) {
+    res.status(503).json({ error: 'Sonarr is not configured' })
+    return
+  }
+
+  const profiles = await sonarrService.getQualityProfiles()
+  res.json({ profiles })
+})
+
 // Get full series details including seasons stats by Sonarr series ID
 router.get('/series/:seriesId', async (req: Request, res: Response) => {
   if (!sonarrService.isEnabled()) {
@@ -264,28 +286,6 @@ router.get('/series/:seriesId/episodes', async (req: Request, res: Response) => 
   const episodes = await sonarrService.getEpisodes(seriesId)
 
   res.json({ episodes })
-})
-
-// Get Sonarr root folders
-router.get('/series/rootfolders', async (req: Request, res: Response) => {
-  if (!sonarrService.isEnabled()) {
-    res.status(503).json({ error: 'Sonarr is not configured' })
-    return
-  }
-
-  const folders = await sonarrService.getRootFolders()
-  res.json({ folders })
-})
-
-// Get Sonarr quality profiles
-router.get('/series/profiles', async (req: Request, res: Response) => {
-  if (!sonarrService.isEnabled()) {
-    res.status(503).json({ error: 'Sonarr is not configured' })
-    return
-  }
-
-  const profiles = await sonarrService.getQualityProfiles()
-  res.json({ profiles })
 })
 
 export default router

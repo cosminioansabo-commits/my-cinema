@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import PlaybackModal from '@/components/modals/PlaybackModal.vue'
 import ContinueWatchingCard from './ContinueWatchingCard.vue'
 import Button from 'primevue/button'
+import Dialog from 'primevue/dialog'
 import { useCarouselScroll } from '@/composables/useCarouselScroll'
 import { progressService } from '@/services/progressService'
 import { useLanguage } from '@/composables/useLanguage'
@@ -28,6 +29,9 @@ const { trackRef, canScrollLeft, canScrollRight, cardStyle, scroll } = useCarous
 })
 // trackRef is used in the template via ref="trackRef"
 void trackRef
+
+// Confirm clear dialog state
+const showConfirmClear = ref(false)
 
 // Playback modal state
 const showPlayback = ref(false)
@@ -81,7 +85,7 @@ const handlePlaybackVisibilityChange = (visible: boolean) => {
         text
         severity="secondary"
         size="small"
-        @click="handleClearAll"
+        @click="showConfirmClear = true"
       />
     </div>
 
@@ -139,6 +143,37 @@ const handlePlaybackVisibilityChange = (visible: boolean) => {
         <i class="pi pi-chevron-right text-base sm:text-lg"></i>
       </button>
     </div>
+
+    <!-- Confirm Clear Dialog -->
+    <Dialog
+      v-model:visible="showConfirmClear"
+      :header="t('continueWatching.confirmClearTitle')"
+      modal
+      :pt="{
+        root: { class: '!bg-zinc-900 !border !border-zinc-700 !rounded-xl !shadow-2xl' },
+        header: { class: '!bg-zinc-900 !text-white !border-b !border-zinc-800' },
+        content: { class: '!bg-zinc-900 !text-gray-300' },
+        footer: { class: '!bg-zinc-900 !border-t !border-zinc-800' }
+      }"
+    >
+      <p class="text-gray-300">{{ t('continueWatching.confirmClearMessage') }}</p>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <Button
+            :label="t('common.cancel')"
+            severity="secondary"
+            text
+            @click="showConfirmClear = false"
+          />
+          <Button
+            :label="t('continueWatching.clearAll')"
+            icon="pi pi-trash"
+            severity="danger"
+            @click="handleClearAll(); showConfirmClear = false"
+          />
+        </div>
+      </template>
+    </Dialog>
 
     <!-- Playback Modal -->
     <PlaybackModal
