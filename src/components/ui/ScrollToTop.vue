@@ -1,8 +1,13 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRoute } from 'vue-router'
 
+const route = useRoute()
 const visible = ref(false)
 const THRESHOLD = 500
+
+// Shift up on browse page to avoid overlapping the mobile filter FAB
+const isBrowsePage = computed(() => route.path === '/browse')
 
 const handleScroll = () => {
   visible.value = window.scrollY > THRESHOLD
@@ -25,7 +30,10 @@ onUnmounted(() => {
   <Transition name="fade">
     <button
       v-show="visible"
-      class="fixed bottom-6 right-6 z-50 w-11 h-11 rounded-full bg-zinc-800/80 backdrop-blur-md border border-zinc-700/50 text-white shadow-lg shadow-black/30 hover:bg-zinc-700 hover:border-zinc-600 transition-all duration-200 flex items-center justify-center cursor-pointer"
+      :class="[
+        'fixed right-6 z-50 w-11 h-11 rounded-full bg-zinc-800/80 backdrop-blur-md border border-zinc-700/50 text-white shadow-lg shadow-black/30 hover:bg-zinc-700 hover:border-zinc-600 transition-all duration-200 flex items-center justify-center cursor-pointer',
+        isBrowsePage ? 'bottom-20 sm:bottom-22 lg:bottom-6' : 'bottom-6'
+      ]"
       aria-label="Scroll to top"
       @click="scrollToTop"
     >
