@@ -39,18 +39,19 @@ router.post('/download', async (req: Request, res: Response) => {
       return
     }
 
-    // Validate magnet link format
-    if (!magnetLink.startsWith('magnet:?') || !magnetLink.includes('xt=urn:btih:')) {
-      res.status(400).json({ error: 'Invalid magnet link format' })
+    // Validate magnet link or download URL format
+    const isMagnet = magnetLink.startsWith('magnet:?') && magnetLink.includes('xt=urn:btih:')
+    const isUrl = magnetLink.startsWith('http://') || magnetLink.startsWith('https://')
+
+    if (!isMagnet && !isUrl) {
+      res.status(400).json({ error: 'Invalid magnet link or download URL format' })
       return
     }
 
-    const download = await downloadManager.startDownload({
-      magnetLink,
-      mediaId,
-      mediaType,
-      name
-    })
+    // Route magnet links to startDownload, HTTP URLs (e.g. Prowlarr private tracker links) to startDownloadFromUrl
+    const download = isMagnet
+      ? await downloadManager.startDownload({ magnetLink, mediaId, mediaType, name })
+      : await downloadManager.startDownloadFromUrl(magnetLink, { mediaId, mediaType, name })
 
     res.json({ download })
   } catch (error) {
